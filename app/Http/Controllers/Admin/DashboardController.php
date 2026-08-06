@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ChatbotQueryLog;
 use App\Models\KnowledgeItem;
+use App\Models\Listing;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -27,15 +29,26 @@ final class DashboardController extends Controller
             ->whereNotNull('top1_similarity')
             ->avg('top1_similarity');
 
+        $activeListingsCount = Listing::query()->active()->count();
+        $activeProductsCount = Product::query()->active()->count();
+        $pendingUnansweredCount = ChatbotQueryLog::query()
+            ->pendingReview()
+            ->count();
+
         $activeItems = KnowledgeItem::query()
             ->active()
+            ->with('category:id,name')
             ->get([
                 'id',
                 'title',
                 'content',
+                'category_id',
+                'keywords',
+                'source_name',
                 'embedding',
                 'embedding_hash',
                 'embedding_model',
+                'embedding_dimensions',
                 'embedded_at',
                 'embedding_error',
             ]);
@@ -100,6 +113,9 @@ final class DashboardController extends Controller
 
         return view('admin.dashboard', [
             'todayQuestions' => $todayQuestions,
+            'activeListingsCount' => $activeListingsCount,
+            'activeProductsCount' => $activeProductsCount,
+            'pendingUnansweredCount' => $pendingUnansweredCount,
             'activeKnowledgeCount' => $knowledgeStats['active'],
             'averageTop1Similarity' => $averageSimilarity === null
                 ? null

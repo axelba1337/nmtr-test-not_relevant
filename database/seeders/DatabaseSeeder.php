@@ -11,6 +11,9 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $this->call(KnowledgeItemSeeder::class);
+        $this->call([
+            NeomatraCatalogSeeder::class,
+            KnowledgeItemSeeder::class,
+        ]);
     }
 }

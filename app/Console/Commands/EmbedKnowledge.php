@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\KnowledgeEmbeddingService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 final class EmbedKnowledge extends Command
 {
@@ -20,9 +21,24 @@ final class EmbedKnowledge extends Command
 
     public function handle(): int
     {
-        $counts = $this->embeddings->rebuildActive(
-            (bool) $this->option('force'),
+        $lock = Cache::lock(
+            KnowledgeEmbeddingService::LOCK_KEY,
+            KnowledgeEmbeddingService::LOCK_SECONDS,
         );
+
+        if (! $lock->get()) {
+            $this->warn('Rebuild embedding lain sedang berjalan.');
+
+            return self::FAILURE;
+        }
+
+        try {
+            $counts = $this->embeddings->rebuildActive(
+                (bool) $this->option('force'),
+            );
+        } finally {
+            $lock->release();
+        }
 
         $this->line(sprintf(
             'processed=%d skipped=%d failed=%d',

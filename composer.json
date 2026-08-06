@@ -1,12 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "semantic-chatbot-lite/app",
+    "name": "neomatra/app",
     "type": "project",
-    "description": "A small stateless semantic chatbot built with Laravel and Gemini.",
+    "description": "Neomatra marketplace comparison and semantic product discovery prototype.",
     "keywords": [
         "laravel",
-        "gemini",
-        "semantic-search"
+        "semantic-search",
+        "marketplace-comparison"
     ],
     "license": "MIT",
     "require": {

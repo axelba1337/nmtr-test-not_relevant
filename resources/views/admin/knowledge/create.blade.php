@@ -1,15 +1,15 @@
 @extends('admin.layout')
 
-@section('title', 'Tambah FAQ')
-@section('page-title', 'Tambah FAQ')
+@section('title', 'Tambah Knowledge')
+@section('page-title', 'Tambah Knowledge')
 
 @section('content')
     <section class="admin-card admin-card--form">
         <div class="admin-card__heading">
             <div>
-                <p class="admin-card__eyebrow">FAQ / Knowledge</p>
-                <h2>FAQ Baru</h2>
-                <p>Embedding dibuat setelah FAQ berhasil disimpan.</p>
+                <p class="admin-card__eyebrow">Knowledge Base</p>
+                <h2>Knowledge Baru</h2>
+                <p>Embedding dibuat setelah knowledge berhasil disimpan.</p>
             </div>
         </div>
 
@@ -21,7 +21,7 @@
             @csrf
             @include('admin.knowledge._form', [
                 'item' => null,
-                'submitLabel' => 'Simpan FAQ',
+                'submitLabel' => 'Simpan Knowledge',
             ])
         </form>
     </section>

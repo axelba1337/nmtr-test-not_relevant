@@ -18,5 +18,5 @@ return [
         ],
     ],
 
-    'prefix' => Str::slug((string) env('APP_NAME', 'semantic-chatbot-lite')).'-cache-',
+    'prefix' => Str::slug((string) env('APP_NAME', 'neomatra')).'-cache-',
 ];

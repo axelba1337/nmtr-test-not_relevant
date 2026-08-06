@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\Category;
 use App\Models\KnowledgeItem;
 use App\Services\KnowledgeRetriever;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,9 +18,9 @@ final class KnowledgeRetrieverTest extends TestCase
         parent::setUp();
 
         config([
-            'chatbot.embedding_dimensions' => 2,
-            'chatbot.models.embed' => 'test-embedding-model',
-            'chatbot.top_k' => 3,
+            'ai.embedding.dimensions' => 2,
+            'ai.embedding.model' => 'test-embedding-model',
+            'neomatra.search.knowledge_top_k' => 3,
         ]);
     }
 
@@ -55,7 +56,7 @@ final class KnowledgeRetrieverTest extends TestCase
 
     public function test_configured_top_k_is_clamped_and_applied(): void
     {
-        config(['chatbot.top_k' => 2]);
+        config(['neomatra.search.knowledge_top_k' => 2]);
 
         $this->createCurrentItem('First', [1, 0]);
         $this->createCurrentItem('Second', [0.8, 0.2]);
@@ -66,7 +67,7 @@ final class KnowledgeRetrieverTest extends TestCase
             app(KnowledgeRetriever::class)->retrieve([1, 0]),
         );
 
-        config(['chatbot.top_k' => 99]);
+        config(['neomatra.search.knowledge_top_k' => 99]);
 
         for ($index = 4; $index <= 12; $index++) {
             $this->createCurrentItem("Item {$index}", [1, $index]);
@@ -150,6 +151,35 @@ final class KnowledgeRetrieverTest extends TestCase
         $this->assertSame([], $retriever->retrieve(['1', 0]));
     }
 
+    public function test_it_validates_embeddings_with_all_semantic_metadata(): void
+    {
+        $category = Category::query()->create([
+            'name' => 'Panduan',
+            'slug' => 'panduan',
+            'is_active' => true,
+            'sort_order' => 0,
+        ]);
+        $item = KnowledgeItem::query()->create([
+            'title' => 'Periksa kondisi barang',
+            'content' => 'Validasi deskripsi dan foto seller.',
+            'category_id' => $category->id,
+            'keywords' => ['kondisi', 'seller'],
+            'source_name' => 'SRS Neomatra',
+            'embedding' => [1, 0],
+            'is_active' => true,
+        ]);
+        $item->forceFill([
+            'embedding_hash' => $item->expectedEmbeddingHash(),
+            'embedding_model' => (string) config('ai.embedding.model'),
+            'embedding_dimensions' => 2,
+            'embedded_at' => now(),
+        ])->save();
+
+        $matches = app(KnowledgeRetriever::class)->retrieve([1, 0]);
+
+        $this->assertSame([$item->id], array_column($matches, 'id'));
+    }
+
     private function createCurrentItem(
         string $title,
         array $embedding,
@@ -163,7 +193,10 @@ final class KnowledgeRetrieverTest extends TestCase
         ]);
         $item->update([
             'embedding_hash' => $item->expectedEmbeddingHash(),
-            'embedding_model' => (string) config('chatbot.models.embed'),
+            'embedding_model' => (string) config('ai.embedding.model'),
+            'embedding_dimensions' => (int) config(
+                'ai.embedding.dimensions',
+            ),
             'embedded_at' => now(),
         ]);
 

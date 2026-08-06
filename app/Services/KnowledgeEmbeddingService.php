@@ -2,10 +2,16 @@
 
 namespace App\Services;
 
+use App\Contracts\AI\EmbeddingClient;
+use App\Data\AI\EmbeddingPurpose;
 use App\Models\KnowledgeItem;
 
 final class KnowledgeEmbeddingService
 {
+    public const LOCK_KEY = 'neomatra:embedding-rebuild';
+
+    public const LOCK_SECONDS = 1800;
+
     public const STATUS_PROCESSED = 'processed';
 
     public const STATUS_SKIPPED = 'skipped';
@@ -15,7 +21,7 @@ final class KnowledgeEmbeddingService
     private const SAFE_FAILURE_MESSAGE = 'Embedding baru gagal dibuat.';
 
     public function __construct(
-        private readonly GeminiService $gemini,
+        private readonly EmbeddingClient $embedding,
     ) {}
 
     public function rebuild(
@@ -28,26 +34,21 @@ final class KnowledgeEmbeddingService
             return self::STATUS_SKIPPED;
         }
 
-        $model = (string) config(
-            'chatbot.models.embed',
-            'gemini-embedding-2',
-        );
-        $dimensions = max(
-            1,
-            (int) config('chatbot.embedding_dimensions', 768),
-        );
+        $model = $this->embedding->model();
+        $dimensions = $this->embedding->dimensions();
 
         if (! $force && $item->hasCurrentEmbedding($model, $dimensions)) {
             return self::STATUS_SKIPPED;
         }
 
         $expectedHash = $item->expectedEmbeddingHash($model, $dimensions);
-        $embedding = $this->gemini->embed(
+        $result = $this->embedding->embed(
             $item->embeddingText(),
-            'RETRIEVAL_DOCUMENT',
+            EmbeddingPurpose::Knowledge,
+            (string) $item->title,
         );
 
-        if ($embedding === null) {
+        if (! $result->succeeded()) {
             $this->recordFailure($item, $expectedHash, $model, $dimensions);
 
             return self::STATUS_FAILED;
@@ -64,9 +65,10 @@ final class KnowledgeEmbeddingService
         }
 
         $currentItem->forceFill([
-            'embedding' => $embedding,
+            'embedding' => $result->vector,
             'embedding_hash' => $expectedHash,
-            'embedding_model' => $model,
+            'embedding_model' => $result->model,
+            'embedding_dimensions' => $result->dimensions,
             'embedded_at' => now(),
             'embedding_error' => null,
         ])->save();

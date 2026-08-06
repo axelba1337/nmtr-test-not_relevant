@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'name' => env('APP_NAME', 'Semantic Chatbot Lite'),
+    'name' => env('APP_NAME', 'Neomatra'),
 
     'env' => env('APP_ENV', 'production'),
 

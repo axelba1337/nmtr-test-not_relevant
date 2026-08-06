@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Contracts\AI\ChatClient;
+use App\Contracts\AI\EmbeddingClient;
 use App\Models\User;
+use App\Services\AI\GeminiChatAdapter;
+use App\Services\AI\GeminiEmbeddingAdapter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -15,6 +19,33 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         config(['filesystems.disks.local.serve' => false]);
+
+        $this->app->bind(ChatClient::class, function ($app): ChatClient {
+            $provider = strtolower((string) config('ai.chat.provider'));
+
+            return match ($provider) {
+                'gemini' => $app->make(GeminiChatAdapter::class),
+                default => throw new \LogicException(
+                    "Chat provider tidak didukung: {$provider}",
+                ),
+            };
+        });
+
+        $this->app->bind(
+            EmbeddingClient::class,
+            function ($app): EmbeddingClient {
+                $provider = strtolower((string) config(
+                    'ai.embedding.provider',
+                ));
+
+                return match ($provider) {
+                    'gemini' => $app->make(GeminiEmbeddingAdapter::class),
+                    default => throw new \LogicException(
+                        "Embedding provider tidak didukung: {$provider}",
+                    ),
+                };
+            },
+        );
     }
 
     public function boot(): void

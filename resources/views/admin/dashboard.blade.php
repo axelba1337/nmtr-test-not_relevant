@@ -4,7 +4,7 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
-    <div class="summary-grid" aria-label="Ringkasan chatbot">
+    <div class="summary-grid" aria-label="Ringkasan Neomatra">
         <article class="summary-card">
             <p class="summary-card__label">Total Pertanyaan Hari Ini</p>
             <p class="summary-card__value">{{ number_format($todayQuestions, 0, ',', '.') }}</p>
@@ -12,9 +12,9 @@
         </article>
 
         <article class="summary-card">
-            <p class="summary-card__label">Total FAQ Aktif</p>
-            <p class="summary-card__value">{{ number_format($activeKnowledgeCount, 0, ',', '.') }}</p>
-            <p class="summary-card__note">FAQ yang tersedia untuk retrieval.</p>
+            <p class="summary-card__label">Listing Aktif</p>
+            <p class="summary-card__value">{{ number_format($activeListingsCount, 0, ',', '.') }}</p>
+            <p class="summary-card__note">Listing marketplace yang tersedia.</p>
         </article>
 
         <article class="summary-card">
@@ -26,15 +26,16 @@
         </article>
 
         <article class="summary-card">
-            <p class="summary-card__label">Status Knowledge</p>
+            <p class="summary-card__label">Status Katalog &amp; Knowledge</p>
             <p class="summary-card__value">
-                {{ number_format($knowledgeStats['ready'], 0, ',', '.') }}
-                <span class="summary-card__unit">siap</span>
+                {{ number_format($activeProductsCount, 0, ',', '.') }}
+                <span class="summary-card__unit">produk</span>
             </p>
             <ul class="summary-card__details">
-                <li>{{ number_format($knowledgeStats['active'], 0, ',', '.') }} FAQ aktif</li>
-                <li>{{ number_format($knowledgeStats['failed'], 0, ',', '.') }} embedding gagal</li>
-                <li>{{ number_format($knowledgeStats['pending'], 0, ',', '.') }} belum dibuat/kedaluwarsa</li>
+                <li>{{ number_format($activeKnowledgeCount, 0, ',', '.') }} knowledge aktif</li>
+                <li>{{ number_format($knowledgeStats['ready'], 0, ',', '.') }} embedding knowledge siap</li>
+                <li>{{ number_format($knowledgeStats['failed'] + $knowledgeStats['pending'], 0, ',', '.') }} perlu perhatian</li>
+                <li>{{ number_format($pendingUnansweredCount, 0, ',', '.') }} query belum ditinjau</li>
                 @if ($knowledgeStats['warnings'] > 0)
                     <li>{{ number_format($knowledgeStats['warnings'], 0, ',', '.') }} siap dengan peringatan rebuild</li>
                 @endif

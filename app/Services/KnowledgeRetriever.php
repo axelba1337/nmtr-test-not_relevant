@@ -19,7 +19,7 @@ final class KnowledgeRetriever
     {
         $dimensions = max(
             1,
-            (int) config('chatbot.embedding_dimensions', 768),
+            (int) config('ai.embedding.dimensions', 768),
         );
         $queryVector = Similarity::validatedVector(
             $queryVector,
@@ -31,22 +31,32 @@ final class KnowledgeRetriever
         }
 
         $embeddingModel = (string) config(
-            'chatbot.models.embed',
+            'ai.embedding.model',
             'gemini-embedding-2',
         );
         $matches = [];
 
         $items = KnowledgeItem::query()
+            ->with('category:id,name')
             ->select([
                 'id',
                 'title',
                 'content',
+                'category_id',
+                'keywords',
+                'source_name',
                 'embedding',
                 'embedding_hash',
                 'embedding_model',
+                'embedding_dimensions',
                 'embedded_at',
             ])
             ->active()
+            ->where(function ($query): void {
+                $query->whereNull('category_id')
+                    ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery
+                        ->where('is_active', true));
+            })
             ->where('embedding_model', $embeddingModel)
             ->whereNotNull('embedded_at')
             ->whereNotNull('embedding')
@@ -97,7 +107,10 @@ final class KnowledgeRetriever
 
         $topK = min(
             10,
-            max(1, (int) config('chatbot.top_k', 3)),
+            max(1, (int) config(
+                'neomatra.search.knowledge_top_k',
+                3,
+            )),
         );
 
         return array_slice($matches, 0, $topK);

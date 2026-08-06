@@ -1,22 +1,22 @@
 @extends('admin.layout')
 
-@section('title', 'FAQ / Knowledge')
-@section('page-title', 'FAQ / Knowledge')
+@section('title', 'Knowledge Base')
+@section('page-title', 'Knowledge Base')
 
 @section('content')
     <section class="admin-card">
         <div class="admin-card__heading admin-card__heading--actions">
             <div>
                 <p class="admin-card__eyebrow">Knowledge Base</p>
-                <h2>Daftar FAQ</h2>
-                <p>Kelola pertanyaan, jawaban, dan kesiapan embedding chatbot.</p>
+                <h2>Daftar Knowledge</h2>
+                <p>Kelola knowledge, sumber, contoh pertanyaan, dan kesiapan embedding.</p>
             </div>
 
             <div class="button-group">
                 <form
                     method="POST"
                     action="{{ route('admin.knowledge.rebuild') }}"
-                    data-confirm="Buat ulang embedding seluruh FAQ aktif? Proses ini dapat memerlukan waktu."
+                    data-confirm="Buat ulang embedding seluruh knowledge aktif? Proses ini dapat memerlukan waktu."
                 >
                     @csrf
                     <button
@@ -29,14 +29,14 @@
                 </form>
 
                 <a class="button button--primary" href="{{ route('admin.knowledge.create') }}">
-                    Tambah FAQ
+                    Tambah Knowledge
                 </a>
             </div>
         </div>
 
         <form class="filter-bar" method="GET" action="{{ route('admin.knowledge.index') }}">
             <div class="form-field filter-bar__search">
-                <label for="search">Cari pertanyaan atau jawaban</label>
+                <label for="search">Cari judul, isi, kata kunci, atau sumber</label>
                 <input
                     id="search"
                     name="search"
@@ -68,14 +68,15 @@
 
         @if ($items->isEmpty())
             <div class="empty-state">
-                <p>Belum ada FAQ yang sesuai dengan filter.</p>
+                <p>Belum ada knowledge yang sesuai dengan filter.</p>
             </div>
         @else
             <div class="table-scroll">
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th scope="col">Pertanyaan</th>
+                            <th scope="col">Knowledge</th>
+                            <th scope="col">Kategori / Sumber</th>
                             <th scope="col">Status aktif</th>
                             <th scope="col">Featured</th>
                             <th scope="col">Status embedding</th>
@@ -100,6 +101,10 @@
                                     <strong>{{ $item->title }}</strong>
                                     <span>{{ \Illuminate\Support\Str::limit($item->content, 120) }}</span>
                                     <small>Urutan: {{ number_format($item->sort_order, 0, ',', '.') }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ $item->category?->name ?? 'Tanpa kategori' }}</strong>
+                                    <small class="table-meta">{{ $item->source_name ?: 'Sumber tidak dicantumkan' }}</small>
                                 </td>
                                 <td>
                                     <span class="badge badge--{{ $item->is_active ? 'success' : 'neutral' }}">
@@ -164,7 +169,7 @@
                                         <form
                                             method="POST"
                                             action="{{ route('admin.knowledge.embedding.rebuild', $item) }}"
-                                            data-confirm="Buat ulang embedding FAQ ini?"
+                                            data-confirm="Buat ulang embedding knowledge ini?"
                                         >
                                             @csrf
                                             <button
@@ -179,7 +184,7 @@
                                         <form
                                             method="POST"
                                             action="{{ route('admin.knowledge.destroy', $item) }}"
-                                            data-confirm="Hapus FAQ ini? Tindakan ini tidak dapat dibatalkan."
+                                            data-confirm="Hapus knowledge ini? Tindakan ini tidak dapat dibatalkan."
                                         >
                                             @csrf
                                             @method('DELETE')
@@ -200,11 +205,11 @@
             </div>
 
             @if ($items->hasPages())
-                <nav class="pagination" aria-label="Navigasi halaman FAQ">
+                <nav class="pagination" aria-label="Navigasi halaman knowledge">
                     <div class="pagination__summary">
                         Menampilkan {{ number_format($items->firstItem(), 0, ',', '.') }}
                         –{{ number_format($items->lastItem(), 0, ',', '.') }}
-                        dari {{ number_format($items->total(), 0, ',', '.') }} FAQ
+                        dari {{ number_format($items->total(), 0, ',', '.') }} knowledge
                     </div>
                     <div class="pagination__links">
                         @if ($items->onFirstPage())

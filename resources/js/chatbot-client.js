@@ -16,7 +16,153 @@ const readJson = async (response) => {
     }
 };
 
-export const requestChat = async ({ fetchImpl = fetch, endpoint, message }) => {
+const SOURCE_KINDS = new Set(['web', 'knowledge', 'marketplace']);
+const HISTORY_ROLES = new Set(['user', 'assistant']);
+const MAX_HISTORY_MESSAGES = 6;
+const MAX_HISTORY_CONTENT_LENGTH = 4000;
+const MAX_SOURCES = 8;
+const MAX_SEARCH_ENTRY_POINT_HTML_LENGTH = 20000;
+
+const trimmedText = (value, maxLength) => (
+    typeof value === 'string'
+        ? value.trim().slice(0, maxLength)
+        : ''
+);
+
+export const normalizeHttpUrl = (value) => {
+    if (typeof value !== 'string' || value.trim() === '') {
+        return null;
+    }
+
+    try {
+        const url = new URL(value.trim());
+
+        if (!['http:', 'https:'].includes(url.protocol)
+            || url.username !== ''
+            || url.password !== '') {
+            return null;
+        }
+
+        url.hash = '';
+
+        return url.href;
+    } catch {
+        return null;
+    }
+};
+
+export const normalizeHistory = (history) => {
+    if (!Array.isArray(history)) {
+        return [];
+    }
+
+    const normalized = [];
+
+    history.forEach((item) => {
+        if (!item || typeof item !== 'object' || !HISTORY_ROLES.has(item.role)) {
+            return;
+        }
+
+        const content = trimmedText(item.content, MAX_HISTORY_CONTENT_LENGTH);
+
+        if (content !== '') {
+            normalized.push({ role: item.role, content });
+        }
+    });
+
+    return normalized.slice(-MAX_HISTORY_MESSAGES);
+};
+
+export const normalizeSources = (payload) => {
+    const source = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.sources)
+            ? payload.sources
+            : [];
+    const normalized = [];
+    const seen = new Set();
+
+    for (const item of source) {
+        if (!item || typeof item !== 'object') {
+            continue;
+        }
+
+        const kind = trimmedText(item.kind ?? item.type, 24).toLowerCase();
+
+        if (!SOURCE_KINDS.has(kind)) {
+            continue;
+        }
+
+        const url = normalizeHttpUrl(item.url ?? item.source_url);
+        const title = trimmedText(
+            item.title ?? item.name ?? item.source_name,
+            240,
+        );
+        const publisher = trimmedText(
+            item.publisher ?? item.source_name,
+            120,
+        );
+
+        if (title === '' || (kind !== 'knowledge' && url === null)) {
+            continue;
+        }
+
+        const key = url
+            ? `${kind}|${url}`
+            : `${kind}|${title.toLocaleLowerCase('id-ID')}`;
+
+        if (seen.has(key)) {
+            continue;
+        }
+
+        seen.add(key);
+        normalized.push({ kind, title, publisher, url });
+
+        if (normalized.length === MAX_SOURCES) {
+            break;
+        }
+    }
+
+    return normalized;
+};
+
+export const normalizeSearchEntryPointHtml = (value) => {
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const html = value.trim();
+
+    if (html === '' || html.length > MAX_SEARCH_ENTRY_POINT_HTML_LENGTH) {
+        return null;
+    }
+
+    return html;
+};
+
+export const requestChat = async ({
+    fetchImpl = fetch,
+    endpoint,
+    message,
+    filters = {},
+    sessionKey = null,
+    history = [],
+}) => {
+    const body = {
+        message,
+        ...filters,
+    };
+
+    if (typeof sessionKey === 'string' && sessionKey !== '') {
+        body.session_key = sessionKey;
+    }
+
+    const normalizedHistory = normalizeHistory(history);
+
+    if (normalizedHistory.length > 0) {
+        body.history = normalizedHistory;
+    }
+
     const response = await fetchImpl(endpoint, {
         method: 'POST',
         credentials: 'same-origin',
@@ -24,7 +170,7 @@ export const requestChat = async ({ fetchImpl = fetch, endpoint, message }) => {
             Accept: 'application/json',
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify(body),
     });
     const payload = await readJson(response);
 
@@ -32,6 +178,9 @@ export const requestChat = async ({ fetchImpl = fetch, endpoint, message }) => {
         throw new ChatbotRequestError('Chat request failed.', {
             status: response.status,
             payload,
+            code: typeof payload?.error?.code === 'string'
+                ? payload.error.code
+                : null,
         });
     }
 
@@ -42,7 +191,14 @@ export const requestChat = async ({ fetchImpl = fetch, endpoint, message }) => {
         });
     }
 
-    return payload;
+    return {
+        ...payload,
+        answer: payload.answer.trim(),
+        sources: normalizeSources(payload.sources),
+        search_entry_point_html: normalizeSearchEntryPointHtml(
+            payload.search_entry_point_html,
+        ),
+    };
 };
 
 export const normalizeSuggestions = (payload) => {

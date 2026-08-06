@@ -2,6 +2,8 @@
 
 use App\Console\Commands\CreateAdmin;
 use App\Console\Commands\EmbedKnowledge;
+use App\Console\Commands\RebuildNeomatraEmbeddings;
+use App\Console\Commands\SyncMarketplace;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -28,5 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         CreateAdmin::class,
         EmbedKnowledge::class,
+        RebuildNeomatraEmbeddings::class,
+        SyncMarketplace::class,
     ])
     ->create();

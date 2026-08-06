@@ -1,6 +1,6 @@
 @if ($errors->any())
     <div class="alert alert--error" role="alert">
-        <p>Periksa kembali data FAQ:</p>
+        <p>Periksa kembali data knowledge:</p>
         <ul>
             @foreach ($errors->all() as $error)
                 <li>{{ $error }}</li>
@@ -11,7 +11,7 @@
 
 <div class="admin-form__grid">
     <div class="form-field admin-form__full">
-        <label for="title">Pertanyaan</label>
+        <label for="title">Judul</label>
         <input
             id="title"
             name="title"
@@ -27,7 +27,7 @@
     </div>
 
     <div class="form-field admin-form__full">
-        <label for="content">Jawaban</label>
+        <label for="content">Isi knowledge</label>
         <textarea
             id="content"
             name="content"
@@ -38,7 +38,52 @@
         @error('content')
             <p class="form-field__error">{{ $message }}</p>
         @enderror
-        <p class="form-field__hint">Pertanyaan dan jawaban digunakan bersama saat membuat embedding.</p>
+        <p class="form-field__hint">Judul, kategori, kata kunci, isi, dan nama sumber digunakan saat membuat embedding.</p>
+    </div>
+
+    <div class="form-field">
+        <label for="category_id">Kategori</label>
+        <select id="category_id" name="category_id">
+            <option value="">Tanpa kategori</option>
+            @foreach ($categories as $category)
+                <option value="{{ $category->id }}" @selected((string) old('category_id', $item?->category_id) === (string) $category->id)>
+                    {{ $category->name }}{{ $category->is_active ? '' : ' (nonaktif)' }}
+                </option>
+            @endforeach
+        </select>
+        @error('category_id')
+            <p class="form-field__error">{{ $message }}</p>
+        @enderror
+    </div>
+
+    @php
+        $keywordValue = old('keywords', $item?->keywords ?? []);
+        $keywordValue = is_array($keywordValue)
+            ? implode(', ', $keywordValue)
+            : $keywordValue;
+    @endphp
+    <div class="form-field">
+        <label for="keywords">Kata kunci / sinonim</label>
+        <textarea id="keywords" name="keywords" rows="4" maxlength="4000" placeholder="Pisahkan dengan koma atau baris baru">{{ $keywordValue }}</textarea>
+        @error('keywords')
+            <p class="form-field__error">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div class="form-field">
+        <label for="source_name">Nama sumber</label>
+        <input id="source_name" name="source_name" type="text" maxlength="255" value="{{ old('source_name', $item?->source_name) }}">
+        @error('source_name')
+            <p class="form-field__error">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div class="form-field">
+        <label for="source_url">URL sumber</label>
+        <input id="source_url" name="source_url" type="url" maxlength="2048" value="{{ old('source_url', $item?->source_url) }}" placeholder="https://...">
+        @error('source_url')
+            <p class="form-field__error">{{ $message }}</p>
+        @enderror
     </div>
 
     <div class="form-field">
@@ -60,7 +105,7 @@
     </div>
 
     <fieldset class="form-options">
-        <legend>Status FAQ</legend>
+        <legend>Status knowledge</legend>
 
         <label class="check-field">
             <input type="hidden" name="is_active" value="0">
@@ -72,7 +117,7 @@
             >
             <span>
                 <strong>Aktif</strong>
-                <small>FAQ dapat digunakan dalam retrieval.</small>
+                <small>Knowledge dapat digunakan dalam retrieval.</small>
             </span>
         </label>
 
@@ -86,7 +131,7 @@
             >
             <span>
                 <strong>Featured</strong>
-                <small>Prioritaskan sebagai suggested question.</small>
+                <small>Prioritaskan sebagai contoh pertanyaan.</small>
             </span>
         </label>
     </fieldset>

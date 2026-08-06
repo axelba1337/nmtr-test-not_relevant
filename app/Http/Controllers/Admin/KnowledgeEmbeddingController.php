@@ -13,10 +13,6 @@ use Throwable;
 
 final class KnowledgeEmbeddingController extends Controller
 {
-    private const LOCK_KEY = 'chatbot:knowledge-rebuild';
-
-    private const LOCK_SECONDS = 1800;
-
     public function __construct(
         private readonly KnowledgeEmbeddingService $embeddingService,
     ) {}
@@ -106,7 +102,10 @@ final class KnowledgeEmbeddingController extends Controller
 
     private function acquireLock(): ?Lock
     {
-        $lock = Cache::lock(self::LOCK_KEY, self::LOCK_SECONDS);
+        $lock = Cache::lock(
+            KnowledgeEmbeddingService::LOCK_KEY,
+            KnowledgeEmbeddingService::LOCK_SECONDS,
+        );
 
         return $lock->get() ? $lock : null;
     }

@@ -19,15 +19,20 @@
             <header class="chat-header">
                 <div class="chat-header__main">
                     <div>
-                        <p class="eyebrow">Semantic assistant</p>
+                        <p class="eyebrow">Asisten riset dan perbandingan</p>
                         <h1 id="chatbot-title">{{ config('app.name') }}</h1>
                     </div>
-                    <p class="chat-status">
-                        <span class="chat-status__dot" aria-hidden="true"></span>
-                        Siap membantu
-                    </p>
+                    <div class="chat-header__actions">
+                        <p class="chat-status">
+                            <span class="chat-status__dot" aria-hidden="true"></span>
+                            Siap membantu
+                        </p>
+                        <a class="admin-link" href="{{ route('admin.login') }}">Admin</a>
+                    </div>
                 </div>
-                <p class="chat-intro">Ajukan pertanyaan berdasarkan knowledge yang tersedia.</p>
+                <p class="chat-intro">
+                    Tanyakan informasi umum atau cari dan bandingkan produk dari sumber yang tersedia.
+                </p>
             </header>
 
             <div
@@ -39,7 +44,7 @@
             >
                 <article class="message message--assistant">
                     <p class="message__label">Asisten</p>
-                    <p class="message__body">Halo! Ada yang bisa saya bantu? Pilih salah satu pertanyaan di bawah atau tulis pertanyaan Anda sendiri.</p>
+                    <p class="message__body">Halo! Tanyakan apa saja atau sebutkan produk yang ingin Anda cari. Jika tersedia, saya akan memadukan sumber web, knowledge Neomatra, dan data marketplace untuk memberi jawaban yang jelas.</p>
                 </article>
 
                 <section
@@ -54,6 +59,50 @@
             </div>
 
             <form class="composer" data-form>
+                <details class="quick-filters" data-filters>
+                    <summary>Filter singkat</summary>
+                    <div class="quick-filters__grid">
+                        <label>
+                            <span>Mode</span>
+                            <select name="mode" data-filter>
+                                <option value="">Otomatis</option>
+                                <option value="buyer">Buyer</option>
+                                <option value="reseller">Reseller</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Budget maksimum</span>
+                            <input name="budget_max" type="number" min="0" step="1000" placeholder="Contoh: 2800000" data-filter>
+                        </label>
+                        <label>
+                            <span>Kondisi</span>
+                            <select name="condition" data-filter>
+                                <option value="">Semua kondisi</option>
+                                <option value="new">Baru</option>
+                                <option value="open_box">Open box</option>
+                                <option value="used">Bekas</option>
+                                <option value="refurbished">Refurbished</option>
+                                <option value="ex_display">Ex-display</option>
+                                <option value="unknown">Tidak diketahui</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Tipe seller</span>
+                            <select name="seller_type" data-filter>
+                                <option value="">Semua seller</option>
+                                <option value="official">Official</option>
+                                <option value="store">Toko</option>
+                                <option value="reseller">Reseller</option>
+                                <option value="individual">Perorangan</option>
+                                <option value="unknown">Tidak diketahui</option>
+                            </select>
+                        </label>
+                        <label class="quick-filters__location">
+                            <span>Lokasi</span>
+                            <input name="location" type="text" maxlength="120" placeholder="Contoh: Surabaya" data-filter>
+                        </label>
+                    </div>
+                </details>
                 <label class="composer__label" for="chatbot-message">Pesan</label>
                 <div class="composer__controls">
                     <input
@@ -69,6 +118,9 @@
                     <button type="submit" data-submit>Kirim</button>
                 </div>
             </form>
+            <p class="chat-disclaimer">
+                Data kondisi, seller, harga, dan margin bersifat informasional. Transaksi tetap dilakukan di platform sumber.
+            </p>
         </section>
     </main>
 </body>

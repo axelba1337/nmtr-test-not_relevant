@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreKnowledgeItemRequest;
 use App\Http\Requests\Admin\UpdateKnowledgeItemRequest;
+use App\Models\Category;
 use App\Models\KnowledgeItem;
 use App\Services\KnowledgeEmbeddingService;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,6 +31,7 @@ final class KnowledgeItemController extends Controller
         $status = (string) ($filters['status'] ?? 'all');
 
         $items = KnowledgeItem::query()
+            ->with('category:id,name')
             ->when(
                 $search !== '',
                 static function (Builder $query) use ($search): void {
@@ -37,7 +39,9 @@ final class KnowledgeItemController extends Controller
                         static function (Builder $query) use ($search): void {
                             $query
                                 ->where('title', 'like', "%{$search}%")
-                                ->orWhere('content', 'like', "%{$search}%");
+                                ->orWhere('content', 'like', "%{$search}%")
+                                ->orWhere('keywords', 'like', "%{$search}%")
+                                ->orWhere('source_name', 'like', "%{$search}%");
                         },
                     );
                 },
@@ -67,6 +71,7 @@ final class KnowledgeItemController extends Controller
             'items' => $items,
             'search' => $search,
             'status' => $status,
+            'categories' => $this->categoryOptions(),
         ]);
     }
 
@@ -74,7 +79,9 @@ final class KnowledgeItemController extends Controller
     {
         $this->ensureAdmin($request);
 
-        return view('admin.knowledge.create');
+        return view('admin.knowledge.create', [
+            'categories' => $this->categoryOptions(),
+        ]);
     }
 
     public function store(
@@ -88,13 +95,13 @@ final class KnowledgeItemController extends Controller
                 ->route('admin.knowledge.index')
                 ->with(
                     'warning',
-                    'FAQ tersimpan, tetapi embedding belum berhasil dibuat.',
+                    'Knowledge tersimpan, tetapi embedding belum berhasil dibuat.',
                 );
         }
 
         return redirect()
             ->route('admin.knowledge.index')
-            ->with('success', 'FAQ dan embedding berhasil disimpan.');
+            ->with('success', 'Knowledge dan embedding berhasil disimpan.');
     }
 
     public function edit(
@@ -105,6 +112,7 @@ final class KnowledgeItemController extends Controller
 
         return view('admin.knowledge.edit', [
             'item' => $knowledgeItem,
+            'categories' => $this->categoryOptions(),
         ]);
     }
 
@@ -113,13 +121,19 @@ final class KnowledgeItemController extends Controller
         KnowledgeItem $knowledgeItem,
     ): RedirectResponse {
         $knowledgeItem->fill($request->validated());
-        $sourceChanged = $knowledgeItem->isDirty(['title', 'content']);
+        $sourceChanged = $knowledgeItem->isDirty([
+            'title',
+            'content',
+            'category_id',
+            'keywords',
+            'source_name',
+        ]);
         $knowledgeItem->save();
 
         if (! $sourceChanged) {
             return redirect()
                 ->route('admin.knowledge.index')
-                ->with('success', 'FAQ berhasil diperbarui.');
+                ->with('success', 'Knowledge berhasil diperbarui.');
         }
 
         $status = $this->embeddingService->rebuild(
@@ -132,13 +146,13 @@ final class KnowledgeItemController extends Controller
                 ->route('admin.knowledge.index')
                 ->with(
                     'warning',
-                    'FAQ diperbarui, tetapi embedding baru gagal dibuat. Embedding lama tetap disimpan.',
+                    'Knowledge diperbarui, tetapi embedding baru gagal dibuat. Vector lama tetap disimpan.',
                 );
         }
 
         return redirect()
             ->route('admin.knowledge.index')
-            ->with('success', 'FAQ dan embedding berhasil diperbarui.');
+            ->with('success', 'Knowledge dan embedding berhasil diperbarui.');
     }
 
     public function destroy(
@@ -150,7 +164,7 @@ final class KnowledgeItemController extends Controller
 
         return redirect()
             ->route('admin.knowledge.index')
-            ->with('success', 'FAQ berhasil dihapus.');
+            ->with('success', 'Knowledge berhasil dihapus.');
     }
 
     public function toggleActive(
@@ -165,8 +179,8 @@ final class KnowledgeItemController extends Controller
         return back()->with(
             'success',
             $knowledgeItem->is_active
-                ? 'FAQ berhasil diaktifkan.'
-                : 'FAQ berhasil dinonaktifkan.',
+                ? 'Knowledge berhasil diaktifkan.'
+                : 'Knowledge berhasil dinonaktifkan.',
         );
     }
 
@@ -182,9 +196,16 @@ final class KnowledgeItemController extends Controller
         return back()->with(
             'success',
             $knowledgeItem->is_featured
-                ? 'FAQ ditandai sebagai featured.'
-                : 'Tanda featured FAQ dihapus.',
+                ? 'Knowledge ditandai sebagai featured.'
+                : 'Tanda featured knowledge dihapus.',
         );
+    }
+
+    private function categoryOptions()
+    {
+        return Category::query()
+            ->ordered()
+            ->get(['id', 'name', 'parent_id', 'is_active']);
     }
 
     private function ensureAdmin(Request $request): void

@@ -21,7 +21,7 @@ return [
 
     'lottery' => [2, 100],
 
-    'cookie' => Str::slug((string) env('APP_NAME', 'semantic-chatbot-lite')).'-session',
+    'cookie' => Str::slug((string) env('APP_NAME', 'neomatra')).'-session',
 
     'path' => env('SESSION_PATH', '/'),
 

@@ -131,6 +131,10 @@ textarea {
     text-transform: uppercase;
 }
 
+.admin-nav__label--spaced {
+    margin-top: 1rem;
+}
+
 .admin-nav__link,
 .admin-nav__button {
     width: 100%;
@@ -703,6 +707,10 @@ textarea {
     background: #ffffff;
 }
 
+.admin-table--wide {
+    min-width: 82rem;
+}
+
 .admin-table th,
 .admin-table td {
     padding: 0.85rem 0.8rem;
@@ -771,6 +779,111 @@ textarea {
 
 .table-actions form {
     margin: 0;
+}
+
+.table-action-form {
+    margin-top: 0.45rem;
+}
+
+.table-source-link {
+    width: fit-content;
+    display: block;
+    margin-top: 0.45rem;
+    color: #35539e;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+code,
+.code-block {
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+}
+
+code {
+    overflow-wrap: anywhere;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+    align-items: start;
+    gap: 1.25rem;
+}
+
+.detail-grid .admin-card + .admin-card {
+    margin-top: 0;
+}
+
+.data-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.data-list > div {
+    min-width: 0;
+    padding: 0.8rem;
+    border: 1px solid #e0e5ed;
+    border-radius: 0.65rem;
+    background: #f8fafc;
+}
+
+.data-list dt {
+    margin-bottom: 0.3rem;
+    color: #6b7689;
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.data-list dd {
+    margin: 0;
+    color: #27344c;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.section-title {
+    margin: 1.25rem 0 0.55rem;
+    font-size: 0.9rem;
+}
+
+.code-block {
+    max-height: 22rem;
+    margin: 0;
+    overflow: auto;
+    padding: 0.85rem;
+    border: 1px solid #dce3ec;
+    border-radius: 0.65rem;
+    color: #344159;
+    background: #f7f9fc;
+    font-size: 0.76rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.review-notes {
+    margin-top: 1rem;
+}
+
+.ranking-total {
+    margin-top: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid #c4d3f0;
+    border-radius: 0.65rem;
+    color: #294582;
+    background: #f1f5ff;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.ranking-total.is-invalid {
+    border-color: #e8c1bf;
+    color: #92302b;
+    background: #fff6f5;
 }
 
 .badge {
@@ -1172,6 +1285,10 @@ textarea {
     .admin-identity {
         margin-left: auto;
     }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 42rem) {
@@ -1204,6 +1321,10 @@ textarea {
     .summary-grid,
     .form-grid,
     .admin-form__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .data-list {
         grid-template-columns: 1fr;
     }
 

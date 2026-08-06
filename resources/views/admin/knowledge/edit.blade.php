@@ -1,16 +1,16 @@
 @extends('admin.layout')
 
-@section('title', 'Edit FAQ')
-@section('page-title', 'Edit FAQ')
+@section('title', 'Edit Knowledge')
+@section('page-title', 'Edit Knowledge')
 
 @section('content')
     <section class="admin-card admin-card--form">
         <div class="admin-card__heading admin-card__heading--actions">
             <div>
-                <p class="admin-card__eyebrow">FAQ / Knowledge</p>
-                <h2>Edit FAQ</h2>
+                <p class="admin-card__eyebrow">Knowledge Base</p>
+                <h2>Edit Knowledge</h2>
                 <p>
-                    Embedding hanya dibuat ulang jika pertanyaan atau jawaban berubah.
+                    Embedding dibuat ulang jika judul, kategori, kata kunci, isi, atau nama sumber berubah.
                 </p>
             </div>
 

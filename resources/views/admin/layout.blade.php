@@ -24,6 +24,7 @@
             </div>
 
             <nav class="admin-nav" aria-label="Menu utama">
+                <p class="admin-nav__label">Ringkasan</p>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}"
                     href="{{ route('admin.dashboard') }}"
@@ -31,12 +32,56 @@
                 >
                     Dashboard
                 </a>
+                <p class="admin-nav__label admin-nav__label--spaced">Katalog</p>
+                <a
+                    class="admin-nav__link {{ request()->routeIs('admin.categories.*') ? 'is-active' : '' }}"
+                    href="{{ route('admin.categories.index') }}"
+                    @if (request()->routeIs('admin.categories.*')) aria-current="page" @endif
+                >
+                    Kategori
+                </a>
+                <a
+                    class="admin-nav__link {{ request()->routeIs('admin.products.*') ? 'is-active' : '' }}"
+                    href="{{ route('admin.products.index') }}"
+                    @if (request()->routeIs('admin.products.*')) aria-current="page" @endif
+                >
+                    Produk &amp; Alias
+                </a>
+                <a
+                    class="admin-nav__link {{ request()->routeIs('admin.platforms.*') ? 'is-active' : '' }}"
+                    href="{{ route('admin.platforms.index') }}"
+                    @if (request()->routeIs('admin.platforms.*')) aria-current="page" @endif
+                >
+                    Platform
+                </a>
+                <a
+                    class="admin-nav__link {{ request()->routeIs('admin.listings.*') ? 'is-active' : '' }}"
+                    href="{{ route('admin.listings.index') }}"
+                    @if (request()->routeIs('admin.listings.*')) aria-current="page" @endif
+                >
+                    Listing
+                </a>
+                <p class="admin-nav__label admin-nav__label--spaced">AI &amp; Evaluasi</p>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.knowledge.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.knowledge.index') }}"
                     @if (request()->routeIs('admin.knowledge.*')) aria-current="page" @endif
                 >
-                    FAQ / Knowledge
+                    Knowledge Base
+                </a>
+                <a
+                    class="admin-nav__link {{ request()->routeIs('admin.unanswered.*') ? 'is-active' : '' }}"
+                    href="{{ route('admin.unanswered.index') }}"
+                    @if (request()->routeIs('admin.unanswered.*')) aria-current="page" @endif
+                >
+                    Unanswered Queries
+                </a>
+                <a
+                    class="admin-nav__link {{ request()->routeIs('admin.ranking.*') ? 'is-active' : '' }}"
+                    href="{{ route('admin.ranking.edit') }}"
+                    @if (request()->routeIs('admin.ranking.*')) aria-current="page" @endif
+                >
+                    Bobot Ranking
                 </a>
             </nav>
 

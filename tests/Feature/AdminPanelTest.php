@@ -2,9 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\ChatbotQueryLog;
 use App\Models\KnowledgeItem;
+use App\Models\Listing;
+use App\Models\Platform;
+use App\Models\Product;
 use App\Models\User;
+use App\Services\KnowledgeEmbeddingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
@@ -27,10 +32,11 @@ final class AdminPanelTest extends TestCase
         ));
 
         config([
-            'services.gemini.key' => 'admin-test-key',
-            'chatbot.models.embed' => 'admin-embedding-model',
-            'chatbot.embedding_dimensions' => 2,
-            'chatbot.http.retry' => 0,
+            'ai.embedding.provider' => 'gemini',
+            'ai.embedding.api_key' => 'admin-test-key',
+            'ai.embedding.model' => 'admin-embedding-model',
+            'ai.embedding.dimensions' => 2,
+            'ai.http.retries' => 0,
         ]);
 
         Http::preventStrayRequests();
@@ -148,6 +154,67 @@ final class AdminPanelTest extends TestCase
             0.75,
             now()->subDays(8),
         );
+        ChatbotQueryLog::query()->forceCreate([
+            'status' => ChatbotQueryLog::STATUS_NO_RESULTS,
+            'query_text' => 'Belum memiliki hasil',
+            'is_unanswered' => true,
+            'created_at' => now()->subDays(8),
+            'updated_at' => now()->subDays(8),
+        ]);
+
+        $category = Category::query()->create([
+            'name' => 'Produk Dashboard',
+            'slug' => 'produk-dashboard',
+            'is_active' => true,
+        ]);
+        $product = Product::query()->create([
+            'category_id' => $category->id,
+            'name' => 'Produk Aktif Dashboard',
+            'is_active' => true,
+        ]);
+        Product::query()->create([
+            'category_id' => $category->id,
+            'name' => 'Produk Nonaktif Dashboard',
+            'is_active' => false,
+        ]);
+        $platform = Platform::query()->create([
+            'name' => 'Platform Dashboard',
+            'slug' => 'platform-dashboard',
+            'source_type' => Platform::SOURCE_DEMO,
+            'access_type' => Platform::ACCESS_DEMO_DATASET,
+            'connector' => 'demo',
+            'status' => Platform::STATUS_READY,
+            'is_active' => true,
+            'sync_enabled' => true,
+        ]);
+        Listing::query()->create([
+            'platform_id' => $platform->id,
+            'product_id' => $product->id,
+            'source_fingerprint' => str_repeat('b', 64),
+            'title' => 'Listing Aktif Dashboard',
+            'price' => 2500000,
+            'currency' => 'IDR',
+            'condition' => Listing::CONDITION_USED,
+            'condition_source' => Listing::CONDITION_SOURCE_SELLER,
+            'product_url' => 'https://example.test/dashboard/active',
+            'stock_status' => Listing::STOCK_IN_STOCK,
+            'price_type' => Listing::PRICE_FULL,
+            'is_active' => true,
+        ]);
+        Listing::query()->create([
+            'platform_id' => $platform->id,
+            'product_id' => $product->id,
+            'source_fingerprint' => str_repeat('c', 64),
+            'title' => 'Listing Nonaktif Dashboard',
+            'price' => 2000000,
+            'currency' => 'IDR',
+            'condition' => Listing::CONDITION_USED,
+            'condition_source' => Listing::CONDITION_SOURCE_SELLER,
+            'product_url' => 'https://example.test/dashboard/inactive',
+            'stock_status' => Listing::STOCK_IN_STOCK,
+            'price_type' => Listing::PRICE_FULL,
+            'is_active' => false,
+        ]);
 
         $this->createCurrentItem(['title' => 'Ready']);
         KnowledgeItem::query()->create([
@@ -172,6 +239,9 @@ final class AdminPanelTest extends TestCase
         $response
             ->assertOk()
             ->assertViewHas('todayQuestions', 3)
+            ->assertViewHas('activeListingsCount', 1)
+            ->assertViewHas('activeProductsCount', 1)
+            ->assertViewHas('pendingUnansweredCount', 1)
             ->assertViewHas('activeKnowledgeCount', 3)
             ->assertViewHas(
                 'averageTop1Similarity',
@@ -201,6 +271,11 @@ final class AdminPanelTest extends TestCase
     public function test_admin_can_create_a_faq_and_its_embedding(): void
     {
         $admin = $this->createUser();
+        $category = Category::query()->create([
+            'name' => 'Panduan Produk',
+            'slug' => 'panduan-produk',
+            'is_active' => true,
+        ]);
         Http::fake([
             '*' => Http::response([
                 'embedding' => ['values' => [1, 0]],
@@ -211,6 +286,10 @@ final class AdminPanelTest extends TestCase
             ->post(route('admin.knowledge.store'), [
                 'title' => '  Pertanyaan baru?  ',
                 'content' => '  Jawaban baru.  ',
+                'category_id' => $category->id,
+                'keywords' => "gpu, cek kondisi\nbekas",
+                'source_name' => '  Dokumentasi  ',
+                'source_url' => 'https://example.test/panduan',
                 'is_active' => '1',
                 'is_featured' => '1',
                 'sort_order' => '4',
@@ -222,6 +301,13 @@ final class AdminPanelTest extends TestCase
 
         $this->assertSame('Pertanyaan baru?', $item->title);
         $this->assertSame('Jawaban baru.', $item->content);
+        $this->assertSame($category->id, $item->category_id);
+        $this->assertSame(['gpu', 'cek kondisi', 'bekas'], $item->keywords);
+        $this->assertSame('Dokumentasi', $item->source_name);
+        $this->assertSame(
+            'https://example.test/panduan',
+            $item->source_url,
+        );
         $this->assertTrue($item->is_active);
         $this->assertTrue($item->is_featured);
         $this->assertSame(4, $item->sort_order);
@@ -236,7 +322,9 @@ final class AdminPanelTest extends TestCase
             static fn (Request $request): bool => data_get(
                 $request->data(),
                 'content.parts.0.text',
-            ) === "Pertanyaan: Pertanyaan baru?\nJawaban: Jawaban baru.",
+            ) === "Judul: Pertanyaan baru?\nKategori: Panduan Produk"
+                ."\nKata kunci: bekas, cek kondisi, gpu"
+                ."\nIsi: Jawaban baru.\nSumber: Dokumentasi",
         );
     }
 
@@ -257,6 +345,7 @@ final class AdminPanelTest extends TestCase
                     'is_active' => false,
                     'is_featured' => true,
                     'sort_order' => 99,
+                    'source_url' => 'https://example.test/metadata-only',
                 ]),
             )
             ->assertRedirect(route('admin.knowledge.index'))
@@ -267,6 +356,10 @@ final class AdminPanelTest extends TestCase
         $this->assertFalse($item->is_active);
         $this->assertTrue($item->is_featured);
         $this->assertSame(99, $item->sort_order);
+        $this->assertSame(
+            'https://example.test/metadata-only',
+            $item->source_url,
+        );
         $this->assertSame($originalVector, $item->embedding);
         $this->assertSame($originalHash, $item->embedding_hash);
         $this->assertSame($originalModel, $item->embedding_model);
@@ -318,6 +411,42 @@ final class AdminPanelTest extends TestCase
                 $request->data(),
                 'content.parts.0.text',
             ) === $expectedText,
+        );
+    }
+
+    public function test_category_change_rebuilds_knowledge_embedding(): void
+    {
+        $admin = $this->createUser();
+        $item = $this->createCurrentItem();
+        $category = Category::query()->create([
+            'name' => 'PC dan Komponen',
+            'slug' => 'pc-dan-komponen',
+            'is_active' => true,
+        ]);
+        Http::fake([
+            '*' => Http::response([
+                'embedding' => ['values' => [0, 1]],
+            ]),
+        ]);
+
+        $this->actingAs($admin)
+            ->put(
+                route('admin.knowledge.update', $item),
+                $this->validPayload(['category_id' => $category->id]),
+            )
+            ->assertRedirect(route('admin.knowledge.index'))
+            ->assertSessionHas('success');
+
+        $item->refresh();
+        $this->assertSame($category->id, $item->category_id);
+        $this->assertTrue($item->hasCurrentEmbedding());
+        Http::assertSentCount(1);
+        Http::assertSent(
+            static fn (Request $request): bool => data_get(
+                $request->data(),
+                'content.parts.0.text',
+            ) === "Judul: Pertanyaan awal?\nKategori: PC dan Komponen"
+                ."\nIsi: Jawaban awal.",
         );
     }
 
@@ -460,7 +589,10 @@ final class AdminPanelTest extends TestCase
         $this->createCurrentItem();
         Http::fake();
 
-        $lock = Cache::lock('chatbot:knowledge-rebuild', 1800);
+        $lock = Cache::lock(
+            KnowledgeEmbeddingService::LOCK_KEY,
+            KnowledgeEmbeddingService::LOCK_SECONDS,
+        );
         $this->assertTrue($lock->get());
 
         try {
@@ -535,7 +667,10 @@ final class AdminPanelTest extends TestCase
 
         $item->forceFill([
             'embedding_hash' => $item->expectedEmbeddingHash(),
-            'embedding_model' => (string) config('chatbot.models.embed'),
+            'embedding_model' => (string) config('ai.embedding.model'),
+            'embedding_dimensions' => (int) config(
+                'ai.embedding.dimensions',
+            ),
             'embedded_at' => now()->subMinute(),
             'embedding_error' => null,
         ])->save();
@@ -568,6 +703,10 @@ final class AdminPanelTest extends TestCase
             'is_active' => true,
             'is_featured' => false,
             'sort_order' => 0,
+            'category_id' => null,
+            'keywords' => '',
+            'source_name' => '',
+            'source_url' => '',
         ], $overrides);
     }
 
@@ -579,11 +718,21 @@ final class AdminPanelTest extends TestCase
         return [
             'question changed' => [
                 ['title' => 'Pertanyaan diperbarui?'],
-                "Pertanyaan: Pertanyaan diperbarui?\nJawaban: Jawaban awal.",
+                "Judul: Pertanyaan diperbarui?\nIsi: Jawaban awal.",
             ],
             'answer changed' => [
                 ['content' => 'Jawaban diperbarui.'],
-                "Pertanyaan: Pertanyaan awal?\nJawaban: Jawaban diperbarui.",
+                "Judul: Pertanyaan awal?\nIsi: Jawaban diperbarui.",
+            ],
+            'keywords changed' => [
+                ['keywords' => "semantic, gpu\nproduk"],
+                "Judul: Pertanyaan awal?\nKata kunci: gpu, produk, semantic"
+                    ."\nIsi: Jawaban awal.",
+            ],
+            'source name changed' => [
+                ['source_name' => 'Dokumentasi Produk'],
+                "Judul: Pertanyaan awal?\nIsi: Jawaban awal."
+                    ."\nSumber: Dokumentasi Produk",
             ],
         ];
     }
