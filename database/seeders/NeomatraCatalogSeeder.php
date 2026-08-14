@@ -31,8 +31,8 @@ final class NeomatraCatalogSeeder extends Seeder
             ['slug' => 'pc-dan-komponen'],
             [
                 'parent_id' => null,
-                'name' => 'PC dan Komponen',
-                'description' => 'Kategori prioritas MVP Neomatra.',
+                'name' => 'PC Components',
+                'description' => 'Komponen utama komputer desktop.',
                 'is_active' => true,
                 'sort_order' => 10,
             ],
@@ -45,8 +45,6 @@ final class NeomatraCatalogSeeder extends Seeder
             ['CPU', 'cpu', 20],
             ['RAM', 'ram', 30],
             ['SSD', 'ssd', 40],
-            ['Laptop', 'laptop', 50],
-            ['Monitor', 'monitor', 60],
         ] as [$name, $slug, $sortOrder]) {
             $categories[$slug] = Category::query()->updateOrCreate(
                 ['slug' => $slug],

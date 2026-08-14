@@ -243,6 +243,9 @@ final class AdminCatalogTest extends TestCase
                 'variant' => '12 GB Desktop',
                 'sku_or_part_number' => 'GA106',
                 'attributes' => '{"capacity_gb":12,"form_factor":"desktop"}',
+                'spec_source_name' => 'NVIDIA',
+                'spec_source_url' => 'https://www.nvidia.com/example-product',
+                'spec_source_checked_at' => '2026-08-14 10:00:00',
                 'aliases' => "3060 12GB\nVGA 3060, 3060 12gb",
                 'is_active' => '1',
             ])
@@ -253,6 +256,12 @@ final class AdminCatalogTest extends TestCase
         $product = Product::query()->sole();
         $this->assertSame(2, $product->aliases()->count());
         $this->assertSame(12, $product->attributes['capacity_gb']);
+        $this->assertSame('NVIDIA', $product->spec_source_name);
+        $this->assertSame(
+            'https://www.nvidia.com/example-product',
+            $product->spec_source_url,
+        );
+        $this->assertNotNull($product->spec_source_checked_at);
         $this->assertNotSame('', $product->normalized_key);
 
         $this->actingAs($admin)
@@ -278,6 +287,9 @@ final class AdminCatalogTest extends TestCase
                 'variant' => '12 GB Desktop',
                 'sku_or_part_number' => 'GA106',
                 'attributes' => '{"capacity_gb":12,"generation":"Ampere"}',
+                'spec_source_name' => 'NVIDIA Official Specifications',
+                'spec_source_url' => 'https://www.nvidia.com/example-product-v2',
+                'spec_source_checked_at' => '2026-08-14 11:00:00',
                 'aliases' => "RTX tiga kosong enam kosong\nVGA 3060",
                 'is_active' => '1',
             ])

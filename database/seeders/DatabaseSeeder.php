@@ -13,7 +13,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             NeomatraCatalogSeeder::class,
+            NeomatraDatasetV2Seeder::class,
             KnowledgeItemSeeder::class,
+            NeomatraDatasetV3Seeder::class,
         ]);
     }
 }

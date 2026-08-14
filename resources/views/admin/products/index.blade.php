@@ -21,7 +21,7 @@
         @else
             <div class="table-scroll">
                 <table class="admin-table">
-                    <thead><tr><th>Produk</th><th>Kategori</th><th>Varian / SKU</th><th>Status</th><th>Embedding</th><th>Relasi</th><th>Aksi</th></tr></thead>
+                    <thead><tr><th>Produk</th><th>Kategori</th><th>Varian / SKU</th><th>Sumber spesifikasi</th><th>Status</th><th>Embedding</th><th>Relasi</th><th>Aksi</th></tr></thead>
                     <tbody>
                         @foreach($products as $product)
                             @php
@@ -34,6 +34,7 @@
                                 <td class="admin-table__question"><strong>{{ $product->name }}</strong><span>{{ $product->brand ?: 'Merek belum diisi' }}{{ $product->model ? ' · '.$product->model : '' }}</span></td>
                                 <td>{{ $product->category?->name ?? '—' }}</td>
                                 <td>{{ $product->variant ?: '—' }}<span class="table-meta">SKU: {{ $product->sku_or_part_number ?: '—' }}</span></td>
+                                <td>@if($product->spec_source_url)<a href="{{ $product->spec_source_url }}" target="_blank" rel="noopener noreferrer">{{ $product->spec_source_name ?: 'Sumber resmi' }}</a>@else{{ $product->spec_source_name ?: '—' }}@endif<span class="table-meta">{{ $product->spec_source_checked_at?->format('d M Y') ?? 'Belum diverifikasi' }}</span></td>
                                 <td><span class="badge badge--{{ $product->is_active ? 'success' : 'neutral' }}">{{ $product->is_active ? 'Aktif' : 'Nonaktif' }}</span></td>
                                 <td><span class="badge badge--{{ $embeddingReady ? 'success' : ($product->embedding_error ? 'danger' : 'warning') }}">{{ $embeddingReady ? 'Siap' : ($product->embedding_error ? 'Gagal' : 'Perlu rebuild') }}</span><span class="table-meta">{{ $product->embedding_model ?: 'Model belum ada' }}</span></td>
                                 <td><span class="table-meta">{{ $product->aliases_count }} alias</span><span class="table-meta">{{ $product->listings_count }} listing</span></td>

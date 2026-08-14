@@ -22,6 +22,9 @@ final class Product extends Model
         'sku_or_part_number',
         'normalized_key',
         'attributes',
+        'spec_source_name',
+        'spec_source_url',
+        'spec_source_checked_at',
         'embedding',
         'embedding_hash',
         'embedding_model',
@@ -57,6 +60,7 @@ final class Product extends Model
     {
         return [
             'attributes' => 'array',
+            'spec_source_checked_at' => 'datetime',
             'embedding' => 'array',
             'embedding_dimensions' => 'integer',
             'embedded_at' => 'datetime',

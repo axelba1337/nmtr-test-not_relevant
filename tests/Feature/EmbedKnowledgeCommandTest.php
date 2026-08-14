@@ -222,9 +222,9 @@ final class EmbedKnowledgeCommandTest extends TestCase
         $this->seed();
         $this->seed();
 
-        $this->assertDatabaseCount('knowledge_items', 3);
+        $this->assertDatabaseCount('knowledge_items', 50);
         $this->assertSame(
-            3,
+            50,
             KnowledgeItem::query()
                 ->whereNull('embedding')
                 ->whereNull('embedding_hash')

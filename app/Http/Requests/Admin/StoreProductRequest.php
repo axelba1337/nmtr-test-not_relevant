@@ -23,6 +23,9 @@ class StoreProductRequest extends FormRequest
             'variant' => ['nullable', 'string', 'max:255'],
             'sku_or_part_number' => ['nullable', 'string', 'max:255'],
             'attributes' => ['nullable', 'string', 'json', 'max:20000'],
+            'spec_source_name' => ['nullable', 'string', 'max:120'],
+            'spec_source_url' => ['nullable', 'url', 'max:2048'],
+            'spec_source_checked_at' => ['nullable', 'date'],
             'aliases' => ['nullable', 'string', 'max:10000'],
             'is_active' => ['required', 'boolean'],
         ];
@@ -80,6 +83,11 @@ class StoreProductRequest extends FormRequest
             'variant' => $nullable($this->input('variant')),
             'sku_or_part_number' => $nullable($this->input('sku_or_part_number')),
             'attributes' => $nullable($this->input('attributes')),
+            'spec_source_name' => $nullable($this->input('spec_source_name')),
+            'spec_source_url' => $nullable($this->input('spec_source_url')),
+            'spec_source_checked_at' => $nullable(
+                $this->input('spec_source_checked_at'),
+            ),
             'aliases' => $nullable($this->input('aliases')),
             'is_active' => $this->boolean('is_active'),
         ]);

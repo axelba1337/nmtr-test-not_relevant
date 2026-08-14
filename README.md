@@ -130,9 +130,17 @@ Gemini dan adapter marketplace demo tidak melakukan network request.
    php artisan migrate --seed
    ```
 
-   Migration dan seeder bersifat offline. Seeder membuat kategori prioritas
-   MVP, produk RTX 3060/3060 Ti, alias, platform Tokopedia/Shopee/OLX, listing
-   demo, profil ranking, dan knowledge awal tanpa memanggil Gemini.
+   Migration dan seeder bersifat offline. Dataset V3 menyediakan lima domain
+   taxonomy, 170 produk kanonik dengan provenance spesifikasi, minimal tiga
+   alias per produk, registry 21 platform, serta 47 knowledge bilingual. Dataset
+   demo listing dari tahap sebelumnya tetap tersedia untuk pengujian perhitungan
+   backend. Tokopedia, Shopee, dan OLX memakai connector dataset demo; platform
+   lain terdaftar untuk input URL manual dan tidak mengklaim memiliki connector
+   aktif.
+
+   Sumber Dataset V3 tersimpan di `database/data/v3`. Seeder membacanya melalui
+   parser SQL yang tidak mengeksekusi statement MySQL mentah, sehingga proses
+   seed tetap kompatibel dengan MySQL/MariaDB dan SQLite pada automated test.
 
 5. Pasang dependency frontend dan buat asset production:
 
@@ -380,8 +388,11 @@ tidak ada raw response maupun API key yang diteruskan ke pengguna.
 
 `DemoMarketplaceAdapter` mengimplementasikan kontrak marketplace yang sama untuk
 Tokopedia, Shopee, dan OLX. Record demo berasal dari konfigurasi lokal yang telah
-dinormalisasi. Tidak ada endpoint marketplace fiktif, scraping, atau credential
-marketplace.
+dinormalisasi. Seeder juga menyediakan pembanding terstruktur untuk kondisi
+`new`, `used`, `open_box`, `refurbished`, `ex_display`, dan `unknown`. Semua URL
+demo memakai domain `example.test`, judulnya berlabel `Data Demo`, dan payload
+menyimpan flag `demo`. Tidak ada endpoint marketplace fiktif, scraping, atau
+credential marketplace.
 
 Sinkronisasi bersifat manual dan idempotent. Data dicocokkan dengan
 `platform_id + external_listing_id` atau fingerprint sumber. Produk kanonik
@@ -491,7 +502,7 @@ berdasarkan rank menurun, total biaya menaik, lalu ID menaik.
 | --- | --- |
 | `users` | Akun session dan flag `is_admin`. |
 | `categories` | Hierarki kategori, slug, status aktif, dan urutan. |
-| `products` | Produk kanonik, identitas/atribut, status, serta metadata embedding. |
+| `products` | Produk kanonik, identitas/atribut, provenance spesifikasi resmi, status, serta metadata embedding. |
 | `product_aliases` | Istilah alternatif unik per produk beserta embedding. |
 | `platforms` | Sumber marketplace, connector, status, dan konfigurasi sync. |
 | `listings` | Harga, kondisi, seller, lokasi, URL, biaya, freshness, payload sumber, dan fingerprint deduplication. |
