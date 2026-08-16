@@ -24,6 +24,11 @@ final class DemoMarketplaceAdapter implements MarketplaceConnector
         );
     }
 
+    public function providesFullSnapshot(): bool
+    {
+        return true;
+    }
+
     public function fetch(
         MarketplaceSyncRequest $request,
     ): MarketplaceFetchPage {

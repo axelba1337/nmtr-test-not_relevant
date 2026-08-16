@@ -207,6 +207,16 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
             $this->assertContains($listing->stock_status, Listing::stockStatuses());
             $this->assertContains($listing->price_type, Listing::priceTypes());
             $this->assertTrue((bool) ($listing->raw_payload['demo'] ?? false));
+            $this->assertSame(
+                'seeded-demo',
+                $listing->raw_payload['connector'] ?? null,
+            );
+            $this->assertNotNull(
+                $listing->first_seen_at,
+                (string) $listing->external_listing_id,
+            );
+            $this->assertNotNull($listing->last_seen_at);
+            $this->assertNotNull($listing->last_synced_at);
             $this->assertSame('example.test', parse_url($listing->product_url, PHP_URL_HOST));
             $this->assertStringContainsString('Data Demo', $listing->title);
             $this->assertStringContainsString('demonstrasi', (string) $listing->description);

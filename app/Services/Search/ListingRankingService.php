@@ -45,7 +45,9 @@ final class ListingRankingService
                 (string) $listing->seller_type,
             ),
             RankingCalculator::SCORE_FRESHNESS => $this->freshness->calculate(
-                $listing->source_published_at ?? $listing->last_synced_at,
+                $listing->source_published_at
+                    ?? $listing->last_seen_at
+                    ?? $listing->last_synced_at,
             ),
         ];
 

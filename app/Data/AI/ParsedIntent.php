@@ -43,6 +43,7 @@ final readonly class ParsedIntent
      * @param  list<string>  $conditions
      * @param  list<string>  $locations
      * @param  list<string>  $sellerTypes
+     * @param  list<string>  $platforms
      */
     public function __construct(
         public string $product,
@@ -60,6 +61,7 @@ final readonly class ParsedIntent
         public bool $needsClarification,
         public ?string $clarificationQuestion,
         public string $intentType = self::TYPE_PRODUCT_SEARCH,
+        public array $platforms = [],
     ) {}
 
     public static function fromArray(array $value): ?self
@@ -122,11 +124,13 @@ final readonly class ParsedIntent
             self::SELLER_TYPES,
         );
         $locations = self::stringList($value['locations'] ?? [], 120);
+        $platforms = self::stringList($value['platforms'] ?? [], 120);
         $mode = $value['mode'] ?? null;
 
         if ($conditions === null
             || $sellerTypes === null
             || $locations === null
+            || $platforms === null
             || ! is_string($mode)
             || ! in_array($mode, self::MODES, true)) {
             return null;
@@ -148,6 +152,7 @@ final readonly class ParsedIntent
             $needsClarification,
             $clarification,
             $intentType,
+            $platforms,
         );
     }
 
@@ -168,6 +173,7 @@ final readonly class ParsedIntent
             'conditions' => $this->conditions,
             'locations' => $this->locations,
             'seller_types' => $this->sellerTypes,
+            'platforms' => $this->platforms,
             'mode' => $this->mode,
             'needs_clarification' => $this->needsClarification,
             'clarification_question' => $this->clarificationQuestion,

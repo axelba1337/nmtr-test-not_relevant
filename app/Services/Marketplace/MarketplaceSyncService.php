@@ -3,17 +3,13 @@
 namespace App\Services\Marketplace;
 
 use App\Contracts\Marketplace\MarketplaceConnector;
-use App\Data\Marketplace\MarketplaceListingData;
 use App\Data\Marketplace\MarketplaceSyncReport;
 use App\Data\Marketplace\MarketplaceSyncRequest;
-use App\Helpers\Normalizer;
-use App\Models\Listing;
 use App\Models\MarketplaceSyncRun;
 use App\Models\Platform;
-use App\Models\Product;
-use App\Services\Neomatra\ListingFingerprintService;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -21,7 +17,7 @@ final class MarketplaceSyncService
 {
     public function __construct(
         private readonly MarketplaceConnectorRegistry $connectors,
-        private readonly ListingFingerprintService $fingerprints,
+        private readonly MarketplaceListingIngestionService $ingestion,
     ) {}
 
     public function sync(
@@ -29,7 +25,7 @@ final class MarketplaceSyncService
         ?int $maxPages = null,
         ?int $initiatedBy = null,
     ): MarketplaceSyncReport {
-        $startedAt = new DateTimeImmutable;
+        $startedAt = Carbon::now()->toImmutable();
         $provider = trim((string) ($platform->connector
             ?: config('marketplace.provider', 'demo')));
 
@@ -158,10 +154,11 @@ final class MarketplaceSyncService
 
             foreach ($result->listings as $listing) {
                 try {
-                    $outcome = $this->upsert(
+                    $outcome = $this->ingestion->ingest(
                         $platform,
                         $listing,
                         $connector->key(),
+                        $startedAt,
                     );
 
                     match ($outcome) {
@@ -186,12 +183,22 @@ final class MarketplaceSyncService
             $errorMessage = 'Sinkronisasi dihentikan pada batas halaman aman.';
         }
 
-        $finishedAt = new DateTimeImmutable;
+        $finishedAt = Carbon::now()->toImmutable();
         $status = match (true) {
             $failed > 0 && ($created + $updated + $unchanged) === 0 => MarketplaceSyncReport::STATUS_FAILED,
             $failed > 0 || $errorCode !== null => MarketplaceSyncReport::STATUS_PARTIAL,
             default => MarketplaceSyncReport::STATUS_COMPLETED,
         };
+
+        if ($status === MarketplaceSyncReport::STATUS_COMPLETED
+            && $connector->providesFullSnapshot()
+            && $skipped === 0) {
+            $this->ingestion->deactivateMissing(
+                $platform,
+                $connector->key(),
+                $startedAt,
+            );
+        }
 
         $run->forceFill([
             'status' => $status,
@@ -234,134 +241,6 @@ final class MarketplaceSyncService
         );
     }
 
-    private function upsert(
-        Platform $platform,
-        MarketplaceListingData $incoming,
-        string $connectorKey,
-    ): string {
-        $fingerprint = $this->fingerprints->make(
-            $platform->slug,
-            $incoming->externalListingId,
-            $incoming->productUrl,
-            $incoming->title,
-            $incoming->price,
-            $incoming->sellerName,
-        );
-        $query = Listing::query()->where('platform_id', $platform->getKey());
-
-        if ($incoming->externalListingId !== null) {
-            $listing = (clone $query)
-                ->where('external_listing_id', $incoming->externalListingId)
-                ->first();
-            $listing ??= (clone $query)
-                ->where('source_fingerprint', $fingerprint)
-                ->first();
-        } else {
-            $listing = $query
-                ->where('source_fingerprint', $fingerprint)
-                ->first();
-        }
-
-        $listing ??= new Listing;
-        $created = ! $listing->exists;
-        $values = $incoming->toStorageArray();
-        $values['platform_id'] = $platform->getKey();
-        $productId = $this->resolveProductId($incoming);
-
-        if ($created || $productId !== null || $incoming->hasProductHints()) {
-            $values['product_id'] = $productId;
-        }
-
-        $values['source_fingerprint'] = $fingerprint;
-        $values['raw_payload'] = [
-            ...$incoming->toStorageArray(),
-            'connector' => $connectorKey,
-            'demo' => $connectorKey === 'demo',
-            'product_reference' => $incoming->productReference,
-            'product_brand' => $incoming->productBrand,
-            'product_model' => $incoming->productModel,
-            'product_variant' => $incoming->productVariant,
-            'product_sku' => $incoming->productSku,
-        ];
-        $values['is_active'] = true;
-        $listing->fill($values);
-        $changed = $listing->isDirty();
-        $listing->last_synced_at = now();
-        $listing->save();
-
-        return match (true) {
-            $created => 'created',
-            $changed => 'updated',
-            default => 'unchanged',
-        };
-    }
-
-    private function resolveProductId(
-        MarketplaceListingData $listing,
-    ): ?int {
-        if ($listing->productReference !== null) {
-            $productId = Product::query()
-                ->active()
-                ->where('normalized_key', $listing->productReference)
-                ->value('id');
-
-            if ($productId !== null) {
-                return (int) $productId;
-            }
-        }
-
-        if ($listing->productSku === null
-            && ($listing->productModel === null
-                || $listing->productVariant === null)) {
-            return null;
-        }
-
-        $matches = [];
-
-        foreach (Product::query()
-            ->active()
-            ->select([
-                'id',
-                'brand',
-                'model',
-                'variant',
-                'sku_or_part_number',
-            ])
-            ->lazyById(100) as $product) {
-            if (! $this->strictProductMatch($product, $listing)) {
-                continue;
-            }
-
-            $matches[] = (int) $product->getKey();
-
-            if (count($matches) === 2) {
-                break;
-            }
-        }
-
-        return count($matches) === 1 ? $matches[0] : null;
-    }
-
-    private function strictProductMatch(
-        Product $product,
-        MarketplaceListingData $listing,
-    ): bool {
-        foreach ([
-            'brand' => $listing->productBrand,
-            'model' => $listing->productModel,
-            'variant' => $listing->productVariant,
-            'sku_or_part_number' => $listing->productSku,
-        ] as $field => $expected) {
-            if ($expected !== null
-                && Normalizer::text((string) $product->{$field})
-                    !== Normalizer::text($expected)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     private function failedReport(
         Platform $platform,
         string $provider,
@@ -382,7 +261,7 @@ final class MarketplaceSyncService
             $errorCode,
             $errorMessage,
             $startedAt,
-            new DateTimeImmutable,
+            Carbon::now()->toImmutable(),
         );
     }
 

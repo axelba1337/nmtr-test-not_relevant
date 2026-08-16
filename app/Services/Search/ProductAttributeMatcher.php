@@ -73,7 +73,9 @@ final class ProductAttributeMatcher
             return false;
         }
 
-        foreach (['ti', 'super', 'laptop'] as $modifier) {
+        foreach ([
+            'ti', 'super', 'laptop', 'pro', 'max', 'mini', 'plus', 'ultra',
+        ] as $modifier) {
             $queryHasModifier = preg_match(
                 '/\b'.preg_quote($modifier, '/').'\b/u',
                 $query,

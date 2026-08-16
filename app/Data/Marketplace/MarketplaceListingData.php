@@ -72,6 +72,7 @@ final readonly class MarketplaceListingData
         public ?int $repairEstimate,
         public ?string $warranty,
         public ?string $sourcePublishedAt,
+        public array $rawPayload,
     ) {}
 
     public static function fromArray(
@@ -107,6 +108,16 @@ final readonly class MarketplaceListingData
         $sourcePublishedAt = self::dateTime(
             $value['source_published_at'] ?? null,
         );
+
+        try {
+            $encodedPayload = json_encode($value, JSON_THROW_ON_ERROR);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (strlen($encodedPayload) > 500_000) {
+            return null;
+        }
 
         if (! self::validOptionalString($value, 'product_reference', 500)
             || ! self::validOptionalString($value, 'product_brand', 120)
@@ -199,6 +210,7 @@ final readonly class MarketplaceListingData
             $repairEstimate,
             self::nullableString($value['warranty'] ?? null, 255),
             $sourcePublishedAt,
+            $value,
         );
     }
 

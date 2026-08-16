@@ -28,6 +28,42 @@ final class NeomatraDatasetV2Seeder extends Seeder
         $this->seedPlatforms();
         $products = $this->seedProducts();
         $this->seedDemoListings($products);
+        $this->normalizeLegacyDemoProvenance();
+    }
+
+    private function normalizeLegacyDemoProvenance(): void
+    {
+        foreach (Listing::query()->whereNotNull('raw_payload')->lazyById(100) as $listing) {
+            $payload = $listing->raw_payload;
+
+            if (! is_array($payload) || ($payload['demo'] ?? false) !== true) {
+                continue;
+            }
+
+            $values = [];
+
+            if (! filled($payload['connector'] ?? null)) {
+                $payload['connector'] = 'seeded-demo';
+                $values['raw_payload'] = $payload;
+            }
+
+            if ($listing->last_seen_at === null) {
+                $values['last_seen_at'] = $listing->last_synced_at
+                    ?? $listing->updated_at
+                    ?? now();
+            }
+
+            if ($listing->first_seen_at === null) {
+                $values['first_seen_at'] = $listing->created_at
+                    ?? $values['last_seen_at']
+                    ?? $listing->last_synced_at
+                    ?? now();
+            }
+
+            if ($values !== []) {
+                $listing->forceFill($values)->save();
+            }
+        }
     }
 
     private function seedTaxonomy(): void
@@ -293,7 +329,7 @@ final class NeomatraDatasetV2Seeder extends Seeder
             $seller,
         );
 
-        Listing::query()->updateOrCreate(
+        $listing = Listing::query()->updateOrCreate(
             ['source_fingerprint' => $fingerprint],
             [
                 'platform_id' => $platform->id,
@@ -321,14 +357,22 @@ final class NeomatraDatasetV2Seeder extends Seeder
                     : null,
                 'raw_payload' => [
                     'demo' => true,
+                    'connector' => 'seeded-demo',
                     'source_condition' => $sourceCondition,
                     'official_status_verified' => $sellerType === Listing::SELLER_OFFICIAL,
                 ],
                 'source_published_at' => now()->subHours($freshnessOffset),
+                'last_seen_at' => now(),
                 'last_synced_at' => now(),
                 'is_active' => true,
             ],
         );
+
+        if ($listing->first_seen_at === null) {
+            $listing->forceFill([
+                'first_seen_at' => $listing->last_seen_at ?? now(),
+            ])->save();
+        }
     }
 
     private function demoPrice(int $referencePrice, int $percent): int

@@ -20,6 +20,7 @@ final class ChatbotQueryRequest extends FormRequest
             'message' => ['required', 'string', 'max:2000'],
             'budget_max' => ['nullable', 'integer', 'min:0'],
             'location' => ['nullable', 'string', 'max:120'],
+            'platform' => ['nullable', 'string', 'max:120'],
             'condition' => [
                 'nullable',
                 Rule::in(Listing::conditions()),
@@ -52,6 +53,7 @@ final class ChatbotQueryRequest extends FormRequest
             'message' => 'pertanyaan',
             'budget_max' => 'budget maksimum',
             'location' => 'lokasi',
+            'platform' => 'platform',
             'condition' => 'kondisi',
             'seller_type' => 'tipe seller',
             'mode' => 'mode pencarian',
@@ -70,6 +72,7 @@ final class ChatbotQueryRequest extends FormRequest
             'location' => is_string($location) && trim($location) !== ''
                 ? trim($location)
                 : null,
+            'platform' => $this->nullableString('platform'),
             'condition' => $this->nullableString('condition'),
             'seller_type' => $this->nullableString('seller_type'),
             'mode' => $this->nullableString('mode'),

@@ -166,7 +166,7 @@ final class NeomatraCatalogSeeder extends Seeder
                 $data['seller'],
             );
 
-            Listing::query()->updateOrCreate(
+            $listing = Listing::query()->updateOrCreate(
                 ['source_fingerprint' => $fingerprint],
                 [
                     'platform_id' => $data['platform']->id,
@@ -190,14 +190,24 @@ final class NeomatraCatalogSeeder extends Seeder
                     'inspection_cost' => null,
                     'repair_estimate' => $data['repair_estimate'] ?? null,
                     'warranty' => $data['warranty'] ?? null,
-                    'raw_payload' => ['demo' => true],
+                    'raw_payload' => [
+                        'demo' => true,
+                        'connector' => 'seeded-demo',
+                    ],
                     'source_published_at' => now()->subDays(
                         $data['published_days_ago'],
                     ),
+                    'last_seen_at' => now(),
                     'last_synced_at' => now(),
                     'is_active' => true,
                 ],
             );
+
+            if ($listing->first_seen_at === null) {
+                $listing->forceFill([
+                    'first_seen_at' => $listing->last_seen_at ?? now(),
+                ])->save();
+            }
         }
 
         RankingProfile::query()->updateOrCreate(

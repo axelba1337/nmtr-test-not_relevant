@@ -78,6 +78,11 @@ final class IntentResolver
                 $remote['seller_types'] ?? [],
                 $local['seller_type'],
             ),
+            'platforms' => $this->listValue(
+                $explicit['platform'] ?? null,
+                $remote['platforms'] ?? [],
+                $local['platform'],
+            ),
             'mode' => $this->stringValue(
                 $explicit['mode'] ?? null,
                 $this->stringValue($remote['mode'] ?? null, $local['mode']),
@@ -90,11 +95,13 @@ final class IntentResolver
                 ),
             ),
             'needs_clarification' => (bool) (
-                $remote['needs_clarification'] ?? false
+                $remote['needs_clarification']
+                    ?? $local['needs_clarification']
+                    ?? false
             ),
             'clarification_question' => $this->stringValue(
                 $remote['clarification_question'] ?? null,
-                null,
+                $local['clarification_question'] ?? null,
             ),
         ];
 

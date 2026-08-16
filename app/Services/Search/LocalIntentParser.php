@@ -25,6 +25,7 @@ final class LocalIntentParser
      *     condition: string|null,
      *     seller_type: string|null,
      *     location: string|null,
+     *     platform: string|null,
      *     mode: string
      *     intent_type: string
      * }
@@ -32,14 +33,15 @@ final class LocalIntentParser
     public function parse(string $message, array $explicit = []): array
     {
         $normalized = Normalizer::text($message);
+        $ambiguous = preg_match(
+            '/^(?:saya\s+)?(?:ingin\s+)?(?:cari|carikan|mencari)\s+(?:laptop|handphone|hp|smartphone|router)$/u',
+            $normalized,
+        ) === 1;
 
         return [
             'query' => $normalized,
             'product' => $normalized,
-            'brand' => $this->firstMatch(
-                $normalized,
-                '/\b(asus|acer|amd|apple|corsair|dell|gigabyte|google|hp|huawei|intel|kingston|lenovo|logitech|msi|nvidia|oneplus|oppo|poco|realme|samsung|seagate|sony|vivo|western digital|xiaomi)\b/u',
-            ),
+            'brand' => $this->extractBrand($normalized),
             'model' => $this->extractModel($normalized),
             'variant' => $this->extractVariant($normalized),
             'sku_or_part_number' => null,
@@ -49,7 +51,10 @@ final class LocalIntentParser
                 ?? $this->extractCondition($normalized),
             'seller_type' => $this->explicitString($explicit, 'seller_type')
                 ?? $this->extractSellerType($normalized),
-            'location' => $this->explicitString($explicit, 'location'),
+            'location' => $this->explicitString($explicit, 'location')
+                ?? $this->extractLocation($normalized),
+            'platform' => $this->explicitString($explicit, 'platform')
+                ?? $this->extractPlatform($normalized),
             'mode' => $this->explicitString($explicit, 'mode')
                 ?? ($this->containsAny(
                     $normalized,
@@ -59,6 +64,10 @@ final class LocalIntentParser
                 $explicit,
                 'intent_type',
             ) ?? $this->localIntentType($normalized),
+            'needs_clarification' => $ambiguous,
+            'clarification_question' => $ambiguous
+                ? 'Sebutkan merek atau model, kondisi, dan kisaran budget yang dicari.'
+                : null,
         ];
     }
 
@@ -84,7 +93,7 @@ final class LocalIntentParser
     {
         return $this->firstMatch(
             $text,
-            '/\b((?:rtx|gtx|rx)\s*\d{3,4}(?:\s*(?:ti|super))?|(?:core\s*)?i[3579][ -]?\d{4,5}[a-z]{0,2}|ryzen\s*[3579]\s*\d{4}[a-z]{0,2})\b/u',
+            '/\b((?:iphone\s*\d{1,2}(?:\s*(?:pro|max|mini|plus))*)|(?:rtx|gtx|rx)\s*\d{3,4}(?:\s*(?:ti|super))?|(?:core\s*)?i[3579][ -]?\d{4,5}[a-z]{0,2}|ryzen\s*[3579]\s*\d{4}[a-z]{0,2})\b/u',
         );
     }
 
@@ -96,7 +105,7 @@ final class LocalIntentParser
             $parts[] = $match[1].strtoupper($match[2]);
         }
 
-        foreach (['ti', 'super', 'laptop'] as $modifier) {
+        foreach (['ti', 'super', 'laptop', 'pro', 'max', 'mini', 'plus', 'ultra'] as $modifier) {
             if (preg_match('/\b'.preg_quote($modifier, '/').'\b/u', $text) === 1) {
                 $parts[] = strtoupper($modifier);
             }
@@ -108,11 +117,22 @@ final class LocalIntentParser
     private function extractCondition(string $text): ?string
     {
         $map = [
-            Listing::CONDITION_NEW => ['baru', 'bnib', 'sealed'],
-            Listing::CONDITION_OPEN_BOX => ['open box', 'baru buka'],
-            Listing::CONDITION_USED => ['bekas', 'second', 'used'],
-            Listing::CONDITION_REFURBISHED => ['refurbished', 'rekondisi'],
-            Listing::CONDITION_EX_DISPLAY => ['ex display', 'display toko'],
+            Listing::CONDITION_OPEN_BOX => [
+                'open box', 'open-box', 'open_box', 'baru buka',
+            ],
+            Listing::CONDITION_USED => [
+                'bekas', 'secondhand', 'second hand', 'second', 'used',
+                'preowned', 'pre-owned', 'pre owned', 'seken',
+            ],
+            Listing::CONDITION_REFURBISHED => [
+                'refurbished', 'refurb', 'rekondisi',
+            ],
+            Listing::CONDITION_EX_DISPLAY => [
+                'ex display', 'ex-display', 'display toko',
+            ],
+            Listing::CONDITION_NEW => [
+                'brand new', 'new', 'baru', 'bnib', 'sealed',
+            ],
         ];
 
         foreach ($map as $condition => $keywords) {
@@ -126,11 +146,23 @@ final class LocalIntentParser
 
     private function extractSellerType(string $text): ?string
     {
+        if ($this->containsAny($text, ['non official', 'non-official'])) {
+            return Listing::SELLER_STORE;
+        }
+
         $map = [
-            Listing::SELLER_OFFICIAL => ['official store', 'seller official'],
-            Listing::SELLER_STORE => ['seller toko', 'toko'],
-            Listing::SELLER_RESELLER => ['seller reseller'],
-            Listing::SELLER_INDIVIDUAL => ['perorangan', 'individual'],
+            Listing::SELLER_OFFICIAL => [
+                'official store', 'seller official', 'toko resmi', 'official',
+            ],
+            Listing::SELLER_STORE => [
+                'seller toko', 'toko biasa', 'toko',
+            ],
+            Listing::SELLER_RESELLER => [
+                'seller reseller', 'pedagang', 'reseller',
+            ],
+            Listing::SELLER_INDIVIDUAL => [
+                'perorangan', 'individual', 'seller pribadi', 'penjual pribadi',
+            ],
         ];
 
         foreach ($map as $sellerType => $keywords) {
@@ -144,19 +176,49 @@ final class LocalIntentParser
 
     private function extractBudget(string $text): ?int
     {
-        if (preg_match(
-            '/(?:maksimal|max|budget|di\s*bawah)\s*(?:rp\.?\s*)?([0-9][0-9.,]*)\s*(juta|jt|ribu|rb|k)?\b/u',
+        $matched = preg_match(
+            '/(?:maksimal|maximum|maks|max|budget|anggaran|di\s*bawah|dibawah|under|below|less\s+than|<)\s*(?:rp\.?\s*)?([0-9][0-9.,]*)\s*(juta|jt|million|ribu|rb|k|m)?\b/u',
             $text,
             $match,
-        ) !== 1) {
+        ) === 1;
+
+        if (! $matched) {
+            $matched = preg_match(
+                '/(?:\brp\.?\s*)?([0-9][0-9.,]*)\s*(juta|jt|million)\b/u',
+                $text,
+                $match,
+            ) === 1;
+        }
+
+        if (! $matched) {
+            $matched = preg_match(
+                '/\brp\.?\s*([0-9][0-9.,]*)(m)?\b/u',
+                $text,
+                $match,
+            ) === 1;
+        }
+
+        if (! $matched) {
+            $matched = preg_match(
+                '/\b([0-9][0-9.,]{5,})\b/u',
+                $text,
+                $match,
+            ) === 1;
+        }
+
+        if (! $matched) {
             return null;
         }
 
         $number = str_replace(',', '.', $match[1]);
         $suffix = $match[2] ?? '';
 
-        if (in_array($suffix, ['juta', 'jt'], true)) {
-            return (int) round((float) $number * 1_000_000);
+        if (in_array($suffix, ['juta', 'jt', 'million', 'm'], true)) {
+            $decimal = substr_count($number, '.') <= 1
+                ? (float) $number
+                : (float) str_replace('.', '', $number);
+
+            return (int) round($decimal * 1_000_000);
         }
 
         if (in_array($suffix, ['ribu', 'rb', 'k'], true)) {
@@ -164,6 +226,52 @@ final class LocalIntentParser
         }
 
         return (int) preg_replace('/\D/', '', $match[1]);
+    }
+
+    private function extractBrand(string $text): ?string
+    {
+        if (preg_match('/\b(iphone|ipad|macbook)\b/u', $text) === 1) {
+            return 'apple';
+        }
+
+        return $this->firstMatch(
+            $text,
+            '/\b(asus|acer|amd|apple|corsair|dell|gigabyte|google|hp|huawei|intel|kingston|lenovo|logitech|msi|nvidia|oneplus|oppo|poco|realme|samsung|seagate|sony|vivo|western digital|xiaomi)\b/u',
+        );
+    }
+
+    private function extractLocation(string $text): ?string
+    {
+        foreach ((array) config('neomatra.search.known_locations', []) as $location) {
+            $normalized = Normalizer::text((string) $location);
+
+            if ($normalized !== '' && preg_match(
+                '/(?<![\pL\pN])'.preg_quote($normalized, '/').'(?![\pL\pN])/u',
+                $text,
+            ) === 1) {
+                return (string) $location;
+            }
+        }
+
+        return null;
+    }
+
+    private function extractPlatform(string $text): ?string
+    {
+        foreach ((array) config('neomatra.search.platform_aliases', []) as $slug => $aliases) {
+            foreach ((array) $aliases as $alias) {
+                $normalized = Normalizer::text((string) $alias);
+
+                if ($normalized !== '' && preg_match(
+                    '/(?<![\pL\pN])'.preg_quote($normalized, '/').'(?![\pL\pN])/u',
+                    $text,
+                ) === 1) {
+                    return (string) $slug;
+                }
+            }
+        }
+
+        return null;
     }
 
     private function looksLikeKnowledgeQuestion(string $text): bool
@@ -189,6 +297,8 @@ final class LocalIntentParser
         if ($this->containsAny($text, [
             'cari',
             'harga',
+            'bandingkan',
+            'compare',
             'listing',
             'produk',
             'barang',

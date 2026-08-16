@@ -7,6 +7,8 @@ use App\Contracts\AI\EmbeddingClient;
 use App\Data\AI\ChatExplanationRequest;
 use App\Data\AI\EmbeddingPurpose;
 use App\Data\AI\ParsedIntent;
+use App\Data\Search\ListingSearchOutcome;
+use App\Data\Search\SearchState;
 use App\Helpers\Normalizer;
 use App\Http\Requests\ChatbotQueryRequest;
 use App\Models\ChatbotQueryLog;
@@ -17,6 +19,8 @@ use App\Services\KnowledgeRetriever;
 use App\Services\Search\IntentResolver;
 use App\Services\Search\ListingSearchService;
 use App\Services\Search\ProductRetriever;
+use App\Services\Search\ScopeValidationService;
+use App\Services\Search\SearchResponseComposer;
 use Illuminate\Http\JsonResponse;
 
 final class ChatbotController extends Controller
@@ -29,6 +33,8 @@ final class ChatbotController extends Controller
         private readonly ListingSearchService $listingSearch,
         private readonly KnowledgeRetriever $knowledgeRetriever,
         private readonly ChatbotActivityLogger $activityLogger,
+        private readonly ScopeValidationService $scopeValidation,
+        private readonly SearchResponseComposer $responseComposer,
     ) {}
 
     public function suggestions(): JsonResponse
@@ -61,6 +67,41 @@ final class ChatbotController extends Controller
         $filters = collect($validated)
             ->except(['message', 'session_key', 'history'])
             ->all();
+
+        if ($this->scopeValidation->isInvalidInput($normalized)) {
+            return $this->earlyStateResponse(
+                $validated,
+                $normalized,
+                $filters,
+                SearchState::INVALID_INPUT,
+                'Input belum dapat diproses. Tulis nama produk atau pertanyaan dengan huruf atau angka yang jelas.',
+                'invalid_input',
+            );
+        }
+
+        if ($this->scopeValidation->isOutOfScope($normalized)) {
+            $categories = $this->scopeValidation->supportedCategories();
+            $categoryNames = implode(', ', array_column($categories, 'name'));
+            $answer = 'Pencarian kendaraan berada di luar cakupan katalog Neomatra.';
+
+            if ($categoryNames !== '') {
+                $answer .= ' Kategori yang didukung: '.$categoryNames.'.';
+            }
+
+            $answer .= ' Anda dapat melanjutkan pencarian melalui platform eksternal yang tersedia.';
+
+            return $this->earlyStateResponse(
+                $validated,
+                $normalized,
+                $filters,
+                SearchState::OUT_OF_SCOPE,
+                $answer,
+                'out_of_scope',
+                $categories,
+                $this->scopeValidation->externalHandoff($message),
+            );
+        }
+
         $matchesKnowledgeTitle = $this->matchesKnowledgeTitle($normalized);
 
         if ($matchesKnowledgeTitle) {
@@ -93,12 +134,26 @@ final class ChatbotController extends Controller
             );
 
             return response()->json([
+                'state' => SearchState::NEEDS_CLARIFICATION,
                 'answer' => $answer,
                 'intent' => $intent->toArray(),
                 'needs_clarification' => true,
                 'listings' => [],
+                'results' => [],
                 'matches' => [],
                 'sources' => [],
+                'resolved_product' => null,
+                'requested_filters' => $this->intentFilters($intent),
+                'applied_filters' => $this->intentFilters($intent),
+                'relaxed_filters' => [],
+                'attempt_count' => 0,
+                'platforms_searched' => [],
+                'platforms_failed' => [],
+                'supported_categories' => [],
+                'external_handoff' => [],
+                'requested_budget' => $intent->budgetMax,
+                'closest_price' => null,
+                'difference' => null,
                 'meta' => $this->meta(
                     false,
                     $resolved->usedChatApi,
@@ -116,12 +171,27 @@ final class ChatbotController extends Controller
             $intent->toArray(),
             $normalized,
         );
+        $intentForMatching = [
+            ...$intent->toArray(),
+            'query' => $normalized,
+        ];
+        $deterministicCandidates = $intent->intentType
+            === ParsedIntent::TYPE_PRODUCT_SEARCH
+            ? $this->productRetriever->retrieveDeterministically(
+                $intentForMatching,
+            )
+            : [];
         $embedding = $this->embedding->embed(
             $queryText,
             EmbeddingPurpose::Query,
         );
 
-        if (! $embedding->succeeded() && ! $webGroundingRequested) {
+        if (! $embedding->succeeded()
+            && ! $webGroundingRequested
+            && $deterministicCandidates === []) {
+            $providerState = $embedding->failure?->category === 'timeout'
+                ? SearchState::SEARCH_TIMEOUT
+                : SearchState::PROVIDER_ERROR;
             $this->record(
                 $validated,
                 $normalized,
@@ -137,25 +207,40 @@ final class ChatbotController extends Controller
             );
 
             return response()->json([
+                'state' => $providerState,
                 'error' => [
                     'code' => 'embedding_unavailable',
                     'message' => $embedding->failure?->safeMessage
                         ?? 'Layanan semantic search sementara tidak tersedia.',
                 ],
                 'intent' => $intent->toArray(),
+                'needs_clarification' => false,
+                'listings' => [],
+                'results' => [],
+                'matches' => [],
+                'sources' => [],
+                'resolved_product' => null,
+                'requested_filters' => $this->intentFilters($intent),
+                'applied_filters' => $this->intentFilters($intent),
+                'relaxed_filters' => [],
+                'attempt_count' => 0,
+                'platforms_searched' => [],
+                'platforms_failed' => [],
+                'supported_categories' => [],
+                'external_handoff' => [],
+                'requested_budget' => $intent->budgetMax,
+                'closest_price' => null,
+                'difference' => null,
             ], 503);
         }
 
-        $productCandidates = [];
+        $productCandidates = $deterministicCandidates;
         $listings = [];
         $knowledge = [];
+        $searchOutcome = null;
 
         if ($embedding->succeeded()) {
-            $intentForMatching = [
-                ...$intent->toArray(),
-                'query' => $normalized,
-            ];
-            $productCandidates = $intent->intentType
+            $semanticCandidates = $intent->intentType
                 === ParsedIntent::TYPE_PRODUCT_SEARCH
                 ? $this->productRetriever->retrieve(
                     $embedding->vector,
@@ -164,13 +249,29 @@ final class ChatbotController extends Controller
                     $intentForMatching,
                 )
                 : [];
-            $listings = $productCandidates === []
-                ? []
-                : $this->listingSearch->search($productCandidates, $intent);
+            $productCandidates = $this->productRetriever->merge(
+                $deterministicCandidates,
+                $semanticCandidates,
+            );
             $knowledge = $this->knowledgeRetriever->retrieve(
                 $embedding->vector,
             );
         }
+
+        if ($intent->intentType === ParsedIntent::TYPE_PRODUCT_SEARCH
+            && $productCandidates !== []) {
+            $searchOutcome = $this->listingSearch->searchProgressively(
+                $productCandidates,
+                $intent,
+            );
+            $listings = $searchOutcome->results;
+        }
+
+        $searchState = $intent->intentType === ParsedIntent::TYPE_PRODUCT_SEARCH
+            ? ($productCandidates === []
+                ? SearchState::UNKNOWN_PRODUCT
+                : $searchOutcome?->state ?? SearchState::NO_ACTIVE_LISTING)
+            : SearchState::MATCHED;
 
         $top1 = $this->topSimilarity($productCandidates, $knowledge);
         $contextAvailable = $listings !== [] || $knowledge !== [];
@@ -216,14 +317,17 @@ final class ChatbotController extends Controller
             default => false,
         };
         $unanswered = ! $supportedByContext;
-        $answer = $usedChatExplanation
-            ? (string) $chatResult->text
-            : $this->deterministicAnswer(
-                $listings,
-                $intent,
-                $exactKnowledgeAnswer,
-                $webGroundingRequested && $webFailure !== null,
-            );
+        $answer = $searchOutcome !== null
+            && $searchOutcome->state !== SearchState::MATCHED
+            ? $this->responseComposer->forOutcome($searchOutcome, $intent)
+            : ($usedChatExplanation
+                ? (string) $chatResult->text
+                : $this->deterministicAnswer(
+                    $listings,
+                    $intent,
+                    $exactKnowledgeAnswer,
+                    $webGroundingRequested && $webFailure !== null,
+                ));
         $mode = match (true) {
             $usedWebGrounding => ChatbotQueryLog::MODE_WEB_GROUNDED,
             ! $usedChatExplanation => ChatbotQueryLog::MODE_DETERMINISTIC_FALLBACK,
@@ -248,6 +352,12 @@ final class ChatbotController extends Controller
             $contextAvailable => 'context_insufficient',
             default => 'knowledge_unavailable',
         };
+
+        $filters['_search'] = $this->searchMetadata(
+            $searchState,
+            $intent,
+            $searchOutcome,
+        );
 
         $this->record(
             $validated,
@@ -274,10 +384,12 @@ final class ChatbotController extends Controller
         };
 
         return response()->json([
+            'state' => $searchState,
             'answer' => $answer,
             'intent' => $intent->toArray(),
             'needs_clarification' => false,
             'listings' => $this->publicListings($listings),
+            'results' => $this->publicListings($listings),
             'matches' => array_map(
                 static fn (array $match): array => [
                     'id' => (int) $match['id'],
@@ -287,6 +399,26 @@ final class ChatbotController extends Controller
                 $knowledgeForResponse,
             ),
             'sources' => $sources,
+            'resolved_product' => $this->resolvedProduct($productCandidates),
+            'requested_filters' => $searchOutcome?->requestedFilters
+                ?? $this->intentFilters($intent),
+            'applied_filters' => $searchOutcome?->appliedFilters
+                ?? $this->intentFilters($intent),
+            'relaxed_filters' => $searchOutcome?->relaxedFilters ?? [],
+            'attempt_count' => $searchOutcome?->attemptCount ?? 0,
+            'platforms_searched' => $searchOutcome?->platformsSearched ?? [],
+            'platforms_failed' => $searchOutcome?->platformsFailed ?? [],
+            'requested_budget' => $intent->budgetMax,
+            'closest_price' => $searchOutcome?->closestPrice,
+            'difference' => $searchOutcome?->budgetDifference,
+            'supported_categories' => [],
+            'external_handoff' => in_array($searchState, [
+                SearchState::UNKNOWN_PRODUCT,
+                SearchState::NO_ACTIVE_LISTING,
+                SearchState::PLATFORM_UNAVAILABLE,
+            ], true)
+                ? $this->scopeValidation->externalHandoff($message)
+                : [],
             'search_entry_point_html' => $usedWebGrounding
                 ? $chatResult->searchEntryPointHtml
                 : null,
@@ -305,6 +437,147 @@ final class ChatbotController extends Controller
                 'usage' => $usage,
             ],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @param  array<string, mixed>  $filters
+     * @param  list<array{name: string, slug: string}>  $supportedCategories
+     * @param  list<array{name: string, platform: string, base_url: string, search_term: string}>  $externalHandoff
+     */
+    private function earlyStateResponse(
+        array $validated,
+        string $normalized,
+        array $filters,
+        string $state,
+        string $answer,
+        string $reason,
+        array $supportedCategories = [],
+        array $externalHandoff = [],
+    ): JsonResponse {
+        $filters['_search'] = [
+            'state' => $state,
+            'requested_filters' => [],
+            'applied_filters' => [],
+            'relaxed_filters' => [],
+            'attempt_count' => 0,
+            'platforms_searched' => [],
+            'platforms_failed' => [],
+        ];
+        $intent = [
+            'product' => $normalized,
+            'intent_type' => ParsedIntent::TYPE_PRODUCT_SEARCH,
+        ];
+
+        $this->record(
+            $validated,
+            $normalized,
+            $intent,
+            $filters,
+            ChatbotQueryLog::STATUS_NO_RESULTS,
+            ChatbotQueryLog::MODE_DETERMINISTIC_FALLBACK,
+            null,
+            0,
+            true,
+            $reason,
+            null,
+        );
+
+        return response()->json([
+            'state' => $state,
+            'answer' => $answer,
+            'intent' => $intent,
+            'needs_clarification' => false,
+            'listings' => [],
+            'results' => [],
+            'matches' => [],
+            'sources' => [],
+            'resolved_product' => null,
+            'requested_filters' => [],
+            'applied_filters' => [],
+            'relaxed_filters' => [],
+            'attempt_count' => 0,
+            'platforms_searched' => [],
+            'platforms_failed' => [],
+            'supported_categories' => $supportedCategories,
+            'external_handoff' => $externalHandoff,
+            'requested_budget' => null,
+            'closest_price' => null,
+            'difference' => null,
+            'search_entry_point_html' => null,
+            'meta' => [
+                ...$this->meta(false, false, false, false),
+                'mode' => ChatbotQueryLog::MODE_DETERMINISTIC_FALLBACK,
+                'top1_similarity' => null,
+                'usage' => [
+                    'prompt_tokens' => null,
+                    'output_tokens' => null,
+                    'total_tokens' => null,
+                ],
+            ],
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function intentFilters(ParsedIntent $intent): array
+    {
+        return [
+            'conditions' => $intent->conditions,
+            'platforms' => $intent->platforms,
+            'seller_types' => $intent->sellerTypes,
+            'locations' => $intent->locations,
+            'budget_min' => $intent->budgetMin,
+            'budget_max' => $intent->budgetMax,
+        ];
+    }
+
+    /**
+     * @param  list<array{product: Product, similarity: float|null, matched_via: string}>  $candidates
+     * @return array<string, mixed>|null
+     */
+    private function resolvedProduct(array $candidates): ?array
+    {
+        if ($candidates === []) {
+            return null;
+        }
+
+        /** @var Product $product */
+        $product = $candidates[0]['product'];
+
+        return [
+            'id' => (int) $product->getKey(),
+            'name' => (string) $product->name,
+            'brand' => $product->brand,
+            'model' => $product->model,
+            'variant' => $product->variant,
+            'sku_or_part_number' => $product->sku_or_part_number,
+            'category' => $product->category?->name,
+            'matched_via' => (string) $candidates[0]['matched_via'],
+            'similarity' => is_numeric($candidates[0]['similarity'])
+                ? round((float) $candidates[0]['similarity'], 6)
+                : null,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function searchMetadata(
+        string $state,
+        ParsedIntent $intent,
+        ?ListingSearchOutcome $outcome,
+    ): array {
+        return [
+            'state' => $state,
+            'requested_filters' => $outcome?->requestedFilters
+                ?? $this->intentFilters($intent),
+            'applied_filters' => $outcome?->appliedFilters
+                ?? $this->intentFilters($intent),
+            'relaxed_filters' => $outcome?->relaxedFilters ?? [],
+            'attempt_count' => $outcome?->attemptCount ?? 0,
+            'platforms_searched' => $outcome?->platformsSearched ?? [],
+            'platforms_failed' => $outcome?->platformsFailed ?? [],
+            'closest_price' => $outcome?->closestPrice,
+            'budget_difference' => $outcome?->budgetDifference,
+        ];
     }
 
     /**
@@ -387,13 +660,15 @@ final class ChatbotController extends Controller
     }
 
     /**
-     * @param  list<array{product: Product, similarity: float, matched_via: string}>  $products
+     * @param  list<array{product: Product, similarity: float|null, matched_via: string}>  $products
      * @param  list<array<string, mixed>>  $knowledge
      */
     private function topSimilarity(array $products, array $knowledge): ?float
     {
-        if ($products !== []) {
-            return (float) $products[0]['similarity'];
+        foreach ($products as $product) {
+            if (is_numeric($product['similarity'])) {
+                return (float) $product['similarity'];
+            }
         }
 
         return $knowledge !== [] ? (float) $knowledge[0]['similarity'] : null;

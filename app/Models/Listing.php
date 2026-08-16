@@ -73,9 +73,28 @@ final class Listing extends Model
         'warranty',
         'raw_payload',
         'source_published_at',
+        'first_seen_at',
+        'last_seen_at',
         'last_synced_at',
         'is_active',
     ];
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $listing): void {
+            $observedAt = $listing->getAttribute('last_seen_at')
+                ?? $listing->getAttribute('last_synced_at')
+                ?? now();
+
+            if ($listing->getAttribute('first_seen_at') === null) {
+                $listing->setAttribute('first_seen_at', $observedAt);
+            }
+
+            if ($listing->getAttribute('last_seen_at') === null) {
+                $listing->setAttribute('last_seen_at', $observedAt);
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -87,6 +106,8 @@ final class Listing extends Model
             'repair_estimate' => 'integer',
             'raw_payload' => 'array',
             'source_published_at' => 'datetime',
+            'first_seen_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             'last_synced_at' => 'datetime',
             'is_active' => 'boolean',
         ];

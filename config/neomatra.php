@@ -9,6 +9,45 @@ return [
         'product_candidate_k' => env('NEOMATRA_PRODUCT_CANDIDATE_K', 20),
         'result_top_k' => env('NEOMATRA_RESULT_TOP_K', 5),
         'knowledge_top_k' => env('NEOMATRA_KNOWLEDGE_TOP_K', 3),
+        'known_locations' => [
+            'Jakarta', 'Bandung', 'Surabaya', 'Semarang', 'Yogyakarta',
+            'Medan', 'Makassar', 'Depok', 'Bekasi', 'Tangerang', 'Malang',
+            'Denpasar', 'Palembang', 'Bogor', 'Solo',
+        ],
+        'platform_aliases' => [
+            'tokopedia' => ['tokopedia', 'tokped'],
+            'shopee' => ['shopee'],
+            'olx' => ['olx'],
+            'facebook-marketplace' => ['facebook marketplace', 'fb marketplace'],
+            'carousell' => ['carousell'],
+            'blibli' => ['blibli'],
+            'lazada' => ['lazada'],
+        ],
+    ],
+
+    'scope' => [
+        'supported_category_slugs' => [
+            'pc-dan-komponen',
+            'handphone',
+            'laptop',
+            'pc-accessories',
+            'networking',
+        ],
+        'unsupported_keywords' => [
+            'mobil', 'motor', 'kendaraan', 'vehicle', 'car', 'motorcycle',
+            'honda civic', 'honda jazz', 'toyota', 'suzuki', 'mitsubishi',
+            'properti', 'rumah', 'apartemen', 'tanah', 'property', 'house',
+            'fashion', 'baju', 'sepatu', 'shoes', 'food', 'makanan',
+            'furniture', 'furnitur', 'travel', 'tiket', 'ticket',
+            'lowongan kerja', 'job vacancy', 'tiket pesawat', 'hotel',
+        ],
+        'invalid_tokens' => [
+            'asdf', 'asdfgh', 'qwerty', 'qwertyuiop', 'testtest', '123456',
+        ],
+        'external_handoff_platform_slugs' => [
+            'olx',
+            'facebook-marketplace',
+        ],
     ],
 
     'pricing' => [

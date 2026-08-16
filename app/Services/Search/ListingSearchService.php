@@ -3,7 +3,10 @@
 namespace App\Services\Search;
 
 use App\Data\AI\ParsedIntent;
+use App\Data\Search\ListingSearchOutcome;
+use App\Data\Search\SearchState;
 use App\Models\Listing;
+use App\Models\Platform;
 use App\Models\Product;
 use App\Services\Neomatra\MarketPriceCalculator;
 use App\Services\Neomatra\ResellerMarginCalculator;
@@ -12,6 +15,7 @@ use App\Services\Neomatra\TotalCostCalculator;
 use App\Services\Neomatra\UndervaluedCalculator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 final class ListingSearchService
 {
@@ -25,7 +29,159 @@ final class ListingSearchService
     ) {}
 
     /**
-     * @param  list<array{product: Product, similarity: float, matched_via: string}>  $candidates
+     * Runs at most four database retrieval stages. Only optional filters are
+     * relaxed and every relaxation is returned to the caller.
+     *
+     * @param  list<array{product: Product, similarity: float|null, matched_via: string}>  $candidates
+     */
+    public function searchProgressively(
+        array $candidates,
+        ParsedIntent $intent,
+    ): ListingSearchOutcome {
+        $requested = $this->filters($intent);
+        $platformsFailed = Platform::query()
+            ->active()
+            ->where('status', Platform::STATUS_ERROR)
+            ->orderBy('name')
+            ->pluck('slug')
+            ->map(static fn (mixed $slug): string => (string) $slug)
+            ->all();
+        $platforms = Platform::query()
+            ->publiclyAvailable()
+            ->where('status', '!=', Platform::STATUS_ERROR)
+            ->orderBy('name')
+            ->pluck('slug')
+            ->map(static fn (mixed $slug): string => (string) $slug)
+            ->all();
+
+        if ($platforms === []) {
+            return new ListingSearchOutcome(
+                SearchState::PLATFORM_UNAVAILABLE,
+                [],
+                $requested,
+                $requested,
+                [],
+                0,
+                [],
+                $platformsFailed,
+            );
+        }
+
+        $attempts = [$intent];
+        $values = $intent->toArray();
+        $relaxed = [];
+        $relaxationsByAttempt = [];
+
+        $present = array_values(array_filter([
+            $values['platforms'] !== [] ? 'platforms' : null,
+            $values['seller_types'] !== [] ? 'seller_type' : null,
+            $values['locations'] !== [] ? 'location' : null,
+            $values['budget_min'] !== null || $values['budget_max'] !== null
+                ? 'budget'
+                : null,
+        ]));
+        $groups = count($present) <= 3
+            ? array_map(static fn (string $filter): array => [$filter], $present)
+            : [[$present[0]], [$present[1]], array_slice($present, 2)];
+
+        foreach ($groups as $group) {
+            foreach ($group as $filter) {
+                match ($filter) {
+                    'platforms' => $values['platforms'] = [],
+                    'seller_type' => $values['seller_types'] = [],
+                    'location' => $values['locations'] = [],
+                    'budget' => [
+                        $values['budget_min'] = null,
+                        $values['budget_max'] = null,
+                    ],
+                };
+                $relaxed[] = $filter;
+            }
+
+            $next = ParsedIntent::fromArray($values);
+
+            if ($next !== null && count($attempts) < 4) {
+                $attempts[] = $next;
+                $relaxationsByAttempt[] = array_values($relaxed);
+            }
+        }
+
+        $appliedRelaxations = [];
+        $attemptCount = 0;
+
+        foreach ($attempts as $index => $attempt) {
+            $attemptCount++;
+            $results = $this->search($candidates, $attempt);
+
+            if ($results === []) {
+                continue;
+            }
+
+            $appliedRelaxations = $index === 0
+                ? []
+                : ($relaxationsByAttempt[$index - 1] ?? []);
+            $closestPrice = null;
+            $budgetDifference = null;
+
+            if (in_array('budget', $appliedRelaxations, true)
+                && $intent->budgetMax !== null) {
+                usort($results, static function (array $left, array $right) use ($intent): int {
+                    $leftDifference = max(
+                        0,
+                        (int) $left['costs']['total'] - $intent->budgetMax,
+                    );
+                    $rightDifference = max(
+                        0,
+                        (int) $right['costs']['total'] - $intent->budgetMax,
+                    );
+                    $difference = $leftDifference <=> $rightDifference;
+
+                    return $difference !== 0
+                        ? $difference
+                        : (int) $left['costs']['total'] <=> (int) $right['costs']['total'];
+                });
+                $closestPrice = (int) $results[0]['costs']['total'];
+                $budgetDifference = max(0, $closestPrice - $intent->budgetMax);
+            }
+
+            $state = $index === 0
+                ? SearchState::MATCHED
+                : SearchState::FILTER_TOO_STRICT;
+
+            if ($platformsFailed !== []) {
+                $state = SearchState::PARTIAL_RESULT;
+            }
+
+            return new ListingSearchOutcome(
+                $state,
+                $results,
+                $requested,
+                $this->filters($attempt),
+                $appliedRelaxations,
+                $attemptCount,
+                $platforms,
+                $platformsFailed,
+                $closestPrice,
+                $budgetDifference,
+            );
+        }
+
+        $last = $attempts[array_key_last($attempts)];
+
+        return new ListingSearchOutcome(
+            SearchState::NO_ACTIVE_LISTING,
+            [],
+            $requested,
+            $this->filters($last),
+            $relaxed,
+            $attemptCount,
+            $platforms,
+            $platformsFailed,
+        );
+    }
+
+    /**
+     * @param  list<array{product: Product, similarity: float|null, matched_via: string}>  $candidates
      * @return list<array<string, mixed>>
      */
     public function search(array $candidates, ParsedIntent $intent): array
@@ -37,7 +193,9 @@ final class ListingSearchService
         $scores = collect($candidates)->mapWithKeys(
             static fn (array $candidate): array => [
                 (int) $candidate['product']->getKey() => [
-                    'similarity' => (float) $candidate['similarity'],
+                    'similarity' => is_numeric($candidate['similarity'])
+                        ? (float) $candidate['similarity']
+                        : null,
                     'matched_via' => (string) $candidate['matched_via'],
                 ],
             ],
@@ -48,8 +206,19 @@ final class ListingSearchService
             ->available()
             ->whereIn('product_id', $productIds)
             ->where('currency', $currency)
-            ->whereHas('platform', static fn (Builder $query): Builder => $query
-                ->publiclyAvailable())
+            ->whereHas('platform', static function (Builder $query) use ($intent): Builder {
+                $query->publiclyAvailable()
+                    ->where('status', '!=', Platform::STATUS_ERROR);
+
+                if ($intent->platforms !== []) {
+                    $query->whereIn('slug', array_map(
+                        static fn (string $platform): string => Str::slug($platform),
+                        $intent->platforms,
+                    ));
+                }
+
+                return $query;
+            })
             ->with(['platform', 'product.category']);
 
         if ($intent->conditions !== []) {
@@ -84,7 +253,8 @@ final class ListingSearchService
             ->whereIn('product_id', $productIds)
             ->where('currency', $currency)
             ->whereHas('platform', static fn (Builder $query): Builder => $query
-                ->publiclyAvailable())
+                ->publiclyAvailable()
+                ->where('status', '!=', Platform::STATUS_ERROR))
             ->get()
             ->groupBy(static fn (Listing $listing): string => implode('|', [
                 $listing->product_id,
@@ -142,7 +312,7 @@ final class ListingSearchService
                 );
             $ranking = $this->ranking->calculate(
                 $listing,
-                $candidate['similarity'],
+                (float) ($candidate['similarity'] ?? 0.0),
                 $undervalued['percentage'] ?? null,
             );
             $margin = $intent->mode === 'reseller' && $marketPrice !== null
@@ -197,7 +367,9 @@ final class ListingSearchService
                 ],
                 'risk' => $risk,
                 'ranking' => $ranking,
-                'similarity' => (float) $candidate['similarity'],
+                'similarity' => is_float($candidate['similarity'])
+                    ? $candidate['similarity']
+                    : null,
                 'matched_via' => (string) $candidate['matched_via'],
                 'last_synced_at' => $listing->last_synced_at?->toIso8601String(),
             ];
@@ -274,5 +446,18 @@ final class ListingSearchService
             ['\\\\', '\\%', '\\_'],
             $value,
         );
+    }
+
+    /** @return array<string, mixed> */
+    private function filters(ParsedIntent $intent): array
+    {
+        return [
+            'conditions' => $intent->conditions,
+            'platforms' => $intent->platforms,
+            'seller_types' => $intent->sellerTypes,
+            'locations' => $intent->locations,
+            'budget_min' => $intent->budgetMin,
+            'budget_max' => $intent->budgetMax,
+        ];
     }
 }

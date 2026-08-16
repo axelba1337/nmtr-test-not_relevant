@@ -11,5 +11,7 @@ interface MarketplaceConnector
 
     public function supports(string $platformSlug): bool;
 
+    public function providesFullSnapshot(): bool;
+
     public function fetch(MarketplaceSyncRequest $request): MarketplaceFetchPage;
 }

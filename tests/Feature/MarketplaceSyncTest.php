@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\Console\Command\Command;
 use Tests\TestCase;
 
@@ -35,6 +36,16 @@ final class MarketplaceSyncTest extends TestCase
         ]);
         Http::preventStrayRequests();
         Http::fake();
+    }
+
+    public function test_listing_schema_supports_acquisition_freshness(): void
+    {
+        $this->assertTrue(Schema::hasColumns('listings', [
+            'source_published_at',
+            'first_seen_at',
+            'last_seen_at',
+            'last_synced_at',
+        ]));
     }
 
     public function test_demo_sync_is_idempotent_and_preserves_product_mapping(): void
@@ -128,6 +139,164 @@ final class MarketplaceSyncTest extends TestCase
 
         $product->update(['is_active' => false]);
         $this->get(route('listings.open', $listing))->assertNotFound();
+        Http::assertNothingSent();
+    }
+
+    public function test_sync_preserves_first_seen_and_refreshes_last_seen(): void
+    {
+        $this->travelTo('2026-08-16 09:00:00');
+        $this->seed(NeomatraCatalogSeeder::class);
+        $platform = Platform::query()
+            ->where('slug', 'tokopedia')
+            ->firstOrFail();
+        $product = Product::query()
+            ->where('model', 'RTX 3060')
+            ->where('variant', '12 GB')
+            ->firstOrFail();
+        $record = $this->newDemoRecord(
+            (string) $product->normalized_key,
+            2700000,
+        );
+        $record['catalog_marker'] = 'source-payload-preserved';
+        config(['marketplace.demo.listings.tokopedia' => [$record]]);
+        $sync = app(MarketplaceSyncService::class);
+
+        $sync->sync($platform);
+        $listing = Listing::query()
+            ->where('external_listing_id', 'demo-sync-new-001')
+            ->firstOrFail();
+        $firstSeenAt = $listing->first_seen_at?->toDateTimeString();
+
+        $this->assertSame('2026-08-16 09:00:00', $firstSeenAt);
+        $this->assertSame(
+            'source-payload-preserved',
+            $listing->raw_payload['source_payload']['catalog_marker'],
+        );
+
+        $this->travel(5)->minutes();
+        $report = $sync->sync($platform->fresh());
+        $listing->refresh();
+
+        $this->assertSame(1, $report->unchanged);
+        $this->assertSame($firstSeenAt, $listing->first_seen_at?->toDateTimeString());
+        $this->assertSame(
+            '2026-08-16 09:05:00',
+            $listing->last_seen_at?->toDateTimeString(),
+        );
+        $this->assertSame(
+            '2026-08-16 09:05:00',
+            $listing->last_synced_at?->toDateTimeString(),
+        );
+        Http::assertNothingSent();
+    }
+
+    public function test_external_id_enrichment_reuses_the_url_listing(): void
+    {
+        $this->seed(NeomatraCatalogSeeder::class);
+        $platform = Platform::query()
+            ->where('slug', 'tokopedia')
+            ->firstOrFail();
+        $record = $this->newDemoRecord('unknown', 2700000);
+        unset($record['product_reference'], $record['external_listing_id']);
+        config(['marketplace.demo.listings.tokopedia' => [$record]]);
+        $sync = app(MarketplaceSyncService::class);
+
+        $first = $sync->sync($platform);
+        $countAfterFirst = Listing::query()->count();
+
+        $record['external_listing_id'] = 'enriched-external-id';
+        config(['marketplace.demo.listings.tokopedia' => [$record]]);
+        $second = $sync->sync($platform->fresh());
+
+        $this->assertSame(1, $first->created);
+        $this->assertSame(1, $second->updated);
+        $this->assertDatabaseCount('listings', $countAfterFirst);
+        $this->assertDatabaseHas('listings', [
+            'platform_id' => $platform->id,
+            'external_listing_id' => 'enriched-external-id',
+        ]);
+        Http::assertNothingSent();
+    }
+
+    public function test_full_sync_deactivates_missing_connector_listings(): void
+    {
+        $this->travelTo('2026-08-16 10:00:00');
+        $this->seed(NeomatraCatalogSeeder::class);
+        $platform = Platform::query()
+            ->where('slug', 'tokopedia')
+            ->firstOrFail();
+        $record = $this->newDemoRecord('unknown', 2700000);
+        config(['marketplace.demo.listings.tokopedia' => [$record]]);
+        $sync = app(MarketplaceSyncService::class);
+        $sync->sync($platform);
+        $listing = Listing::query()
+            ->where('external_listing_id', 'demo-sync-new-001')
+            ->firstOrFail();
+
+        $this->travel(5)->minutes();
+        config(['marketplace.demo.listings.tokopedia' => []]);
+        $report = $sync->sync($platform->fresh());
+
+        $this->assertSame(MarketplaceSyncReport::STATUS_COMPLETED, $report->status);
+        $this->assertFalse((bool) $listing->fresh()?->is_active);
+        $this->assertSame(
+            '2026-08-16 10:00:00',
+            $listing->fresh()?->last_seen_at?->toDateTimeString(),
+        );
+        Http::assertNothingSent();
+    }
+
+    public function test_invalid_snapshot_does_not_deactivate_history(): void
+    {
+        $this->seed(NeomatraCatalogSeeder::class);
+        $platform = Platform::query()
+            ->where('slug', 'tokopedia')
+            ->firstOrFail();
+        $record = $this->newDemoRecord('unknown', 2700000);
+        config(['marketplace.demo.listings.tokopedia' => [$record]]);
+        $sync = app(MarketplaceSyncService::class);
+        $sync->sync($platform);
+        $listing = Listing::query()
+            ->where('external_listing_id', 'demo-sync-new-001')
+            ->firstOrFail();
+        config([
+            'marketplace.demo.listings.tokopedia' => [[
+                'title' => 'Invalid snapshot row',
+                'price' => 1000000,
+                'product_url' => 'not-a-url',
+            ]],
+        ]);
+
+        $report = $sync->sync($platform->fresh());
+
+        $this->assertSame(1, $report->skipped);
+        $this->assertTrue((bool) $listing->fresh()?->is_active);
+        Http::assertNothingSent();
+    }
+
+    public function test_unique_product_alias_maps_a_listing_without_hints(): void
+    {
+        $this->seed(NeomatraCatalogSeeder::class);
+        $platform = Platform::query()
+            ->where('slug', 'tokopedia')
+            ->firstOrFail();
+        $product = Product::query()
+            ->where('model', 'RTX 3060')
+            ->where('variant', '12 GB')
+            ->firstOrFail();
+        $alias = $product->aliases()->firstOrFail();
+        $record = $this->newDemoRecord('unused', 2700000);
+        unset($record['product_reference']);
+        $record['title'] = $alias->alias;
+        config(['marketplace.demo.listings.tokopedia' => [$record]]);
+
+        app(MarketplaceSyncService::class)->sync($platform);
+
+        $this->assertDatabaseHas('listings', [
+            'platform_id' => $platform->id,
+            'external_listing_id' => 'demo-sync-new-001',
+            'product_id' => $product->id,
+        ]);
         Http::assertNothingSent();
     }
 

@@ -798,7 +798,7 @@ final class GeminiChatAdapter implements ChatClient
             .'produk inti belum cukup jelas. Nilai kondisi yang diizinkan: '
             .implode(', ', ParsedIntent::CONDITIONS).'. Nilai seller: '
             .implode(', ', ParsedIntent::SELLER_TYPES)
-            .'. Mode hanya buyer atau reseller. Hanya product_search dengan '
+            .'. Platform ditulis sebagai slug jika disebutkan pengguna. Mode hanya buyer atau reseller. Hanya product_search dengan '
             .'produk inti yang belum jelas boleh memakai needs_clarification=true.';
     }
 
@@ -841,6 +841,7 @@ final class GeminiChatAdapter implements ChatClient
                         'enum' => ParsedIntent::SELLER_TYPES,
                     ],
                 ],
+                'platforms' => $stringArray,
                 'mode' => [
                     'type' => 'string',
                     'enum' => ParsedIntent::MODES,
@@ -861,6 +862,7 @@ final class GeminiChatAdapter implements ChatClient
                 'conditions',
                 'locations',
                 'seller_types',
+                'platforms',
                 'mode',
                 'needs_clarification',
                 'clarification_question',
