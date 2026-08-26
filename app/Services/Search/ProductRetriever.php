@@ -39,7 +39,7 @@ final class ProductRetriever
             ->active()
             ->whereHas('category', fn ($query) => $query
                 ->where('is_active', true))
-            ->with(['category', 'aliases'])
+            ->with(['category.parent', 'aliases'])
             ->lazyById(100)
             ->each(function (Product $product) use (
                 &$candidates,
@@ -133,7 +133,7 @@ final class ProductRetriever
         Product::query()
             ->active()
             ->whereHas('category', fn ($builder) => $builder->where('is_active', true))
-            ->with(['category', 'aliases'])
+            ->with(['category.parent', 'aliases'])
             ->lazyById(100)
             ->each(function (Product $product) use (
                 &$matches,
@@ -191,7 +191,18 @@ final class ProductRetriever
                 }
 
                 if ($rank === 0) {
-                    return;
+                    $categorySlug = (string) ($intent['category_slug'] ?? '');
+                    $hasSpecificIdentity = $requestedModel !== ''
+                        || $requestedSku !== '';
+
+                    if ($categorySlug === '' || $hasSpecificIdentity) {
+                        return;
+                    }
+
+                    $rank = 100;
+                    $matchedVia = filled($intent['family'] ?? null)
+                        ? 'deterministic_family'
+                        : 'deterministic_category';
                 }
 
                 $matches[] = [

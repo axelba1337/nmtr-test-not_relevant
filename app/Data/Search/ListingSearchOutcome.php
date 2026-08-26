@@ -23,5 +23,10 @@ final readonly class ListingSearchOutcome
         public array $platformsFailed = [],
         public ?int $closestPrice = null,
         public ?int $budgetDifference = null,
+        public ?string $alternativeStrategy = null,
+        public ?int $requestedProductId = null,
+        public array $resultProductIds = [],
+        public ?string $fallbackStage = null,
+        public array $alternativeDetails = [],
     ) {}
 }

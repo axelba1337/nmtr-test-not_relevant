@@ -17,7 +17,7 @@ return [
         'platform_aliases' => [
             'tokopedia' => ['tokopedia', 'tokped'],
             'shopee' => ['shopee'],
-            'olx' => ['olx'],
+            'olx' => ['olx', 'tokobagus', 'toko bagus'],
             'facebook-marketplace' => ['facebook marketplace', 'fb marketplace'],
             'carousell' => ['carousell'],
             'blibli' => ['blibli'],

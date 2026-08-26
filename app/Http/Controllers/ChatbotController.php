@@ -19,6 +19,7 @@ use App\Services\KnowledgeRetriever;
 use App\Services\Search\IntentResolver;
 use App\Services\Search\ListingSearchService;
 use App\Services\Search\ProductRetriever;
+use App\Services\Search\RelatedProductRetriever;
 use App\Services\Search\ScopeValidationService;
 use App\Services\Search\SearchResponseComposer;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +36,7 @@ final class ChatbotController extends Controller
         private readonly ChatbotActivityLogger $activityLogger,
         private readonly ScopeValidationService $scopeValidation,
         private readonly SearchResponseComposer $responseComposer,
+        private readonly RelatedProductRetriever $relatedProducts,
     ) {}
 
     public function suggestions(): JsonResponse
@@ -143,6 +145,12 @@ final class ChatbotController extends Controller
                 'matches' => [],
                 'sources' => [],
                 'resolved_product' => null,
+                'resolved_category' => $this->resolvedCategory($intent),
+                'resolved_brand' => $intent->brand,
+                'resolved_family' => $intent->family,
+                'alternative_strategy' => null,
+                'fallback_stage' => 'clarification',
+                'result_product_ids' => [],
                 'requested_filters' => $this->intentFilters($intent),
                 'applied_filters' => $this->intentFilters($intent),
                 'relaxed_filters' => [],
@@ -220,6 +228,12 @@ final class ChatbotController extends Controller
                 'matches' => [],
                 'sources' => [],
                 'resolved_product' => null,
+                'resolved_category' => $this->resolvedCategory($intent),
+                'resolved_brand' => $intent->brand,
+                'resolved_family' => $intent->family,
+                'alternative_strategy' => null,
+                'fallback_stage' => 'provider',
+                'result_product_ids' => [],
                 'requested_filters' => $this->intentFilters($intent),
                 'applied_filters' => $this->intentFilters($intent),
                 'relaxed_filters' => [],
@@ -265,6 +279,21 @@ final class ChatbotController extends Controller
                 $intent,
             );
             $listings = $searchOutcome->results;
+
+            if ($searchOutcome->state === SearchState::NO_ACTIVE_LISTING
+                && count($productCandidates) === 1
+                && $intent->model !== null) {
+                $alternative = $this->relatedProducts->retrieve(
+                    $productCandidates[0]['product'],
+                    $intent,
+                    $searchOutcome,
+                );
+
+                if ($alternative !== null) {
+                    $searchOutcome = $alternative;
+                    $listings = $alternative->results;
+                }
+            }
         }
 
         $searchState = $intent->intentType === ParsedIntent::TYPE_PRODUCT_SEARCH
@@ -357,6 +386,8 @@ final class ChatbotController extends Controller
             $searchState,
             $intent,
             $searchOutcome,
+            $productCandidates,
+            $listings,
         );
 
         $this->record(
@@ -399,7 +430,24 @@ final class ChatbotController extends Controller
                 $knowledgeForResponse,
             ),
             'sources' => $sources,
-            'resolved_product' => $this->resolvedProduct($productCandidates),
+            'resolved_product' => $this->isGenericCategorySearch($intent)
+                ? null
+                : $this->resolvedProduct($productCandidates),
+            'requested_product' => $searchOutcome?->requestedProductId === null
+                ? null
+                : $this->resolvedProduct($productCandidates),
+            'resolved_category' => $this->resolvedCategory($intent),
+            'resolved_brand' => $intent->brand,
+            'resolved_family' => $intent->family,
+            'alternative_strategy' => $searchOutcome?->alternativeStrategy,
+            'alternative_details' => $searchOutcome?->alternativeDetails ?? [],
+            'fallback_stage' => $searchOutcome?->fallbackStage
+                ?? $this->fallbackStage($searchState, $searchOutcome),
+            'result_product_ids' => $searchOutcome?->resultProductIds
+                ?: array_values(array_unique(array_map(
+                    static fn (array $listing): int => (int) $listing['product_id'],
+                    $listings,
+                ))),
             'requested_filters' => $searchOutcome?->requestedFilters
                 ?? $this->intentFilters($intent),
             'applied_filters' => $searchOutcome?->appliedFilters
@@ -493,6 +541,14 @@ final class ChatbotController extends Controller
             'matches' => [],
             'sources' => [],
             'resolved_product' => null,
+            'resolved_category' => null,
+            'resolved_brand' => null,
+            'resolved_family' => null,
+            'alternative_strategy' => null,
+            'fallback_stage' => $state === SearchState::OUT_OF_SCOPE
+                ? 'scope_validation'
+                : 'input_validation',
+            'result_product_ids' => [],
             'requested_filters' => [],
             'applied_filters' => [],
             'relaxed_filters' => [],
@@ -564,9 +620,37 @@ final class ChatbotController extends Controller
         string $state,
         ParsedIntent $intent,
         ?ListingSearchOutcome $outcome,
+        array $candidates = [],
+        array $listings = [],
     ): array {
+        $resultProductIds = $outcome?->resultProductIds
+            ?: array_values(array_unique(array_map(
+                static fn (array $listing): int => (int) $listing['product_id'],
+                $listings,
+            )));
+
         return [
             'state' => $state,
+            'resolved_category' => $intent->categorySlug,
+            'resolved_product_id' => $outcome?->requestedProductId
+                ?? ($this->isGenericCategorySearch($intent)
+                    ? null
+                    : (isset($candidates[0])
+                        ? (int) $candidates[0]['product']->getKey()
+                        : null)),
+            'resolved_brand' => $intent->brand,
+            'resolved_family' => $intent->family,
+            'match_strategy' => isset($candidates[0])
+                ? (string) $candidates[0]['matched_via']
+                : null,
+            'fallback_stage' => $outcome?->fallbackStage
+                ?? $this->fallbackStage($state, $outcome),
+            'alternative_strategy' => $outcome?->alternativeStrategy,
+            'result_product_ids' => $resultProductIds,
+            'result_listing_ids' => array_map(
+                static fn (array $listing): int => (int) $listing['id'],
+                $listings,
+            ),
             'requested_filters' => $outcome?->requestedFilters
                 ?? $this->intentFilters($intent),
             'applied_filters' => $outcome?->appliedFilters
@@ -578,6 +662,41 @@ final class ChatbotController extends Controller
             'closest_price' => $outcome?->closestPrice,
             'budget_difference' => $outcome?->budgetDifference,
         ];
+    }
+
+    /** @return array{name: string, slug: string}|null */
+    private function resolvedCategory(ParsedIntent $intent): ?array
+    {
+        if ($intent->category === null || $intent->categorySlug === null) {
+            return null;
+        }
+
+        return [
+            'name' => $intent->category,
+            'slug' => $intent->categorySlug,
+        ];
+    }
+
+    private function isGenericCategorySearch(ParsedIntent $intent): bool
+    {
+        return $intent->categorySlug !== null
+            && $intent->model === null
+            && $intent->skuOrPartNumber === null;
+    }
+
+    private function fallbackStage(
+        string $state,
+        ?ListingSearchOutcome $outcome,
+    ): string {
+        return match ($state) {
+            SearchState::MATCHED => 'exact_listing',
+            SearchState::FILTER_TOO_STRICT => 'optional_filter_relaxation',
+            SearchState::ALTERNATIVE_PRODUCT => 'related_product',
+            SearchState::UNKNOWN_PRODUCT,
+            SearchState::NO_ACTIVE_LISTING,
+            SearchState::PLATFORM_UNAVAILABLE => 'external_handoff',
+            default => $outcome === null ? 'resolution' : 'listing_search',
+        };
     }
 
     /**

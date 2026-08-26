@@ -7,6 +7,10 @@ use App\Models\Product;
 
 final class ProductAttributeMatcher
 {
+    public function __construct(
+        private readonly ProductFamilyResolver $families,
+    ) {}
+
     /** @param array<string, mixed> $intent */
     public function matches(Product $product, array $intent): bool
     {
@@ -21,7 +25,26 @@ final class ProductAttributeMatcher
             $product->sku_or_part_number,
         ], static fn (mixed $value): bool => is_string($value) && $value !== '')));
 
-        if (! $this->containsField($category, $intent['category'] ?? null)) {
+        $requestedCategorySlug = is_string($intent['category_slug'] ?? null)
+            ? Normalizer::text($intent['category_slug'])
+            : '';
+
+        if ($requestedCategorySlug !== '') {
+            $productCategorySlug = Normalizer::text(
+                (string) $product->category?->slug,
+            );
+            $parentCategorySlug = Normalizer::text(
+                (string) $product->category?->parent?->slug,
+            );
+
+            if ($requestedCategorySlug !== $productCategorySlug
+                && $requestedCategorySlug !== $parentCategorySlug) {
+                return false;
+            }
+        } elseif (! $this->containsField(
+            $category,
+            $intent['category'] ?? null,
+        )) {
             return false;
         }
 
@@ -42,6 +65,24 @@ final class ProductAttributeMatcher
             $intent['sku_or_part_number'] ?? null,
         )) {
             return false;
+        }
+
+        $requestedFamily = $intent['family'] ?? null;
+
+        if (is_string($requestedFamily) && trim($requestedFamily) !== '') {
+            $attributes = is_array($product->attributes)
+                ? $product->attributes
+                : [];
+            $productFamily = $attributes['product_family'] ?? null;
+
+            if (! is_string($productFamily) || $productFamily === '') {
+                $resolved = $this->families->resolve($identity);
+                $productFamily = $resolved['family'] ?? null;
+            }
+
+            if ($productFamily !== $requestedFamily) {
+                return false;
+            }
         }
 
         return $this->hasNoVariantConflict(

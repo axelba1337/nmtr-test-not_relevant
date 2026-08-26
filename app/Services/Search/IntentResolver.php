@@ -42,13 +42,28 @@ final class IntentResolver
                 (string) $local['product'],
             ),
             'category' => $this->stringValue(
+                $explicit['category'] ?? $local['category'] ?? null,
                 $remote['category'] ?? null,
-                null,
+            ),
+            'category_slug' => $this->stringValue(
+                $explicit['category_slug'] ?? $local['category_slug'] ?? null,
+                $remote['category_slug'] ?? null,
             ),
             'brand' => $this->stringValue(
+                $local['brand'] ?? null,
                 $remote['brand'] ?? null,
-                $local['brand'],
             ),
+            'family' => $this->stringValue(
+                $local['family'] ?? null,
+                $remote['family'] ?? null,
+            ),
+            'generation' => $this->stringValue(
+                $local['generation'] ?? null,
+                $remote['generation'] ?? null,
+            ),
+            'model_number' => is_int($local['model_number'] ?? null)
+                ? $local['model_number']
+                : ($remote['model_number'] ?? null),
             'model' => $this->stringValue(
                 $remote['model'] ?? null,
                 $local['model'],
@@ -95,9 +110,8 @@ final class IntentResolver
                 ),
             ),
             'needs_clarification' => (bool) (
-                $remote['needs_clarification']
-                    ?? $local['needs_clarification']
-                    ?? false
+                ($local['needs_clarification'] ?? false)
+                    || ($remote['needs_clarification'] ?? false)
             ),
             'clarification_question' => $this->stringValue(
                 $remote['clarification_question'] ?? null,

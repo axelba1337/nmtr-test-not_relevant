@@ -10,6 +10,8 @@ final class SearchState
 
     public const FILTER_TOO_STRICT = 'FILTER_TOO_STRICT';
 
+    public const ALTERNATIVE_PRODUCT = 'ALTERNATIVE_PRODUCT';
+
     public const NO_ACTIVE_LISTING = 'NO_ACTIVE_LISTING';
 
     public const UNKNOWN_PRODUCT = 'UNKNOWN_PRODUCT';
@@ -33,6 +35,7 @@ final class SearchState
             self::MATCHED,
             self::NEEDS_CLARIFICATION,
             self::FILTER_TOO_STRICT,
+            self::ALTERNATIVE_PRODUCT,
             self::NO_ACTIVE_LISTING,
             self::UNKNOWN_PRODUCT,
             self::OUT_OF_SCOPE,

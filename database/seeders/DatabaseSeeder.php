@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             NeomatraDatasetV2Seeder::class,
             KnowledgeItemSeeder::class,
             NeomatraDatasetV3Seeder::class,
+            NeomatraSearchVocabularySeeder::class,
         ]);
     }
 }

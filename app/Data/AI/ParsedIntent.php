@@ -62,6 +62,10 @@ final readonly class ParsedIntent
         public ?string $clarificationQuestion,
         public string $intentType = self::TYPE_PRODUCT_SEARCH,
         public array $platforms = [],
+        public ?string $categorySlug = null,
+        public ?string $family = null,
+        public ?string $generation = null,
+        public ?int $modelNumber = null,
     ) {}
 
     public static function fromArray(array $value): ?self
@@ -92,6 +96,9 @@ final readonly class ParsedIntent
             'variant' => 200,
             'sku_or_part_number' => 160,
             'clarification_question' => 500,
+            'category_slug' => 120,
+            'family' => 120,
+            'generation' => 120,
         ])
             || $product === null
             || ($intentType === self::TYPE_PRODUCT_SEARCH
@@ -126,13 +133,18 @@ final readonly class ParsedIntent
         $locations = self::stringList($value['locations'] ?? [], 120);
         $platforms = self::stringList($value['platforms'] ?? [], 120);
         $mode = $value['mode'] ?? null;
+        $modelNumber = self::nullableNonNegativeInteger(
+            $value['model_number'] ?? null,
+        );
 
         if ($conditions === null
             || $sellerTypes === null
             || $locations === null
             || $platforms === null
             || ! is_string($mode)
-            || ! in_array($mode, self::MODES, true)) {
+            || ! in_array($mode, self::MODES, true)
+            || (($value['model_number'] ?? null) !== null
+                && $modelNumber === null)) {
             return null;
         }
 
@@ -153,6 +165,10 @@ final readonly class ParsedIntent
             $clarification,
             $intentType,
             $platforms,
+            self::nullableString($value['category_slug'] ?? null, 120),
+            self::nullableString($value['family'] ?? null, 120),
+            self::nullableString($value['generation'] ?? null, 120),
+            $modelNumber,
         );
     }
 
@@ -174,6 +190,10 @@ final readonly class ParsedIntent
             'locations' => $this->locations,
             'seller_types' => $this->sellerTypes,
             'platforms' => $this->platforms,
+            'category_slug' => $this->categorySlug,
+            'family' => $this->family,
+            'generation' => $this->generation,
+            'model_number' => $this->modelNumber,
             'mode' => $this->mode,
             'needs_clarification' => $this->needsClarification,
             'clarification_question' => $this->clarificationQuestion,

@@ -13,6 +13,11 @@ use App\Models\Listing;
  */
 final class LocalIntentParser
 {
+    public function __construct(
+        private readonly CategoryAliasResolver $categories,
+        private readonly ProductFamilyResolver $families,
+    ) {}
+
     /**
      * @return array{
      *     query: string,
@@ -33,28 +38,59 @@ final class LocalIntentParser
     public function parse(string $message, array $explicit = []): array
     {
         $normalized = Normalizer::text($message);
-        $ambiguous = preg_match(
+        $category = $this->categories->resolve($normalized);
+        $family = $this->families->resolve($normalized);
+        $model = $this->extractModel($normalized);
+        $brand = $this->extractBrand($normalized)
+            ?? ($family['brand'] ?? null);
+        $budget = $this->explicitInteger($explicit, 'budget_max')
+            ?? $this->extractBudget($normalized);
+        $condition = $this->explicitString($explicit, 'condition')
+            ?? $this->extractCondition($normalized);
+        $sellerType = $this->explicitString($explicit, 'seller_type')
+            ?? $this->extractSellerType($normalized);
+        $location = $this->explicitString($explicit, 'location')
+            ?? $this->extractLocation($normalized);
+        $platform = $this->explicitString($explicit, 'platform')
+            ?? $this->extractPlatform($normalized);
+        $categoryName = $category?->category->name
+            ?? ($family['category'] ?? null);
+        $categorySlug = $category?->category->slug
+            ?? ($family['category_slug'] ?? null);
+        $hasActionableConstraint = $model !== null
+            || $brand !== null
+            || $budget !== null
+            || $condition !== null
+            || $sellerType !== null
+            || $location !== null
+            || $platform !== null;
+        $genericCategoryOnly = preg_match(
             '/^(?:saya\s+)?(?:ingin\s+)?(?:cari|carikan|mencari)\s+(?:laptop|handphone|hp|smartphone|router)$/u',
             $normalized,
         ) === 1;
+        $ambiguous = $genericCategoryOnly
+            || ($categoryName !== null && ! $hasActionableConstraint);
 
         return [
             'query' => $normalized,
             'product' => $normalized,
-            'brand' => $this->extractBrand($normalized),
-            'model' => $this->extractModel($normalized),
+            'category' => $categoryName,
+            'category_slug' => $categorySlug,
+            'category_match_strategy' => $category?->strategy
+                ?? ($family === null ? null : 'product_family'),
+            'category_matched_alias' => $category?->matchedAlias,
+            'brand' => $brand,
+            'family' => $family['family'] ?? null,
+            'generation' => $family['generation'] ?? null,
+            'model_number' => $family['model_number'] ?? null,
+            'model' => $model,
             'variant' => $this->extractVariant($normalized),
             'sku_or_part_number' => null,
-            'budget_max' => $this->explicitInteger($explicit, 'budget_max')
-                ?? $this->extractBudget($normalized),
-            'condition' => $this->explicitString($explicit, 'condition')
-                ?? $this->extractCondition($normalized),
-            'seller_type' => $this->explicitString($explicit, 'seller_type')
-                ?? $this->extractSellerType($normalized),
-            'location' => $this->explicitString($explicit, 'location')
-                ?? $this->extractLocation($normalized),
-            'platform' => $this->explicitString($explicit, 'platform')
-                ?? $this->extractPlatform($normalized),
+            'budget_max' => $budget,
+            'condition' => $condition,
+            'seller_type' => $sellerType,
+            'location' => $location,
+            'platform' => $platform,
             'mode' => $this->explicitString($explicit, 'mode')
                 ?? ($this->containsAny(
                     $normalized,
@@ -66,7 +102,10 @@ final class LocalIntentParser
             ) ?? $this->localIntentType($normalized),
             'needs_clarification' => $ambiguous,
             'clarification_question' => $ambiguous
-                ? 'Sebutkan merek atau model, kondisi, dan kisaran budget yang dicari.'
+                ? sprintf(
+                    'Anda mencari %s. Sebutkan budget, merek, kondisi baru/bekas, atau model tertentu.',
+                    $categoryName ?? 'produk kategori tersebut',
+                )
                 : null,
         ];
     }

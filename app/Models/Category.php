@@ -41,6 +41,11 @@ final class Category extends Model
         return $this->hasMany(Product::class);
     }
 
+    public function aliases(): HasMany
+    {
+        return $this->hasMany(CategoryAlias::class);
+    }
+
     public function knowledgeItems(): HasMany
     {
         return $this->hasMany(KnowledgeItem::class);

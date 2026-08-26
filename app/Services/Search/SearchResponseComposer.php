@@ -12,6 +12,29 @@ final class SearchResponseComposer
         ListingSearchOutcome $outcome,
         ParsedIntent $intent,
     ): string {
+        if ($outcome->state === SearchState::ALTERNATIVE_PRODUCT
+            && $outcome->results !== []) {
+            $first = $outcome->results[0];
+            $detail = $outcome->alternativeDetails[0] ?? [];
+            $difference = match (true) {
+                ($detail['different_brand'] ?? false) === true
+                    => ' Alternatif teratas berasal dari brand berbeda.',
+                ($detail['different_family'] ?? false) === true
+                    => ' Alternatif teratas berasal dari family berbeda.',
+                ($detail['different_generation'] ?? false) === true
+                    => ' Alternatif teratas berasal dari generasi berbeda.',
+                default => ' Alternatif teratas berada pada brand, family, dan generasi yang paling dekat.',
+            };
+
+            return sprintf(
+                'Produk exact belum memiliki listing usable. Ditemukan %d listing produk terkait; prioritas teratas adalah %s dengan total biaya estimasi Rp%s.%s',
+                count($outcome->results),
+                (string) $first['product']['name'],
+                number_format((int) $first['costs']['total'], 0, ',', '.'),
+                $difference,
+            );
+        }
+
         if ($outcome->state === SearchState::FILTER_TOO_STRICT
             && $outcome->results !== []) {
             $first = $outcome->results[0];

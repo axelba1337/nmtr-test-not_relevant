@@ -51,6 +51,7 @@ final class LocalIntentParserTest extends TestCase
             'MATCHED',
             'NEEDS_CLARIFICATION',
             'FILTER_TOO_STRICT',
+            'ALTERNATIVE_PRODUCT',
             'NO_ACTIVE_LISTING',
             'UNKNOWN_PRODUCT',
             'OUT_OF_SCOPE',
