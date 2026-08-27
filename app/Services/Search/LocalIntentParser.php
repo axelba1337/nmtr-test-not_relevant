@@ -65,7 +65,7 @@ final class LocalIntentParser
             || $location !== null
             || $platform !== null;
         $genericCategoryOnly = preg_match(
-            '/^(?:saya\s+)?(?:ingin\s+)?(?:cari|carikan|mencari)\s+(?:laptop|handphone|hp|smartphone|router)$/u',
+            '/^(?:saya\s+)?(?:ingin\s+)?(?:cari|carikan|mencari)\s+(?:laptop|handphone|smartphone|router)$/u',
             $normalized,
         ) === 1;
         $ambiguous = $genericCategoryOnly

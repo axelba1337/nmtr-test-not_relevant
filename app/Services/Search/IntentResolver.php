@@ -64,6 +64,14 @@ final class IntentResolver
             'model_number' => is_int($local['model_number'] ?? null)
                 ? $local['model_number']
                 : ($remote['model_number'] ?? null),
+            'category_match_strategy' => $this->stringValue(
+                $local['category_match_strategy'] ?? null,
+                null,
+            ),
+            'category_matched_alias' => $this->stringValue(
+                $local['category_matched_alias'] ?? null,
+                null,
+            ),
             'model' => $this->stringValue(
                 $remote['model'] ?? null,
                 $local['model'],

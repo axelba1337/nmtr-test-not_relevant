@@ -85,4 +85,31 @@ return [
             ]],
         ],
     ],
+
+    'olx' => [
+        'base_url' => env('OLX_BASE_URL', 'https://www.olx.co.id'),
+        'search_terms' => array_values(array_filter(array_map(
+            static fn (string $term): string => trim($term),
+            explode(',', (string) env(
+                'OLX_SEARCH_TERMS',
+                'rtx 3060 12gb',
+            )),
+        ))),
+        'max_listings' => max(1, min(
+            50,
+            (int) env('OLX_MAX_LISTINGS', 20),
+        )),
+        'timeout' => max(1, min(30, (int) env('OLX_HTTP_TIMEOUT', 12))),
+        'retries' => max(0, min(2, (int) env('OLX_HTTP_RETRIES', 1))),
+        'retry_delay_ms' => max(0, min(
+            2000,
+            (int) env('OLX_HTTP_RETRY_DELAY_MS', 250),
+        )),
+        'user_agent' => env(
+            'OLX_USER_AGENT',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                .'AppleWebKit/537.36 (KHTML, like Gecko) '
+                .'Chrome/151.0.0.0 Safari/537.36',
+        ),
+    ],
 ];

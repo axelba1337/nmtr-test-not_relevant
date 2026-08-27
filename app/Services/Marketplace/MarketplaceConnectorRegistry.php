@@ -9,11 +9,14 @@ final class MarketplaceConnectorRegistry
     /** @var array<string, MarketplaceConnector> */
     private array $connectors;
 
-    public function __construct(DemoMarketplaceAdapter $demo)
-    {
+    public function __construct(
+        DemoMarketplaceAdapter $demo,
+        OlxMarketplaceConnector $olx,
+    ) {
         $this->connectors = [
             $demo->key() => $demo,
             'demo-dataset' => $demo,
+            $olx->key() => $olx,
         ];
     }
 

@@ -121,6 +121,11 @@ final class ChatbotController extends Controller
             && $intent->intentType === ParsedIntent::TYPE_PRODUCT_SEARCH) {
             $answer = $intent->clarificationQuestion
                 ?? 'Mohon jelaskan produk atau varian yang ingin dicari.';
+            $filters['_search'] = $this->searchMetadata(
+                SearchState::NEEDS_CLARIFICATION,
+                $intent,
+                null,
+            );
             $this->record(
                 $validated,
                 $normalized,
@@ -189,6 +194,11 @@ final class ChatbotController extends Controller
                 $intentForMatching,
             )
             : [];
+        $intentAlternative = $intent->intentType
+            === ParsedIntent::TYPE_PRODUCT_SEARCH
+            && $deterministicCandidates === []
+            ? $this->relatedProducts->retrieveForIntent($intent)
+            : null;
         $embedding = $this->embedding->embed(
             $queryText,
             EmbeddingPurpose::Query,
@@ -196,10 +206,16 @@ final class ChatbotController extends Controller
 
         if (! $embedding->succeeded()
             && ! $webGroundingRequested
-            && $deterministicCandidates === []) {
+            && $deterministicCandidates === []
+            && $intentAlternative === null) {
             $providerState = $embedding->failure?->category === 'timeout'
                 ? SearchState::SEARCH_TIMEOUT
                 : SearchState::PROVIDER_ERROR;
+            $filters['_search'] = $this->searchMetadata(
+                $providerState,
+                $intent,
+                null,
+            );
             $this->record(
                 $validated,
                 $normalized,
@@ -294,12 +310,16 @@ final class ChatbotController extends Controller
                     $listings = $alternative->results;
                 }
             }
+        } elseif ($intentAlternative !== null) {
+            $searchOutcome = $intentAlternative;
+            $listings = $intentAlternative->results;
         }
 
         $searchState = $intent->intentType === ParsedIntent::TYPE_PRODUCT_SEARCH
-            ? ($productCandidates === []
-                ? SearchState::UNKNOWN_PRODUCT
-                : $searchOutcome?->state ?? SearchState::NO_ACTIVE_LISTING)
+            ? ($searchOutcome?->state
+                ?? ($productCandidates === []
+                    ? SearchState::UNKNOWN_PRODUCT
+                    : SearchState::NO_ACTIVE_LISTING))
             : SearchState::MATCHED;
 
         $top1 = $this->topSimilarity($productCandidates, $knowledge);
@@ -434,7 +454,9 @@ final class ChatbotController extends Controller
                 ? null
                 : $this->resolvedProduct($productCandidates),
             'requested_product' => $searchOutcome?->requestedProductId === null
-                ? null
+                ? ($searchState === SearchState::ALTERNATIVE_PRODUCT
+                    ? $this->requestedProductDescriptor($intent)
+                    : null)
                 : $this->resolvedProduct($productCandidates),
             'resolved_category' => $this->resolvedCategory($intent),
             'resolved_brand' => $intent->brand,
@@ -640,9 +662,11 @@ final class ChatbotController extends Controller
                         : null)),
             'resolved_brand' => $intent->brand,
             'resolved_family' => $intent->family,
+            'category_match_strategy' => $intent->categoryMatchStrategy,
+            'category_matched_alias' => $intent->categoryMatchedAlias,
             'match_strategy' => isset($candidates[0])
                 ? (string) $candidates[0]['matched_via']
-                : null,
+                : $intent->categoryMatchStrategy,
             'fallback_stage' => $outcome?->fallbackStage
                 ?? $this->fallbackStage($state, $outcome),
             'alternative_strategy' => $outcome?->alternativeStrategy,
@@ -682,6 +706,22 @@ final class ChatbotController extends Controller
         return $intent->categorySlug !== null
             && $intent->model === null
             && $intent->skuOrPartNumber === null;
+    }
+
+    /** @return array<string, mixed> */
+    private function requestedProductDescriptor(ParsedIntent $intent): array
+    {
+        return [
+            'id' => null,
+            'name' => $intent->model ?? $intent->product,
+            'brand' => $intent->brand,
+            'model' => $intent->model,
+            'family' => $intent->family,
+            'generation' => $intent->generation,
+            'category' => $intent->category,
+            'matched_via' => 'product_family',
+            'similarity' => null,
+        ];
     }
 
     private function fallbackStage(

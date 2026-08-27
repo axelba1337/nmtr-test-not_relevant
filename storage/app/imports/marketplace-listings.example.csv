@@ -1,0 +1,4 @@
+platform,external_listing_id,title,description,price,currency,condition,seller_name,seller_type,location,product_url,image_url,stock_status,price_type,warranty,source_published_at
+olx,SAMPLE-REPLACE-001,"SAMPLE ONLY - replace with a real OLX listing","Template row, not a live marketplace offer.",REPLACE_WITH_INTEGER,IDR,unknown,,unknown,,https://www.olx.co.id/item/replace-with-real-listing-url,,unknown,full_price,,
+tokopedia,SAMPLE-REPLACE-002,"SAMPLE ONLY - replace with a real Tokopedia listing","Template row, not a live marketplace offer.",REPLACE_WITH_INTEGER,IDR,unknown,,unknown,,https://www.tokopedia.com/replace/with-real-listing-url,,unknown,full_price,,
+shopee,SAMPLE-REPLACE-003,"SAMPLE ONLY - replace with a real Shopee listing","Template row, not a live marketplace offer.",REPLACE_WITH_INTEGER,IDR,unknown,,unknown,,https://shopee.co.id/replace-with-real-listing-url,,unknown,full_price,,

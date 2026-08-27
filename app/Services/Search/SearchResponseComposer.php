@@ -17,12 +17,9 @@ final class SearchResponseComposer
             $first = $outcome->results[0];
             $detail = $outcome->alternativeDetails[0] ?? [];
             $difference = match (true) {
-                ($detail['different_brand'] ?? false) === true
-                    => ' Alternatif teratas berasal dari brand berbeda.',
-                ($detail['different_family'] ?? false) === true
-                    => ' Alternatif teratas berasal dari family berbeda.',
-                ($detail['different_generation'] ?? false) === true
-                    => ' Alternatif teratas berasal dari generasi berbeda.',
+                ($detail['different_brand'] ?? false) === true => ' Alternatif teratas berasal dari brand berbeda.',
+                ($detail['different_family'] ?? false) === true => ' Alternatif teratas berasal dari family berbeda.',
+                ($detail['different_generation'] ?? false) === true => ' Alternatif teratas berasal dari generasi berbeda.',
                 default => ' Alternatif teratas berada pada brand, family, dan generasi yang paling dekat.',
             };
 

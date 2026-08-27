@@ -2,6 +2,8 @@
 
 use App\Console\Commands\CreateAdmin;
 use App\Console\Commands\EmbedKnowledge;
+use App\Console\Commands\ImportMarketplaceListings;
+use App\Console\Commands\ProbeMarketplace;
 use App\Console\Commands\RebuildNeomatraEmbeddings;
 use App\Console\Commands\SyncMarketplace;
 use Illuminate\Foundation\Application;
@@ -30,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         CreateAdmin::class,
         EmbedKnowledge::class,
+        ImportMarketplaceListings::class,
+        ProbeMarketplace::class,
         RebuildNeomatraEmbeddings::class,
         SyncMarketplace::class,
     ])

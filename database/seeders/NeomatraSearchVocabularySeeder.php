@@ -192,13 +192,16 @@ final class NeomatraSearchVocabularySeeder extends Seeder
 
     private function seedKnowledge(): void
     {
-        $categoryId = Category::query()
-            ->where('slug', 'panduan-neomatra')
-            ->value('id');
-
-        if (! is_int($categoryId)) {
-            throw new RuntimeException('Kategori panduan-neomatra tidak ditemukan.');
-        }
+        $categoryId = Category::query()->updateOrCreate(
+            ['slug' => 'panduan-neomatra'],
+            [
+                'parent_id' => null,
+                'name' => 'Panduan Neomatra',
+                'description' => 'Knowledge umum penggunaan dan batasan Neomatra.',
+                'is_active' => true,
+                'sort_order' => 5,
+            ],
+        )->id;
 
         $items = [
             [

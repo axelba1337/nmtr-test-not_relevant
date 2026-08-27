@@ -5,6 +5,7 @@ namespace App\Services\Search;
 use App\Data\AI\ParsedIntent;
 use App\Data\Search\ListingSearchOutcome;
 use App\Data\Search\SearchState;
+use App\Models\Category;
 use App\Models\Platform;
 use App\Models\Product;
 
@@ -21,13 +22,88 @@ final class RelatedProductRetriever
         ListingSearchOutcome $exactOutcome,
     ): ?ListingSearchOutcome {
         $requested->loadMissing('category.parent');
-        $requestedMetadata = $this->metadata($requested);
+
+        return $this->retrieveUsing(
+            $this->metadata($requested),
+            (int) $requested->category_id,
+            (int) $requested->getKey(),
+            $intent,
+            $exactOutcome,
+        );
+    }
+
+    public function retrieveForIntent(ParsedIntent $intent): ?ListingSearchOutcome
+    {
+        if ($intent->categorySlug === null
+            || $intent->family === null
+            || $intent->model === null) {
+            return null;
+        }
+
+        $categoryId = Category::query()
+            ->active()
+            ->where('slug', $intent->categorySlug)
+            ->value('id');
+
+        if (! is_int($categoryId)) {
+            return null;
+        }
+
+        $filters = $this->intentFilters($intent);
+        $exactOutcome = new ListingSearchOutcome(
+            SearchState::NO_ACTIVE_LISTING,
+            [],
+            $filters,
+            $filters,
+            [],
+            0,
+            [],
+            [],
+            null,
+            null,
+            null,
+            null,
+            [],
+            'product_resolution',
+        );
+
+        return $this->retrieveUsing(
+            [
+                'brand' => $intent->brand === null
+                    ? null
+                    : mb_strtolower($intent->brand, 'UTF-8'),
+                'family' => $intent->family,
+                'generation' => $intent->generation,
+                'model_number' => $intent->modelNumber,
+                'model_tier' => $this->modelTier(
+                    $intent->model,
+                    $intent->modelNumber,
+                ),
+            ],
+            $categoryId,
+            null,
+            $intent,
+            $exactOutcome,
+        );
+    }
+
+    /** @param array<string, mixed> $requestedMetadata */
+    private function retrieveUsing(
+        array $requestedMetadata,
+        int $categoryId,
+        ?int $requestedProductId,
+        ParsedIntent $intent,
+        ListingSearchOutcome $exactOutcome,
+    ): ?ListingSearchOutcome {
         $ranked = [];
 
         Product::query()
             ->active()
-            ->whereKeyNot($requested->getKey())
-            ->where('category_id', $requested->category_id)
+            ->when(
+                $requestedProductId !== null,
+                static fn ($query) => $query->whereKeyNot($requestedProductId),
+            )
+            ->where('category_id', $categoryId)
             ->whereHas('listings', static fn ($query) => $query
                 ->available()
                 ->whereHas('platform', static fn ($platform) => $platform
@@ -167,7 +243,7 @@ final class RelatedProductRetriever
             $closestPrice,
             $difference,
             $strategy,
-            (int) $requested->getKey(),
+            $requestedProductId,
             $resultProductIds,
             'related_product',
             $details,
@@ -270,5 +346,18 @@ final class RelatedProductRetriever
         ];
 
         return ParsedIntent::fromArray($values) ?? $intent;
+    }
+
+    /** @return array<string, mixed> */
+    private function intentFilters(ParsedIntent $intent): array
+    {
+        return [
+            'conditions' => $intent->conditions,
+            'platforms' => $intent->platforms,
+            'seller_types' => $intent->sellerTypes,
+            'locations' => $intent->locations,
+            'budget_min' => $intent->budgetMin,
+            'budget_max' => $intent->budgetMax,
+        ];
     }
 }

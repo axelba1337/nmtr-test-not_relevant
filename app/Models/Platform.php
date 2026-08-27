@@ -16,6 +16,8 @@ final class Platform extends Model
 
     public const SOURCE_MANUAL = 'manual';
 
+    public const SOURCE_SCRAPE = 'scrape';
+
     public const ACCESS_OFFICIAL_API = 'official_api';
 
     public const ACCESS_PARTNER_FEED = 'partner_feed';
@@ -25,6 +27,8 @@ final class Platform extends Model
     public const ACCESS_MANUAL_URL = 'manual_url';
 
     public const ACCESS_FILE_IMPORT = 'file_import';
+
+    public const ACCESS_PUBLIC_HTML = 'public_html';
 
     public const STATUS_READY = 'ready';
 
@@ -94,6 +98,7 @@ final class Platform extends Model
             self::SOURCE_FEED,
             self::SOURCE_DEMO,
             self::SOURCE_MANUAL,
+            self::SOURCE_SCRAPE,
         ];
     }
 
@@ -106,6 +111,7 @@ final class Platform extends Model
             self::ACCESS_DEMO_DATASET,
             self::ACCESS_MANUAL_URL,
             self::ACCESS_FILE_IMPORT,
+            self::ACCESS_PUBLIC_HTML,
         ];
     }
 

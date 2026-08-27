@@ -66,6 +66,8 @@ final readonly class ParsedIntent
         public ?string $family = null,
         public ?string $generation = null,
         public ?int $modelNumber = null,
+        public ?string $categoryMatchStrategy = null,
+        public ?string $categoryMatchedAlias = null,
     ) {}
 
     public static function fromArray(array $value): ?self
@@ -99,6 +101,8 @@ final readonly class ParsedIntent
             'category_slug' => 120,
             'family' => 120,
             'generation' => 120,
+            'category_match_strategy' => 120,
+            'category_matched_alias' => 255,
         ])
             || $product === null
             || ($intentType === self::TYPE_PRODUCT_SEARCH
@@ -169,6 +173,11 @@ final readonly class ParsedIntent
             self::nullableString($value['family'] ?? null, 120),
             self::nullableString($value['generation'] ?? null, 120),
             $modelNumber,
+            self::nullableString(
+                $value['category_match_strategy'] ?? null,
+                120,
+            ),
+            self::nullableString($value['category_matched_alias'] ?? null, 255),
         );
     }
 
@@ -194,6 +203,8 @@ final readonly class ParsedIntent
             'family' => $this->family,
             'generation' => $this->generation,
             'model_number' => $this->modelNumber,
+            'category_match_strategy' => $this->categoryMatchStrategy,
+            'category_matched_alias' => $this->categoryMatchedAlias,
             'mode' => $this->mode,
             'needs_clarification' => $this->needsClarification,
             'clarification_question' => $this->clarificationQuestion,

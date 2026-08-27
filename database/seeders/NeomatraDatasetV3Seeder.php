@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Helpers\Normalizer;
 use App\Models\Category;
 use App\Models\KnowledgeItem;
+use App\Models\Listing;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\ProductAlias;
@@ -37,6 +38,7 @@ final class NeomatraDatasetV3Seeder extends Seeder
                 'INSERT INTO `platforms`',
                 'ON DUPLICATE KEY UPDATE',
             ));
+            $this->deactivateLegacyDemoListings();
             $this->seedProducts($parser->rows(
                 database_path('data/v3/products_v3_expanded.sql'),
                 'INSERT INTO `products`',
@@ -48,6 +50,21 @@ final class NeomatraDatasetV3Seeder extends Seeder
                 ';',
             ));
         });
+    }
+
+    private function deactivateLegacyDemoListings(): void
+    {
+        Listing::query()
+            ->where('is_active', true)
+            ->whereHas('platform', fn ($query) => $query->whereIn(
+                'slug',
+                ['tokopedia', 'shopee', 'olx'],
+            ))
+            ->get()
+            ->filter(fn (Listing $listing): bool => (bool) (
+                $listing->raw_payload['demo'] ?? false
+            ))
+            ->each->update(['is_active' => false]);
     }
 
     /** @param list<list<mixed>> $rows */

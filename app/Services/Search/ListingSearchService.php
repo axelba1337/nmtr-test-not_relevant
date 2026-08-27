@@ -48,7 +48,12 @@ final class ListingSearchService
             ->all();
         $platforms = Platform::query()
             ->publiclyAvailable()
-            ->where('status', '!=', Platform::STATUS_ERROR)
+            ->where(function (Builder $query): void {
+                $query->where('status', '!=', Platform::STATUS_ERROR)
+                    ->orWhereHas('listings', static fn (Builder $listings): Builder => $listings
+                        ->available()
+                        ->where('raw_payload->connector', 'manual-import'));
+            })
             ->orderBy('name')
             ->pluck('slug')
             ->map(static fn (mixed $slug): string => (string) $slug)
@@ -207,8 +212,7 @@ final class ListingSearchService
             ->whereIn('product_id', $productIds)
             ->where('currency', $currency)
             ->whereHas('platform', static function (Builder $query) use ($intent): Builder {
-                $query->publiclyAvailable()
-                    ->where('status', '!=', Platform::STATUS_ERROR);
+                $query->publiclyAvailable();
 
                 if ($intent->platforms !== []) {
                     $query->whereIn('slug', array_map(
@@ -220,6 +224,7 @@ final class ListingSearchService
                 return $query;
             })
             ->with(['platform', 'product.category']);
+        $this->whereSourceAvailable($query);
 
         if ($intent->conditions !== []) {
             $query->whereIn('condition', $intent->conditions);
@@ -248,13 +253,14 @@ final class ListingSearchService
         }
 
         $listings = $query->get();
-        $comparables = Listing::query()
+        $comparablesQuery = Listing::query()
             ->available()
             ->whereIn('product_id', $productIds)
             ->where('currency', $currency)
             ->whereHas('platform', static fn (Builder $query): Builder => $query
-                ->publiclyAvailable()
-                ->where('status', '!=', Platform::STATUS_ERROR))
+                ->publiclyAvailable());
+        $this->whereSourceAvailable($comparablesQuery);
+        $comparables = $comparablesQuery
             ->get()
             ->groupBy(static fn (Listing $listing): string => implode('|', [
                 $listing->product_id,
@@ -446,6 +452,16 @@ final class ListingSearchService
             ['\\\\', '\\%', '\\_'],
             $value,
         );
+    }
+
+    private function whereSourceAvailable(Builder $query): void
+    {
+        $query->where(static function (Builder $sourceQuery): void {
+            $sourceQuery
+                ->where('raw_payload->connector', 'manual-import')
+                ->orWhereHas('platform', static fn (Builder $platform): Builder => $platform
+                    ->where('status', '!=', Platform::STATUS_ERROR));
+        });
     }
 
     /** @return array<string, mixed> */

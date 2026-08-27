@@ -58,15 +58,23 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
             Platform::query()->pluck('slug')->all(),
         );
 
-        foreach (['tokopedia', 'shopee', 'olx'] as $slug) {
+        foreach (['tokopedia', 'shopee'] as $slug) {
             $this->assertDatabaseHas('platforms', [
                 'slug' => $slug,
                 'source_type' => Platform::SOURCE_DEMO,
                 'access_type' => Platform::ACCESS_DEMO_DATASET,
                 'connector' => 'demo-dataset',
-                'sync_enabled' => true,
+                'sync_enabled' => false,
             ]);
         }
+
+        $this->assertDatabaseHas('platforms', [
+            'slug' => 'olx',
+            'source_type' => Platform::SOURCE_SCRAPE,
+            'access_type' => Platform::ACCESS_PUBLIC_HTML,
+            'connector' => 'olx-public-web',
+            'sync_enabled' => false,
+        ]);
 
         foreach (array_diff($expected, ['tokopedia', 'shopee', 'olx']) as $slug) {
             $this->assertDatabaseHas('platforms', [
@@ -178,7 +186,7 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_demo_listings_are_comparable_complete_and_safely_labelled(): void
+    public function test_demo_listings_are_retained_for_tests_but_inactive_in_v3(): void
     {
         $this->seed(DatabaseSeeder::class);
         $listings = Listing::query()->get();
@@ -202,6 +210,7 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
         }
 
         foreach ($listings as $listing) {
+            $this->assertFalse($listing->is_active);
             $this->assertContains($listing->condition, Listing::conditions());
             $this->assertContains($listing->seller_type, Listing::sellerTypes());
             $this->assertContains($listing->stock_status, Listing::stockStatuses());

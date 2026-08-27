@@ -3,11 +3,8 @@
 namespace App\Services\Marketplace;
 
 use App\Data\Marketplace\MarketplaceListingData;
-use App\Helpers\Normalizer;
 use App\Models\Listing;
 use App\Models\Platform;
-use App\Models\Product;
-use App\Models\ProductAlias;
 use App\Services\Neomatra\ListingFingerprintService;
 use DateTimeInterface;
 use InvalidArgumentException;
@@ -22,6 +19,7 @@ final class MarketplaceListingIngestionService
 
     public function __construct(
         private readonly ListingFingerprintService $fingerprints,
+        private readonly MarketplaceProductMatcher $products,
     ) {}
 
     public function ingest(
@@ -77,14 +75,10 @@ final class MarketplaceListingIngestionService
         $created = ! $listing->exists;
         $values = $incoming->toStorageArray();
         $values['platform_id'] = $platform->getKey();
-        $productId = $this->resolveProductId($incoming);
-
-        if ($created || $productId !== null || $incoming->hasProductHints()) {
-            $values['product_id'] = $productId;
-        }
+        $values['product_id'] = $this->products->match($incoming)?->getKey();
 
         $values['source_fingerprint'] = $fingerprint;
-        $values['raw_payload'] = [
+        $rawPayload = [
             'source_payload' => $incoming->rawPayload,
             'connector' => $connectorKey,
             'demo' => $connectorKey === 'demo',
@@ -94,6 +88,12 @@ final class MarketplaceListingIngestionService
             'product_variant' => $incoming->productVariant,
             'product_sku' => $incoming->productSku,
         ];
+
+        if ($connectorKey === 'manual-import') {
+            $rawPayload['import_source'] = 'csv';
+        }
+
+        $values['raw_payload'] = $rawPayload;
         $values['is_active'] = true;
         $listing->fill($values);
         $changed = $listing->isDirty();
@@ -126,100 +126,5 @@ final class MarketplaceListingIngestionService
                     ->orWhere('last_seen_at', '<', $syncStartedAt);
             })
             ->update(['is_active' => false]);
-    }
-
-    private function resolveProductId(
-        MarketplaceListingData $listing,
-    ): ?int {
-        if ($listing->productReference !== null) {
-            $productId = Product::query()
-                ->active()
-                ->where('normalized_key', $listing->productReference)
-                ->value('id');
-
-            if ($productId !== null) {
-                return (int) $productId;
-            }
-
-            $productId = $this->uniqueAliasProductId(
-                $listing->productReference,
-            );
-
-            if ($productId !== null) {
-                return $productId;
-            }
-        }
-
-        if ($listing->productSku !== null
-            || ($listing->productModel !== null
-                && $listing->productVariant !== null)) {
-            $matches = [];
-
-            foreach (Product::query()
-                ->active()
-                ->select([
-                    'id',
-                    'brand',
-                    'model',
-                    'variant',
-                    'sku_or_part_number',
-                ])
-                ->lazyById(100) as $product) {
-                if (! $this->strictProductMatch($product, $listing)) {
-                    continue;
-                }
-
-                $matches[] = (int) $product->getKey();
-
-                if (count($matches) === 2) {
-                    break;
-                }
-            }
-
-            if (count($matches) === 1) {
-                return $matches[0];
-            }
-        }
-
-        return $listing->hasProductHints()
-            ? null
-            : $this->uniqueAliasProductId($listing->title);
-    }
-
-    private function uniqueAliasProductId(string $alias): ?int
-    {
-        $productIds = ProductAlias::query()
-            ->where('normalized_alias', Normalizer::text($alias))
-            ->whereHas(
-                'product',
-                static fn ($query) => $query->active(),
-            )
-            ->distinct()
-            ->limit(2)
-            ->pluck('product_id');
-
-        return $productIds->count() === 1
-            ? (int) $productIds->first()
-            : null;
-    }
-
-    private function strictProductMatch(
-        Product $product,
-        MarketplaceListingData $listing,
-    ): bool {
-        foreach ([
-            'brand' => $listing->productBrand,
-            'model' => $listing->productModel,
-            'variant' => $listing->productVariant,
-            'sku_or_part_number' => $listing->productSku,
-        ] as $field => $expected) {
-            if ($expected !== null
-                && Normalizer::text((string) $product->{$field})
-                    !== Normalizer::text($expected)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }
