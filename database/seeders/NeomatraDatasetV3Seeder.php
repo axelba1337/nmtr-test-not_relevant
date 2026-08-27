@@ -33,6 +33,7 @@ final class NeomatraDatasetV3Seeder extends Seeder
         $parser = new SqlDatasetParser;
 
         DB::transaction(function () use ($parser): void {
+            $this->migrateLegacyPlatformSlugs();
             $this->seedPlatforms($parser->rows(
                 database_path('data/v3/platforms_v3_expanded.sql'),
                 'INSERT INTO `platforms`',
@@ -50,6 +51,28 @@ final class NeomatraDatasetV3Seeder extends Seeder
                 ';',
             ));
         });
+    }
+
+    private function migrateLegacyPlatformSlugs(): void
+    {
+        $legacy = Platform::query()
+            ->where('slug', 'facebook-marketplace')
+            ->first();
+
+        if ($legacy === null) {
+            return;
+        }
+
+        $facebook = Platform::query()->where('slug', 'facebook')->first();
+
+        if ($facebook === null) {
+            $legacy->forceFill(['slug' => 'facebook'])->save();
+
+            return;
+        }
+
+        $legacy->listings()->update(['platform_id' => $facebook->id]);
+        $legacy->delete();
     }
 
     private function deactivateLegacyDemoListings(): void

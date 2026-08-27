@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root {
+    color-scheme: dark;
+    --color-bg: #090A0C;
+    --color-surface: #111318;
+    --color-surface-alt: #171A20;
+    --color-border: #2A2E36;
+    --color-orange: #FF6A00;
+    --color-orange-bright: #FF8A1F;
+    --color-orange-burnt: #C94700;
+    --color-amber: #FFB000;
+    --color-text: #F4F5F7;
+    --color-text-secondary: #9299A6;
+    --color-text-muted: #5F6672;
+    --color-success: #39D98A;
+    --color-warning: #FFB020;
+    --color-danger: #FF4057;
+    --color-info: #38BDF8;
+    --bg: var(--color-bg);
+    --surface: var(--color-surface);
+    --surface-alt: var(--color-surface-alt);
+    --border: var(--color-border);
+    --orange: var(--color-orange);
+    --orange-bright: var(--color-orange-bright);
+    --orange-burnt: var(--color-orange-burnt);
+    --amber: var(--color-amber);
+    --text: var(--color-text);
+    --text-secondary: var(--color-text-secondary);
+    --text-muted: var(--color-text-muted);
+    --success: var(--color-success);
+    --warning: var(--color-warning);
+    --danger: var(--color-danger);
+    --info: var(--color-info);
+    --font-heading: "Space Grotesk", "Inter", sans-serif;
+    --font-body: "Inter", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", Consolas, monospace;
+    --radius: 0;
+    --radius-small: 2px;
+    --transition-fast: 140ms ease;
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html {
+    min-width: 320px;
+    min-height: 100%;
+    background: var(--bg);
+    font-family: var(--font-body);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    min-width: 320px;
+    min-height: 100%;
+    margin: 0;
+    color: var(--text);
+    background-color: var(--bg);
+}
+
+button,
+input,
+select,
+textarea { border-radius: var(--radius); font: inherit; }
+
+button,
+a,
+input,
+select,
+textarea,
+summary {
+    transition: border-color var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+h1,
+h2,
+h3,
+h4 { font-family: var(--font-heading); }
+
+code,
+pre,
+time,
+[data-mono] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+::selection { color: var(--bg); background: var(--orange); }
+
+:focus-visible { outline: 2px solid var(--orange-bright); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}

@@ -33,11 +33,13 @@ final class ImportMarketplaceListings extends Command
         'source_published_at',
     ];
 
-    /** @var array<string, string> */
+    /** @var array<string, list<string>> */
     private const PLATFORM_HOSTS = [
-        'olx' => 'olx.co.id',
-        'tokopedia' => 'tokopedia.com',
-        'shopee' => 'shopee.co.id',
+        'olx' => ['olx.co.id', 'www.olx.co.id'],
+        'tokopedia' => ['tokopedia.com', 'www.tokopedia.com'],
+        'shopee' => ['shopee.co.id', 'www.shopee.co.id'],
+        'facebook' => ['facebook.com', 'www.facebook.com'],
+        'carousell' => ['id.carousell.com', 'carousell.com'],
     ];
 
     protected $signature = 'marketplace:import
@@ -92,6 +94,7 @@ final class ImportMarketplaceListings extends Command
             'unmatched' => 0,
         ];
         $issues = [];
+        $seenUrls = [];
 
         while (! $file->eof()) {
             $row = $file->fgetcsv();
@@ -126,6 +129,42 @@ final class ImportMarketplaceListings extends Command
 
             $platformSlug = strtolower((string) $values['platform']);
             $platform = $platforms->get($platformSlug);
+            $normalizedUrl = $this->normalizeUrl(
+                (string) $values['product_url'],
+            );
+
+            if ($normalizedUrl === null) {
+                $this->reject($counts, $issues, $rowNumber, 'invalid URL');
+
+                continue;
+            }
+
+            $urlKey = $platformSlug.'|'.$normalizedUrl;
+
+            if (isset($seenUrls[$urlKey])) {
+                $this->reject($counts, $issues, $rowNumber, 'duplicate URL');
+
+                continue;
+            }
+
+            $existingUrl = Listing::query()
+                ->where('platform_id', $platform->getKey())
+                ->where('product_url', $normalizedUrl)
+                ->first(['external_listing_id']);
+            $externalId = trim((string) $values['external_listing_id']);
+            $externalId = $externalId === '' ? null : $externalId;
+
+            if ($existingUrl !== null
+                && $existingUrl->external_listing_id !== null
+                && $externalId !== null
+                && $existingUrl->external_listing_id !== $externalId) {
+                $this->reject($counts, $issues, $rowNumber, 'duplicate URL');
+
+                continue;
+            }
+
+            $seenUrls[$urlKey] = true;
+            $values['product_url'] = $normalizedUrl;
             $payload = $this->payload(
                 $values,
                 basename($path),
@@ -261,17 +300,61 @@ final class ImportMarketplaceListings extends Command
             return 'invalid price';
         }
 
+        $currency = strtoupper(trim((string) ($values['currency'] ?? '')));
+
+        if ($currency !== '' && $currency !== 'IDR') {
+            return 'currency harus IDR';
+        }
+
         $url = (string) ($values['product_url'] ?? '');
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
-        $expectedHost = self::PLATFORM_HOSTS[$slug];
+        $path = (string) parse_url($url, PHP_URL_PATH);
 
         if (filter_var($url, FILTER_VALIDATE_URL) === false
             || ! in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true)
-            || ($host !== $expectedHost && ! str_ends_with($host, '.'.$expectedHost))) {
+            || parse_url($url, PHP_URL_USER) !== null
+            || parse_url($url, PHP_URL_PASS) !== null
+            || parse_url($url, PHP_URL_PORT) !== null
+            || ! in_array($host, self::PLATFORM_HOSTS[$slug], true)
+            || ! $this->validListingPath($slug, $path)) {
             return 'invalid URL';
         }
 
         return null;
+    }
+
+    private function validListingPath(string $slug, string $path): bool
+    {
+        return match ($slug) {
+            'facebook' => preg_match(
+                '~^/marketplace/item/\d{5,}/?$~',
+                $path,
+            ) === 1,
+            'carousell' => preg_match(
+                '#^/p/[A-Za-z0-9][A-Za-z0-9._~-]*-\d{5,}/?$#',
+                $path,
+            ) === 1,
+            default => $path !== '' && $path !== '/',
+        };
+    }
+
+    private function normalizeUrl(string $url): ?string
+    {
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $path = (string) parse_url($url, PHP_URL_PATH);
+
+        if ($scheme === '' || $host === '' || $path === '') {
+            return null;
+        }
+
+        $path = '/'.ltrim($path, '/');
+
+        if ($path !== '/') {
+            $path = rtrim($path, '/');
+        }
+
+        return $scheme.'://'.$host.$path;
     }
 
     /**

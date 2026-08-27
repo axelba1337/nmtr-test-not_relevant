@@ -60,22 +60,23 @@ final class NeomatraCatalogSeeder extends Seeder
 
         $platforms = [];
 
-        foreach (['Tokopedia', 'Shopee', 'OLX'] as $name) {
-            $slug = strtolower($name);
+        foreach ([
+            ['Tokopedia', 'tokopedia', Platform::SOURCE_DEMO, Platform::ACCESS_DEMO_DATASET, 'demo-dataset', 'https://www.tokopedia.com', true],
+            ['Shopee', 'shopee', Platform::SOURCE_DEMO, Platform::ACCESS_DEMO_DATASET, 'demo-dataset', 'https://shopee.co.id', true],
+            ['OLX', 'olx', Platform::SOURCE_DEMO, Platform::ACCESS_DEMO_DATASET, 'demo-dataset', 'https://www.olx.co.id', true],
+            ['Facebook Marketplace', 'facebook', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://www.facebook.com/marketplace/', false],
+            ['Carousell', 'carousell', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://id.carousell.com', false],
+        ] as [$name, $slug, $sourceType, $accessType, $connector, $baseUrl, $syncEnabled]) {
             $platforms[$slug] = Platform::query()->updateOrCreate(
                 ['slug' => $slug],
                 [
                     'name' => $name,
-                    'source_type' => Platform::SOURCE_DEMO,
-                    'access_type' => Platform::ACCESS_DEMO_DATASET,
-                    'connector' => 'demo-dataset',
-                    'base_url' => match ($slug) {
-                        'tokopedia' => 'https://www.tokopedia.com',
-                        'shopee' => 'https://shopee.co.id',
-                        default => 'https://www.olx.co.id',
-                    },
+                    'source_type' => $sourceType,
+                    'access_type' => $accessType,
+                    'connector' => $connector,
+                    'base_url' => $baseUrl,
                     'is_active' => true,
-                    'sync_enabled' => true,
+                    'sync_enabled' => $syncEnabled,
                     'status' => Platform::STATUS_READY,
                 ],
             );

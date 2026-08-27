@@ -33,7 +33,7 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
             'tokopedia',
             'shopee',
             'olx',
-            'facebook-marketplace',
+            'facebook',
             'carousell',
             'blibli',
             'lazada',
@@ -76,7 +76,24 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
             'sync_enabled' => false,
         ]);
 
-        foreach (array_diff($expected, ['tokopedia', 'shopee', 'olx']) as $slug) {
+        foreach (['facebook', 'carousell'] as $slug) {
+            $this->assertDatabaseHas('platforms', [
+                'slug' => $slug,
+                'source_type' => Platform::SOURCE_MANUAL,
+                'access_type' => Platform::ACCESS_CSV_IMPORT,
+                'connector' => 'manual-import',
+                'sync_enabled' => false,
+                'status' => Platform::STATUS_READY,
+            ]);
+        }
+
+        foreach (array_diff($expected, [
+            'tokopedia',
+            'shopee',
+            'olx',
+            'facebook',
+            'carousell',
+        ]) as $slug) {
             $this->assertDatabaseHas('platforms', [
                 'slug' => $slug,
                 'source_type' => Platform::SOURCE_MANUAL,

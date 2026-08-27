@@ -3,13 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="dark">
     <title>Perbandingan {{ $product->name }} · {{ config('app.name') }}</title>
     @vite(['resources/css/app.css'])
 </head>
 <body class="comparison-page">
     <main class="comparison-shell">
-        <a class="comparison-back" href="{{ route('chatbot') }}">← Kembali ke chatbot</a>
+        <a class="comparison-back" href="{{ route('chatbot') }}">← Kembali ke workspace</a>
         <header class="comparison-header">
             <p class="eyebrow">PERBANDINGAN LINTAS PLATFORM</p>
             <h1>{{ $product->name }}</h1>

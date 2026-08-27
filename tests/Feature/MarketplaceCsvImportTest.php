@@ -57,6 +57,72 @@ final class MarketplaceCsvImportTest extends TestCase
         $this->assertStringContainsString('olx.co.id', $listing->product_url);
     }
 
+    public function test_facebook_accepts_only_marketplace_item_urls(): void
+    {
+        $valid = $this->rowForPlatform(
+            'facebook',
+            'REAL-FB-RTX3060-001',
+            'https://www.facebook.com/marketplace/item/123456789012345?ref=search',
+        );
+        $invalid = [];
+
+        foreach (['groups/123', 'posts/123', 'photo/123'] as $index => $path) {
+            $invalid[] = $this->rowForPlatform(
+                'facebook',
+                'INVALID-FB-'.($index + 1),
+                'https://www.facebook.com/'.$path,
+            );
+        }
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv([$valid, ...$invalid]),
+        ]));
+
+        $this->assertDatabaseHas('listings', [
+            'external_listing_id' => 'REAL-FB-RTX3060-001',
+            'product_url' => 'https://www.facebook.com/marketplace/item/123456789012345',
+        ]);
+        $this->assertSame(
+            0,
+            Listing::query()
+                ->where('external_listing_id', 'like', 'INVALID-FB-%')
+                ->count(),
+        );
+    }
+
+    public function test_carousell_accepts_only_direct_listing_urls(): void
+    {
+        $valid = $this->rowForPlatform(
+            'carousell',
+            'REAL-CAROUSELL-RTX3060-001',
+            'https://id.carousell.com/p/nvidia-rtx-3060-12gb-1234567890/',
+        );
+        $invalid = [];
+
+        foreach (['/', '/search/rtx-3060', '/categories/computer-4', '/p/'] as $index => $path) {
+            $invalid[] = $this->rowForPlatform(
+                'carousell',
+                'INVALID-CAROUSELL-'.($index + 1),
+                'https://id.carousell.com'.$path,
+            );
+        }
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv([$valid, ...$invalid]),
+        ]));
+
+        $this->assertDatabaseHas('listings', [
+            'external_listing_id' => 'REAL-CAROUSELL-RTX3060-001',
+            'product_url' => 'https://id.carousell.com/p/nvidia-rtx-3060-12gb-1234567890',
+        ]);
+        $this->assertSame(
+            0,
+            Listing::query()
+                ->where('external_listing_id', 'like', 'INVALID-CAROUSELL-%')
+                ->count(),
+        );
+    }
+
     public function test_invalid_price_url_and_unknown_platform_are_rejected(): void
     {
         Platform::query()->where('slug', 'shopee')->delete();
@@ -115,6 +181,31 @@ final class MarketplaceCsvImportTest extends TestCase
         $this->assertDatabaseCount('listings', $initialCount + 1);
     }
 
+    public function test_same_url_with_a_different_external_id_is_rejected(): void
+    {
+        $initialCount = Listing::query()->count();
+        $first = $this->rowForPlatform(
+            'facebook',
+            'REAL-FB-DUPLICATE-001',
+            'https://facebook.com/marketplace/item/998877665544332',
+        );
+        $duplicate = $first;
+        $duplicate[1] = 'REAL-FB-DUPLICATE-002';
+        $duplicate[10] .= '?tracking=duplicate';
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv([$first]),
+        ]));
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv([$duplicate]),
+        ]));
+
+        $this->assertDatabaseCount('listings', $initialCount + 1);
+        $this->assertDatabaseMissing('listings', [
+            'external_listing_id' => 'REAL-FB-DUPLICATE-002',
+        ]);
+    }
+
     public function test_ambiguous_laptop_listing_remains_unmatched(): void
     {
         $row = $this->row();
@@ -128,6 +219,40 @@ final class MarketplaceCsvImportTest extends TestCase
             'external_listing_id' => 'REAL-OLX-LAPTOP-001',
             'product_id' => null,
         ]);
+    }
+
+    public function test_accessories_services_wanted_ads_and_bundles_remain_unmatched(): void
+    {
+        $titles = [
+            'Box only VGA Nvidia RTX 3060 12GB',
+            'Jasa service dan repair RTX 3060',
+            'Dicari WTB Nvidia RTX 3060 12GB',
+            'Bundle PC gaming dengan RTX 3060 12GB',
+            'Bracket dan fan only RTX 3060',
+        ];
+        $rows = [];
+
+        foreach ($titles as $index => $title) {
+            $row = $this->rowForPlatform(
+                'olx',
+                'UNMATCHED-'.($index + 1),
+                'https://www.olx.co.id/item/unmatched-'.($index + 1),
+            );
+            $row[2] = $title;
+            $rows[] = $row;
+        }
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv($rows),
+        ]));
+
+        $this->assertSame(
+            count($titles),
+            Listing::query()
+                ->where('external_listing_id', 'like', 'UNMATCHED-%')
+                ->whereNull('product_id')
+                ->count(),
+        );
     }
 
     public function test_search_consumes_manual_import_when_automated_platform_is_in_error(): void
@@ -175,6 +300,54 @@ final class MarketplaceCsvImportTest extends TestCase
             'https://www.olx.co.id/item/vga-nvidia-rtx-3060-12gb-real-iid-900001',
             $results[0]['source_url'],
         );
+    }
+
+    public function test_manual_imports_from_all_five_platforms_are_searchable(): void
+    {
+        $rows = [
+            $this->rowForPlatform('olx', 'SEARCH-OLX-001', 'https://www.olx.co.id/item/rtx-3060-search-iid-100001'),
+            $this->rowForPlatform('tokopedia', 'SEARCH-TOKOPEDIA-001', 'https://www.tokopedia.com/neomatra/rtx-3060-search'),
+            $this->rowForPlatform('shopee', 'SEARCH-SHOPEE-001', 'https://shopee.co.id/rtx-3060-search-i.123.456'),
+            $this->rowForPlatform('facebook', 'SEARCH-FACEBOOK-001', 'https://www.facebook.com/marketplace/item/112233445566778'),
+            $this->rowForPlatform('carousell', 'SEARCH-CAROUSELL-001', 'https://carousell.com/p/rtx-3060-search-1122334455'),
+        ];
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv($rows),
+        ]));
+        $product = Product::query()->where('model', 'RTX 3060')->firstOrFail();
+
+        foreach (['olx', 'tokopedia', 'shopee', 'facebook', 'carousell'] as $slug) {
+            $intent = ParsedIntent::fromArray([
+                'product' => 'RTX 3060',
+                'category' => 'GPU',
+                'brand' => 'NVIDIA',
+                'model' => 'RTX 3060',
+                'variant' => '12 GB',
+                'conditions' => ['used'],
+                'platforms' => [$slug],
+                'seller_types' => [],
+                'locations' => [],
+                'mode' => 'buyer',
+                'needs_clarification' => false,
+                'clarification_question' => null,
+                'intent_type' => 'product_search',
+            ]);
+            $this->assertNotNull($intent);
+            $results = app(ListingSearchService::class)->search([[
+                'product' => $product,
+                'similarity' => null,
+                'matched_via' => 'deterministic_product',
+            ]], $intent);
+
+            $this->assertNotEmpty($results, "Platform {$slug} tidak searchable.");
+            $this->assertTrue(collect($results)->contains(
+                static fn (array $result): bool => str_contains(
+                    strtolower((string) $result['platform']),
+                    $slug === 'facebook' ? 'facebook' : $slug,
+                ),
+            ));
+        }
     }
 
     /** @param list<list<string>> $rows */
@@ -239,5 +412,19 @@ final class MarketplaceCsvImportTest extends TestCase
             '',
             '2026-08-20T10:00:00+07:00',
         ];
+    }
+
+    /** @return list<string> */
+    private function rowForPlatform(
+        string $platform,
+        string $externalId,
+        string $url,
+    ): array {
+        $row = $this->row();
+        $row[0] = $platform;
+        $row[1] = $externalId;
+        $row[10] = $url;
+
+        return $row;
     }
 }

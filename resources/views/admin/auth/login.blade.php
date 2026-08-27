@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="dark">
     <title>Login Admin · {{ config('app.name') }}</title>
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
 </head>
@@ -11,7 +11,7 @@
     <main class="auth-shell">
         <section class="auth-card" aria-labelledby="login-title">
             <div class="auth-card__heading">
-                <p class="auth-card__eyebrow">Panel Admin</p>
+                <p class="auth-card__eyebrow">NMTR / RESTRICTED ACCESS</p>
                 <h1 id="login-title">{{ config('app.name') }}</h1>
                 <p>Masuk untuk mengelola FAQ dan memantau aktivitas chatbot.</p>
             </div>

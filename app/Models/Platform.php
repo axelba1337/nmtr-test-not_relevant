@@ -28,6 +28,8 @@ final class Platform extends Model
 
     public const ACCESS_FILE_IMPORT = 'file_import';
 
+    public const ACCESS_CSV_IMPORT = 'csv_import';
+
     public const ACCESS_PUBLIC_HTML = 'public_html';
 
     public const STATUS_READY = 'ready';
@@ -111,6 +113,7 @@ final class Platform extends Model
             self::ACCESS_DEMO_DATASET,
             self::ACCESS_MANUAL_URL,
             self::ACCESS_FILE_IMPORT,
+            self::ACCESS_CSV_IMPORT,
             self::ACCESS_PUBLIC_HTML,
         ];
     }

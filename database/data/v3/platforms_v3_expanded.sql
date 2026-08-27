@@ -1,14 +1,15 @@
 -- Neomatra platform registry V3
 -- Demo connectors remain available for tests; only OLX has production sync.
--- Other sources are registered as manual_url until a real connector is implemented.
+-- Facebook Marketplace and Carousell use guarded CSV import; other manual
+-- sources remain manual_url until a real connector is implemented.
 SET NAMES utf8mb4;
 START TRANSACTION;
 INSERT INTO `platforms` (`name`,`slug`,`source_type`,`access_type`,`connector`,`base_url`,`is_active`,`sync_enabled`,`status`,`last_synced_at`,`created_at`,`updated_at`) VALUES
 ('Tokopedia', 'tokopedia', 'demo', 'demo_dataset', 'demo-dataset', 'https://www.tokopedia.com', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('Shopee', 'shopee', 'demo', 'demo_dataset', 'demo-dataset', 'https://shopee.co.id', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('OLX', 'olx', 'scrape', 'public_html', 'olx-public-web', 'https://www.olx.co.id', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('Facebook Marketplace', 'facebook-marketplace', 'manual', 'manual_url', NULL, 'https://www.facebook.com/marketplace/', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('Carousell', 'carousell', 'manual', 'manual_url', NULL, 'https://id.carousell.com', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('Facebook Marketplace', 'facebook', 'manual', 'csv_import', 'manual-import', 'https://www.facebook.com/marketplace/', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('Carousell', 'carousell', 'manual', 'csv_import', 'manual-import', 'https://id.carousell.com', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('Blibli', 'blibli', 'manual', 'manual_url', NULL, 'https://www.blibli.com', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('Lazada', 'lazada', 'manual', 'manual_url', NULL, 'https://www.lazada.co.id', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('TikTok Shop', 'tiktok-shop', 'manual', 'manual_url', NULL, 'https://shop.tiktok.com/', 1, 0, 'ready', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),

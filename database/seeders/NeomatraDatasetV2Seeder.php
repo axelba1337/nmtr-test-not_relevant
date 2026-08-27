@@ -147,7 +147,7 @@ final class NeomatraDatasetV2Seeder extends Seeder
             ['Tokopedia', 'tokopedia', 'https://www.tokopedia.com', true],
             ['Shopee', 'shopee', 'https://shopee.co.id', true],
             ['OLX', 'olx', 'https://www.olx.co.id', true],
-            ['Facebook Marketplace', 'facebook-marketplace', 'https://www.facebook.com/marketplace/', false],
+            ['Facebook Marketplace', 'facebook', 'https://www.facebook.com/marketplace/', false],
             ['Carousell', 'carousell', 'https://id.carousell.com', false],
             ['Blibli', 'blibli', 'https://www.blibli.com', false],
             ['Lazada', 'lazada', 'https://www.lazada.co.id', false],

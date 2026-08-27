@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="dark">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin') · {{ config('app.name') }}</title>
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
@@ -19,7 +19,7 @@
             data-admin-sidebar
         >
             <div class="admin-sidebar__brand">
-                <span class="admin-sidebar__eyebrow">Panel Admin</span>
+                <span class="admin-sidebar__eyebrow">NMTR / CONTROL</span>
                 <span class="admin-sidebar__name">{{ config('app.name') }}</span>
             </div>
 
@@ -106,7 +106,7 @@
                         Menu
                     </button>
                     <div>
-                        <p class="admin-topbar__eyebrow">Administrasi</p>
+                        <p class="admin-topbar__eyebrow">ADMINISTRATION / CONTROL PLANE</p>
                         <h1>@yield('page-title', 'Panel Admin')</h1>
                     </div>
                 </div>

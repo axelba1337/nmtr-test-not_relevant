@@ -18,7 +18,7 @@ return [
             'tokopedia' => ['tokopedia', 'tokped'],
             'shopee' => ['shopee'],
             'olx' => ['olx', 'tokobagus', 'toko bagus'],
-            'facebook-marketplace' => ['facebook marketplace', 'fb marketplace'],
+            'facebook' => ['facebook', 'facebook marketplace', 'fb marketplace'],
             'carousell' => ['carousell'],
             'blibli' => ['blibli'],
             'lazada' => ['lazada'],
@@ -46,7 +46,7 @@ return [
         ],
         'external_handoff_platform_slugs' => [
             'olx',
-            'facebook-marketplace',
+            'facebook',
         ],
     ],
 

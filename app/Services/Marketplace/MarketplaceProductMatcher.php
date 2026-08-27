@@ -212,8 +212,62 @@ final class MarketplaceProductMatcher
 
     private function hasCategoryConflict(string $categorySlug, string $title): bool
     {
+        $standaloneComponents = [
+            'gpu',
+            'cpu',
+            'ram',
+            'ssd',
+            'hdd',
+            'motherboard',
+            'psu',
+            'cpu-cooler',
+        ];
+
+        if (in_array($categorySlug, $standaloneComponents, true)
+            && preg_match(
+                '/\b(laptop|notebook|pc\s*(?:gaming|rakitan|desktop|fullset|full\s*set)|komputer\s*(?:rakitan|gaming)|mini\s*pc|all\s*in\s*one)\b/u',
+                $title,
+            ) === 1) {
+            return true;
+        }
+
         if ($categorySlug === 'gpu' && preg_match(
-            '/\b(laptop|notebook|pc\s*(?:gaming|rakitan|desktop|fullset|full\s*set)|komputer\s*(?:rakitan|gaming)|mini\s*pc|all\s*in\s*one|ssd|motherboard|processor|prosesor)\b/u',
+            '/\b(ssd|motherboard|processor|prosesor|ram|memory)\b/u',
+            $title,
+        ) === 1) {
+            return true;
+        }
+
+        if ($categorySlug === 'cpu' && preg_match(
+            '/\b(vga|gpu|graphics?\s*card|kartu\s*grafis|motherboard)\b/u',
+            $title,
+        ) === 1) {
+            return true;
+        }
+
+        if ($categorySlug === 'monitor' && preg_match(
+            '/\b(stand|bracket|mount|arm|panel|screen)\s*(?:only|saja|monitor)?\b/u',
+            $title,
+        ) === 1) {
+            return true;
+        }
+
+        if ($categorySlug === 'router' && preg_match(
+            '/\b(network\s*switch|switch\s+(?:hub|managed|unmanaged)|access\s*point|wireless\s*ap|modem\s+only)\b/u',
+            $title,
+        ) === 1) {
+            return true;
+        }
+
+        if ($categorySlug === 'switch' && preg_match(
+            '/\b(router|access\s*point|wireless\s*ap|network\s*adapter)\b/u',
+            $title,
+        ) === 1) {
+            return true;
+        }
+
+        if ($categorySlug === 'access-point' && preg_match(
+            '/\b(network\s*switch|managed\s*switch|router\s+only|network\s*adapter)\b/u',
             $title,
         ) === 1) {
             return true;
@@ -232,7 +286,7 @@ final class MarketplaceProductMatcher
     private function isUnsafeAdvertisement(string $title): bool
     {
         return preg_match(
-            '/\b(jasa|service|servis|repair|perbaikan|sewa|rental|dicari|mencari|wanted|wtb|terima\s+beli|box\s*only|dus\s*(?:saja|kosong)|kotak\s*(?:saja|kosong)|empty\s*box|sparepart|spare\s*part)\b/u',
+            '/\b(jasa|service|servis|repair|perbaikan|sewa|rental|dicari|mencari|wanted|wtb|terima\s+beli|box\s*only|dus\s*(?:saja|kosong)|kotak\s*(?:saja|kosong)|empty\s*box|sparepart|spare\s*part|paket|bundle|bundling|borongan|fullset|full\s*set|casing|case\s*only|cover|kabel|cable|charger|bracket|mount\s*only|stand\s*only|heatsink\s*only|fan\s*only)\b/u',
             $title,
         ) === 1;
     }

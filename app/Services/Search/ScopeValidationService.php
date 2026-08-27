@@ -71,7 +71,7 @@ final class ScopeValidationService
     {
         $preferred = (array) config(
             'neomatra.scope.external_handoff_platform_slugs',
-            ['olx', 'facebook-marketplace'],
+            ['olx', 'facebook'],
         );
 
         return Platform::query()

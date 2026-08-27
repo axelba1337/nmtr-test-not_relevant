@@ -18,6 +18,7 @@ if (chatbot) {
     const transcript = chatbot.querySelector('[data-transcript]');
     const suggestions = chatbot.querySelector('[data-suggestions]');
     const suggestionsList = chatbot.querySelector('[data-suggestions-list]');
+    const filterPanel = chatbot.querySelector('[data-filters]');
     const filterControls = [...chatbot.querySelectorAll('[data-filter]')];
     const sessionKey = getSessionKey();
     let conversationStarted = false;
@@ -164,10 +165,10 @@ if (chatbot) {
         article.classList.add('message', `message--${role}`);
         label.className = 'message__label';
         label.textContent = role === 'user'
-            ? 'Anda'
+            ? 'USER / QUERY'
             : role === 'error'
-                ? 'Kesalahan'
-                : 'Asisten';
+                ? 'SYSTEM / ERROR'
+                : 'NEOMATRA / RESPONSE';
         body.className = 'message__body';
         appendPlainText(body, text);
         article.append(label, body);
@@ -534,6 +535,10 @@ if (chatbot) {
         }
     };
 
+    if (window.matchMedia('(max-width: 48rem)').matches) {
+        filterPanel?.removeAttribute('open');
+    }
+
     void loadSuggestions();
-    input.focus();
+    input.focus({ preventScroll: true });
 }
