@@ -44,17 +44,7 @@ class StoreKnowledgeItemRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return [
-            'title' => 'judul',
-            'content' => 'isi knowledge',
-            'category_id' => 'kategori',
-            'keywords' => 'kata kunci',
-            'source_name' => 'nama sumber',
-            'source_url' => 'URL sumber',
-            'is_active' => 'status aktif',
-            'is_featured' => 'status featured',
-            'sort_order' => 'urutan',
-        ];
+        return __('ui.validation.attributes.knowledge');
     }
 
     protected function prepareForValidation(): void

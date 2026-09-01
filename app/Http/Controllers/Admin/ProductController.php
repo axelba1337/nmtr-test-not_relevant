@@ -95,8 +95,8 @@ final class ProductController extends Controller
             ->with(
                 $failed ? 'warning' : 'success',
                 $failed
-                    ? 'Produk tersimpan, tetapi sebagian embedding belum berhasil dibuat.'
-                    : 'Produk, alias, dan embedding berhasil ditambahkan.',
+                    ? __('ui.messages.admin.product.created_embedding_failed')
+                    : __('ui.messages.admin.product.created'),
             );
     }
 
@@ -151,8 +151,8 @@ final class ProductController extends Controller
             ->with(
                 $failed ? 'warning' : 'success',
                 $failed
-                    ? 'Produk diperbarui, tetapi sebagian embedding baru gagal; vector lama tetap disimpan.'
-                    : 'Produk, alias, dan embedding berhasil diperbarui.',
+                    ? __('ui.messages.admin.product.updated_embedding_failed')
+                    : __('ui.messages.admin.product.updated'),
             );
     }
 
@@ -162,7 +162,7 @@ final class ProductController extends Controller
         $product->delete();
 
         return redirect()->route('admin.products.index')
-            ->with('success', 'Produk berhasil dihapus. Listing terkait dipertahankan tanpa produk kanonik.');
+            ->with('success', __('ui.messages.admin.product.deleted'));
     }
 
     /** @param array<string, mixed> $data */
@@ -185,7 +185,7 @@ final class ProductController extends Controller
 
         if ($exists) {
             throw ValidationException::withMessages([
-                'name' => 'Kombinasi identitas produk ini sudah tersedia.',
+                'name' => __('ui.messages.admin.product.duplicate_identity'),
             ]);
         }
     }

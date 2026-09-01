@@ -1,22 +1,22 @@
 @extends('admin.layout')
 
-@section('title', 'Knowledge Base')
-@section('page-title', 'Knowledge Base')
+@section('title', __('ui.admin_pages.knowledge.index.title'))
+@section('page-title', __('ui.admin_pages.knowledge.index.title'))
 
 @section('content')
     <section class="admin-card">
         <div class="admin-card__heading admin-card__heading--actions">
             <div>
-                <p class="admin-card__eyebrow">Knowledge Base</p>
-                <h2>Daftar Knowledge</h2>
-                <p>Kelola knowledge, sumber, contoh pertanyaan, dan kesiapan embedding.</p>
+                <p class="admin-card__eyebrow">{{ __('ui.admin_pages.knowledge.common.eyebrow') }}</p>
+                <h2>{{ __('ui.admin_pages.knowledge.index.heading') }}</h2>
+                <p>{{ __('ui.admin_pages.knowledge.index.description') }}</p>
             </div>
 
             <div class="button-group">
                 <form
                     method="POST"
                     action="{{ route('admin.knowledge.rebuild') }}"
-                    data-confirm="Buat ulang embedding seluruh knowledge aktif? Proses ini dapat memerlukan waktu."
+                    data-confirm="{{ __('ui.admin_pages.knowledge.index.rebuild_all_confirmation') }}"
                 >
                     @csrf
                     <button
@@ -24,43 +24,43 @@
                         type="submit"
                         data-disable-on-submit
                     >
-                        Rebuild Knowledge
+                        {{ __('ui.admin_pages.knowledge.index.rebuild_all') }}
                     </button>
                 </form>
 
                 <a class="button button--primary" href="{{ route('admin.knowledge.create') }}">
-                    Tambah Knowledge
+                    {{ __('ui.admin_pages.knowledge.index.add') }}
                 </a>
             </div>
         </div>
 
         <form class="filter-bar" method="GET" action="{{ route('admin.knowledge.index') }}">
             <div class="form-field filter-bar__search">
-                <label for="search">Cari judul, isi, kata kunci, atau sumber</label>
+                <label for="search">{{ __('ui.admin_pages.knowledge.index.search_label') }}</label>
                 <input
                     id="search"
                     name="search"
                     type="search"
                     value="{{ $search }}"
                     maxlength="255"
-                    placeholder="Ketik kata kunci"
+                    placeholder="{{ __('ui.admin_pages.knowledge.index.search_placeholder') }}"
                 >
             </div>
 
             <div class="form-field">
-                <label for="status">Status aktif</label>
+                <label for="status">{{ __('ui.admin_pages.knowledge.index.active_status') }}</label>
                 <select id="status" name="status">
-                    <option value="all" @selected($status === 'all')>Semua</option>
-                    <option value="active" @selected($status === 'active')>Aktif</option>
-                    <option value="inactive" @selected($status === 'inactive')>Nonaktif</option>
+                    <option value="all" @selected($status === 'all')>{{ __('ui.admin_pages.knowledge.common.all') }}</option>
+                    <option value="active" @selected($status === 'active')>{{ __('ui.admin_pages.knowledge.common.active') }}</option>
+                    <option value="inactive" @selected($status === 'inactive')>{{ __('ui.admin_pages.knowledge.common.inactive') }}</option>
                 </select>
             </div>
 
             <div class="filter-bar__actions">
-                <button class="button button--secondary" type="submit">Terapkan</button>
+                <button class="button button--secondary" type="submit">{{ __('ui.admin_pages.knowledge.index.apply') }}</button>
                 @if ($search !== '' || $status !== 'all')
                     <a class="button button--text" href="{{ route('admin.knowledge.index') }}">
-                        Reset
+                        {{ __('ui.admin_pages.knowledge.index.reset') }}
                     </a>
                 @endif
             </div>
@@ -68,20 +68,20 @@
 
         @if ($items->isEmpty())
             <div class="empty-state">
-                <p>Belum ada knowledge yang sesuai dengan filter.</p>
+                <p>{{ __('ui.admin_pages.knowledge.index.empty') }}</p>
             </div>
         @else
             <div class="table-scroll">
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th scope="col">Knowledge</th>
-                            <th scope="col">Kategori / Sumber</th>
-                            <th scope="col">Status aktif</th>
-                            <th scope="col">Featured</th>
-                            <th scope="col">Status embedding</th>
-                            <th scope="col">Terakhir diperbarui</th>
-                            <th scope="col">Aksi</th>
+                            <th scope="col">{{ __('ui.admin_pages.knowledge.index.columns.knowledge') }}</th>
+                            <th scope="col">{{ __('ui.admin_pages.knowledge.index.columns.category_source') }}</th>
+                            <th scope="col">{{ __('ui.admin_pages.knowledge.index.columns.active_status') }}</th>
+                            <th scope="col">{{ __('ui.admin_pages.knowledge.index.columns.featured') }}</th>
+                            <th scope="col">{{ __('ui.admin_pages.knowledge.index.columns.embedding_status') }}</th>
+                            <th scope="col">{{ __('ui.admin_pages.knowledge.index.columns.updated_at') }}</th>
+                            <th scope="col">{{ __('ui.admin_pages.knowledge.index.columns.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -89,31 +89,31 @@
                             @php
                                 $embeddingStatus = $item->embeddingStatus();
                                 $embeddingMeta = match ($embeddingStatus) {
-                                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_READY => ['Siap', 'success'],
-                                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_READY_WITH_WARNING => ['Siap, rebuild gagal', 'warning'],
-                                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_FAILED => ['Gagal', 'danger'],
-                                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_STALE => ['Kedaluwarsa', 'warning'],
-                                    default => ['Belum dibuat', 'neutral'],
+                                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_READY => [__('ui.admin_pages.knowledge.embedding.ready'), 'success'],
+                                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_READY_WITH_WARNING => [__('ui.admin_pages.knowledge.embedding.ready_with_warning_short'), 'warning'],
+                                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_FAILED => [__('ui.admin_pages.knowledge.embedding.failed_short'), 'danger'],
+                                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_STALE => [__('ui.admin_pages.knowledge.embedding.stale_short'), 'warning'],
+                                    default => [__('ui.admin_pages.knowledge.embedding.not_created_short'), 'neutral'],
                                 };
                             @endphp
                             <tr>
                                 <td class="admin-table__question">
                                     <strong>{{ $item->title }}</strong>
                                     <span>{{ \Illuminate\Support\Str::limit($item->content, 120) }}</span>
-                                    <small>Urutan: {{ number_format($item->sort_order, 0, ',', '.') }}</small>
+                                    <small>{{ __('ui.admin_pages.knowledge.index.sort_order', ['order' => number_format($item->sort_order, 0, ',', '.')]) }}</small>
                                 </td>
                                 <td>
-                                    <strong>{{ $item->category?->name ?? 'Tanpa kategori' }}</strong>
-                                    <small class="table-meta">{{ $item->source_name ?: 'Sumber tidak dicantumkan' }}</small>
+                                    <strong>{{ $item->category?->name ?? __('ui.admin_pages.knowledge.common.no_category') }}</strong>
+                                    <small class="table-meta">{{ $item->source_name ?: __('ui.admin_pages.knowledge.index.no_source') }}</small>
                                 </td>
                                 <td>
                                     <span class="badge badge--{{ $item->is_active ? 'success' : 'neutral' }}">
-                                        {{ $item->is_active ? 'Aktif' : 'Nonaktif' }}
+                                        {{ $item->is_active ? __('ui.admin_pages.knowledge.common.active') : __('ui.admin_pages.knowledge.common.inactive') }}
                                     </span>
                                 </td>
                                 <td>
                                     <span class="badge badge--{{ $item->is_featured ? 'primary' : 'neutral' }}">
-                                        {{ $item->is_featured ? 'Ya' : 'Tidak' }}
+                                        {{ $item->is_featured ? __('ui.admin_pages.knowledge.common.yes') : __('ui.admin_pages.knowledge.common.no') }}
                                     </span>
                                 </td>
                                 <td>
@@ -133,7 +133,7 @@
                                             class="button button--small button--secondary"
                                             href="{{ route('admin.knowledge.edit', $item) }}"
                                         >
-                                            Edit
+                                            {{ __('ui.admin_pages.knowledge.index.actions.edit') }}
                                         </a>
 
                                         <form
@@ -147,7 +147,7 @@
                                                 type="submit"
                                                 data-disable-on-submit
                                             >
-                                                {{ $item->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                                                {{ $item->is_active ? __('ui.admin_pages.knowledge.index.actions.deactivate') : __('ui.admin_pages.knowledge.index.actions.activate') }}
                                             </button>
                                         </form>
 
@@ -162,14 +162,14 @@
                                                 type="submit"
                                                 data-disable-on-submit
                                             >
-                                                {{ $item->is_featured ? 'Lepas featured' : 'Jadikan featured' }}
+                                                {{ $item->is_featured ? __('ui.admin_pages.knowledge.index.actions.unfeature') : __('ui.admin_pages.knowledge.index.actions.feature') }}
                                             </button>
                                         </form>
 
                                         <form
                                             method="POST"
                                             action="{{ route('admin.knowledge.embedding.rebuild', $item) }}"
-                                            data-confirm="Buat ulang embedding knowledge ini?"
+                                            data-confirm="{{ __('ui.admin_pages.knowledge.index.rebuild_confirmation') }}"
                                         >
                                             @csrf
                                             <button
@@ -177,14 +177,14 @@
                                                 type="submit"
                                                 data-disable-on-submit
                                             >
-                                                Rebuild
+                                                {{ __('ui.admin_pages.knowledge.index.actions.rebuild') }}
                                             </button>
                                         </form>
 
                                         <form
                                             method="POST"
                                             action="{{ route('admin.knowledge.destroy', $item) }}"
-                                            data-confirm="Hapus knowledge ini? Tindakan ini tidak dapat dibatalkan."
+                                            data-confirm="{{ __('ui.admin_pages.knowledge.index.delete_confirmation') }}"
                                         >
                                             @csrf
                                             @method('DELETE')
@@ -193,7 +193,7 @@
                                                 type="submit"
                                                 data-disable-on-submit
                                             >
-                                                Hapus
+                                                {{ __('ui.admin_pages.knowledge.index.actions.delete') }}
                                             </button>
                                         </form>
                                     </div>
@@ -205,29 +205,31 @@
             </div>
 
             @if ($items->hasPages())
-                <nav class="pagination" aria-label="Navigasi halaman knowledge">
+                <nav class="pagination" aria-label="{{ __('ui.admin_pages.knowledge.index.pagination_label') }}">
                     <div class="pagination__summary">
-                        Menampilkan {{ number_format($items->firstItem(), 0, ',', '.') }}
-                        –{{ number_format($items->lastItem(), 0, ',', '.') }}
-                        dari {{ number_format($items->total(), 0, ',', '.') }} knowledge
+                        {{ __('ui.admin_pages.knowledge.index.pagination_summary', [
+                            'first' => number_format($items->firstItem(), 0, ',', '.'),
+                            'last' => number_format($items->lastItem(), 0, ',', '.'),
+                            'total' => number_format($items->total(), 0, ',', '.'),
+                        ]) }}
                     </div>
                     <div class="pagination__links">
                         @if ($items->onFirstPage())
-                            <span class="button button--small button--secondary is-disabled">Sebelumnya</span>
+                            <span class="button button--small button--secondary is-disabled">{{ __('ui.admin_pages.knowledge.common.previous') }}</span>
                         @else
                             <a class="button button--small button--secondary" href="{{ $items->previousPageUrl() }}">
-                                Sebelumnya
+                                {{ __('ui.admin_pages.knowledge.common.previous') }}
                             </a>
                         @endif
 
-                        <span>Halaman {{ $items->currentPage() }} dari {{ $items->lastPage() }}</span>
+                        <span>{{ __('ui.admin_pages.knowledge.index.page_summary', ['current' => $items->currentPage(), 'last' => $items->lastPage()]) }}</span>
 
                         @if ($items->hasMorePages())
                             <a class="button button--small button--secondary" href="{{ $items->nextPageUrl() }}">
-                                Berikutnya
+                                {{ __('ui.admin_pages.knowledge.common.next') }}
                             </a>
                         @else
-                            <span class="button button--small button--secondary is-disabled">Berikutnya</span>
+                            <span class="button button--small button--secondary is-disabled">{{ __('ui.admin_pages.knowledge.common.next') }}</span>
                         @endif
                     </div>
                 </nav>

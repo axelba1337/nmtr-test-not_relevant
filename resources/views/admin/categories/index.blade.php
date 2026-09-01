@@ -1,44 +1,44 @@
 @extends('admin.layout')
 
-@section('title', 'Kategori')
-@section('page-title', 'Kategori')
+@section('title', __('ui.admin.categories'))
+@section('page-title', __('ui.admin.categories'))
 
 @section('content')
     <section class="admin-card" aria-labelledby="categories-title">
         <div class="admin-card__heading admin-card__heading--actions">
             <div>
-                <p class="admin-card__eyebrow">Katalog</p>
-                <h2 id="categories-title">Kategori dan Subkategori</h2>
-                <p>Kelola struktur kategori yang dipakai produk dan knowledge.</p>
+                <p class="admin-card__eyebrow">{{ __('ui.admin.catalog') }}</p>
+                <h2 id="categories-title">{{ __('ui.admin_pages.categories.heading') }}</h2>
+                <p>{{ __('ui.admin_pages.categories.description') }}</p>
             </div>
-            <a class="button button--primary" href="{{ route('admin.categories.create') }}">Tambah Kategori</a>
+            <a class="button button--primary" href="{{ route('admin.categories.create') }}">{{ __('ui.admin_pages.categories.add') }}</a>
         </div>
 
         <form class="filter-bar" method="GET" action="{{ route('admin.categories.index') }}">
             <div class="form-field filter-bar__search">
-                <label for="category-search">Cari</label>
-                <input id="category-search" name="search" type="search" value="{{ $search }}" placeholder="Nama, slug, atau deskripsi">
+                <label for="category-search">{{ __('ui.common.search') }}</label>
+                <input id="category-search" name="search" type="search" value="{{ $search }}" placeholder="{{ __('ui.admin_pages.categories.search_placeholder') }}">
             </div>
             <div class="form-field">
-                <label for="category-status">Status</label>
+                <label for="category-status">{{ __('ui.common.status') }}</label>
                 <select id="category-status" name="status">
-                    <option value="all" @selected($status === 'all')>Semua</option>
-                    <option value="active" @selected($status === 'active')>Aktif</option>
-                    <option value="inactive" @selected($status === 'inactive')>Nonaktif</option>
+                    <option value="all" @selected($status === 'all')>{{ __('ui.common.all') }}</option>
+                    <option value="active" @selected($status === 'active')>{{ __('ui.common.active') }}</option>
+                    <option value="inactive" @selected($status === 'inactive')>{{ __('ui.common.inactive') }}</option>
                 </select>
             </div>
             <div class="filter-bar__actions">
-                <button class="button button--secondary" type="submit">Terapkan</button>
-                <a class="button button--text" href="{{ route('admin.categories.index') }}">Reset</a>
+                <button class="button button--secondary" type="submit">{{ __('ui.common.apply') }}</button>
+                <a class="button button--text" href="{{ route('admin.categories.index') }}">{{ __('ui.common.reset') }}</a>
             </div>
         </form>
 
         @if ($categories->isEmpty())
-            <div class="empty-state"><p>Belum ada kategori yang sesuai dengan filter.</p></div>
+            <div class="empty-state"><p>{{ __('ui.admin_pages.categories.empty') }}</p></div>
         @else
             <div class="table-scroll">
                 <table class="admin-table">
-                    <thead><tr><th>Kategori</th><th>Induk</th><th>Status</th><th>Urutan</th><th>Relasi</th><th>Aksi</th></tr></thead>
+                    <thead><tr><th>{{ __('ui.admin.categories') }}</th><th>{{ __('ui.admin_pages.categories.parent_short') }}</th><th>{{ __('ui.common.status') }}</th><th>{{ __('ui.admin_pages.common.sort_order') }}</th><th>{{ __('ui.admin_pages.common.relations') }}</th><th>{{ __('ui.common.actions') }}</th></tr></thead>
                     <tbody>
                         @foreach ($categories as $category)
                             <tr>
@@ -47,18 +47,18 @@
                                     <span>{{ $category->slug }}</span>
                                 </td>
                                 <td>{{ $category->parent?->name ?? '—' }}</td>
-                                <td><span class="badge badge--{{ $category->is_active ? 'success' : 'neutral' }}">{{ $category->is_active ? 'Aktif' : 'Nonaktif' }}</span></td>
+                                <td><span class="badge badge--{{ $category->is_active ? 'success' : 'neutral' }}">{{ $category->is_active ? __('ui.common.active') : __('ui.common.inactive') }}</span></td>
                                 <td>{{ number_format($category->sort_order, 0, ',', '.') }}</td>
                                 <td>
-                                    <span class="table-meta">{{ $category->children_count }} subkategori</span>
-                                    <span class="table-meta">{{ $category->products_count }} produk</span>
+                                    <span class="table-meta">{{ trans_choice('ui.admin_pages.categories.subcategory_count', $category->children_count, ['count' => $category->children_count]) }}</span>
+                                    <span class="table-meta">{{ trans_choice('ui.admin_pages.categories.product_count', $category->products_count, ['count' => $category->products_count]) }}</span>
                                 </td>
                                 <td>
                                     <div class="table-actions">
-                                        <a class="button button--small button--secondary" href="{{ route('admin.categories.edit', $category) }}">Edit</a>
-                                        <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" data-confirm="Hapus kategori ini? Subkategori akan menjadi kategori utama.">
+                                        <a class="button button--small button--secondary" href="{{ route('admin.categories.edit', $category) }}">{{ __('ui.common.edit') }}</a>
+                                        <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" data-confirm="{{ __('ui.admin_pages.categories.delete_confirm') }}">
                                             @csrf @method('DELETE')
-                                            <button class="button button--small button--danger" type="submit" data-busy-label="Menghapus…">Hapus</button>
+                                            <button class="button button--small button--danger" type="submit" data-busy-label="{{ __('ui.common.deleting') }}">{{ __('ui.common.delete') }}</button>
                                         </form>
                                     </div>
                                 </td>
@@ -68,11 +68,11 @@
                 </table>
             </div>
 
-            <nav class="pagination" aria-label="Navigasi kategori">
-                <span>{{ $categories->firstItem() }}–{{ $categories->lastItem() }} dari {{ $categories->total() }}</span>
+            <nav class="pagination" aria-label="{{ __('ui.admin_pages.categories.pagination') }}">
+                <span>{{ __('ui.admin_pages.common.pagination_summary', ['first' => $categories->firstItem(), 'last' => $categories->lastItem(), 'total' => $categories->total()]) }}</span>
                 <div class="pagination__links">
-                    @if ($categories->onFirstPage()) <span class="button button--small is-disabled">Sebelumnya</span> @else <a class="button button--small" href="{{ $categories->previousPageUrl() }}">Sebelumnya</a> @endif
-                    @if ($categories->hasMorePages()) <a class="button button--small" href="{{ $categories->nextPageUrl() }}">Berikutnya</a> @else <span class="button button--small is-disabled">Berikutnya</span> @endif
+                    @if ($categories->onFirstPage()) <span class="button button--small is-disabled">{{ __('ui.common.previous') }}</span> @else <a class="button button--small" href="{{ $categories->previousPageUrl() }}">{{ __('ui.common.previous') }}</a> @endif
+                    @if ($categories->hasMorePages()) <a class="button button--small" href="{{ $categories->nextPageUrl() }}">{{ __('ui.common.next') }}</a> @else <span class="button button--small is-disabled">{{ __('ui.common.next') }}</span> @endif
                 </div>
             </nav>
         @endif

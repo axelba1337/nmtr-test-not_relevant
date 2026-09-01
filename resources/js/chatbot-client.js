@@ -147,10 +147,13 @@ export const requestChat = async ({
     filters = {},
     sessionKey = null,
     history = [],
+    locale = 'id',
 }) => {
+    const selectedLocale = ['id', 'en'].includes(locale) ? locale : 'id';
     const body = {
         message,
         ...filters,
+        locale: selectedLocale,
     };
 
     if (typeof sessionKey === 'string' && sessionKey !== '') {
@@ -169,6 +172,7 @@ export const requestChat = async ({
         headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
+            'X-Neomatra-Locale': selectedLocale,
         },
         body: JSON.stringify(body),
     });
@@ -241,12 +245,18 @@ export const normalizeSuggestions = (payload) => {
     return suggestions;
 };
 
-export const requestSuggestions = async ({ fetchImpl = fetch, endpoint }) => {
+export const requestSuggestions = async ({
+    fetchImpl = fetch,
+    endpoint,
+    locale = 'id',
+}) => {
+    const selectedLocale = ['id', 'en'].includes(locale) ? locale : 'id';
     const response = await fetchImpl(endpoint, {
         method: 'GET',
         credentials: 'same-origin',
         headers: {
             Accept: 'application/json',
+            'X-Neomatra-Locale': selectedLocale,
         },
     });
     const payload = await readJson(response);

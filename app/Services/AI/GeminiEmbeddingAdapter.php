@@ -26,7 +26,7 @@ final class GeminiEmbeddingAdapter implements EmbeddingClient
         if ($text === '') {
             return $this->failed(
                 'validation',
-                'Teks embedding tidak boleh kosong.',
+                __('ui.messages.ai.embedding_empty'),
             );
         }
 
@@ -78,7 +78,7 @@ final class GeminiEmbeddingAdapter implements EmbeddingClient
                     $this->provider(),
                     'embedding',
                     'client_error',
-                    'Permintaan embedding tidak dapat diproses.',
+                    __('ui.messages.ai.embedding_request_failed'),
                     $model,
                 ),
             );
@@ -92,7 +92,7 @@ final class GeminiEmbeddingAdapter implements EmbeddingClient
         if ($validated === null) {
             return $this->failed(
                 'invalid_vector',
-                'Layanan embedding mengembalikan vector yang tidak valid.',
+                __('ui.messages.ai.embedding_invalid'),
                 $response->response->status(),
             );
         }

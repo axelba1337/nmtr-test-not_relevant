@@ -181,6 +181,79 @@ final class ChatbotVocabularyFallbackTest extends TestCase
         );
     }
 
+    public function test_missing_rtx_3070_relaxes_budget_before_using_a_different_brand(): void
+    {
+        Product::query()->where('model', 'RTX 3070')->firstOrFail()->delete();
+        $rtx3060 = Product::query()->where('model', 'RTX 3060')->firstOrFail();
+        $rx6600 = Product::query()
+            ->where('model', 'Radeon RX 6600')
+            ->firstOrFail();
+
+        $this->deactivateGpuListings(
+            static fn (Product $product): bool => ! in_array(
+                $product->id,
+                [$rtx3060->id, $rx6600->id],
+                true,
+            ),
+        );
+        $rtx3060->listings()->update([
+            'price' => 5_750_000,
+            'condition' => Listing::CONDITION_USED,
+            'shipping_cost' => 0,
+            'service_fee' => 0,
+            'inspection_cost' => 0,
+            'repair_estimate' => 0,
+            'is_active' => true,
+        ]);
+        $rx6600->listings()->update([
+            'price' => 2_500_000,
+            'condition' => Listing::CONDITION_USED,
+            'shipping_cost' => 0,
+            'service_fee' => 0,
+            'inspection_cost' => 0,
+            'repair_estimate' => 0,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/chatbot/query', [
+            'message' => 'RTX 3070 bekas di bawah 4 juta',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('state', SearchState::ALTERNATIVE_PRODUCT)
+            ->assertJsonPath('results.0.product.model', 'RTX 3060')
+            ->assertJsonPath('results.0.product.brand', 'NVIDIA')
+            ->assertJsonPath(
+                'alternative_strategy',
+                'same_brand_same_family_same_generation',
+            )
+            ->assertJsonPath('relaxed_filters.0', 'budget')
+            ->assertJsonPath('closest_price', 5_750_000)
+            ->assertJsonPath('budget_difference', 1_750_000);
+
+        $log = ChatbotQueryLog::query()->latest('id')->firstOrFail();
+        $this->assertSame(
+            SearchState::ALTERNATIVE_PRODUCT,
+            data_get($log->filters, '_search.state'),
+        );
+        $this->assertSame(
+            'same_brand_same_family_same_generation',
+            data_get($log->filters, '_search.alternative_strategy'),
+        );
+        $this->assertSame(
+            ['budget'],
+            data_get($log->filters, '_search.relaxed_filters'),
+        );
+        $this->assertSame(
+            [$rtx3060->id],
+            data_get($log->filters, '_search.result_product_ids'),
+        );
+        $this->assertNotEmpty(
+            data_get($log->filters, '_search.result_listing_ids'),
+        );
+    }
+
     public function test_sc_prod_03_rtx_3060_ti_is_the_first_exact_family_alternative(): void
     {
         $requested = Product::query()->where('model', 'RTX 3070')->firstOrFail();
@@ -258,7 +331,10 @@ final class ChatbotVocabularyFallbackTest extends TestCase
             'message' => 'tokobagus RTX 3070',
         ])
             ->assertOk()
-            ->assertJsonPath('intent.platforms.0', 'olx');
+            ->assertJsonPath('state', SearchState::MATCHED)
+            ->assertJsonPath('intent.platforms.0', 'olx')
+            ->assertJsonPath('intent.seller_types', [])
+            ->assertJsonPath('results.0.platform', 'OLX');
     }
 
     public function test_scope_and_learning_metadata_remain_enforced(): void

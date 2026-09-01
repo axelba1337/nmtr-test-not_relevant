@@ -8,6 +8,7 @@ use App\Models\Listing;
 use App\Models\Platform;
 use App\Models\Product;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\NeomatraDatasetV3Seeder;
 use Database\Seeders\Support\SqlDatasetParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +105,29 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
         }
 
         Http::assertNothingSent();
+    }
+
+    public function test_dataset_v3_restores_facebook_and_upgrades_carousell_registration(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        Platform::query()->where('slug', 'facebook')->delete();
+        Platform::query()->where('slug', 'carousell')->update([
+            'access_type' => Platform::ACCESS_MANUAL_URL,
+            'connector' => null,
+        ]);
+
+        $this->seed(NeomatraDatasetV3Seeder::class);
+
+        foreach (['facebook', 'carousell'] as $slug) {
+            $this->assertDatabaseHas('platforms', [
+                'slug' => $slug,
+                'source_type' => Platform::SOURCE_MANUAL,
+                'access_type' => Platform::ACCESS_CSV_IMPORT,
+                'connector' => 'manual-import',
+                'sync_enabled' => false,
+                'status' => Platform::STATUS_READY,
+            ]);
+        }
     }
 
     public function test_category_hierarchy_uses_unique_stable_slugs(): void

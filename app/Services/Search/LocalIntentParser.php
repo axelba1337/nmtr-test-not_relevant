@@ -372,7 +372,10 @@ final class LocalIntentParser
     private function containsAny(string $haystack, array $needles): bool
     {
         foreach ($needles as $needle) {
-            if (str_contains($haystack, $needle)) {
+            if ($needle !== '' && preg_match(
+                '/(?<![\pL\pN])'.preg_quote($needle, '/').'(?![\pL\pN])/u',
+                $haystack,
+            ) === 1) {
                 return true;
             }
         }

@@ -4,14 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
-    <title>Perbandingan {{ $product->name }} · {{ config('app.name') }}</title>
+    <title>{{ __('ui.compare.title', ['product' => $product->name]) }} · {{ config('app.name') }}</title>
     @vite(['resources/css/app.css'])
 </head>
 <body class="comparison-page">
     <main class="comparison-shell">
-        <a class="comparison-back" href="{{ route('chatbot') }}">← Kembali ke workspace</a>
+        <div class="comparison-toolbar">
+            <a class="comparison-back" href="{{ route('chatbot') }}">{{ __('ui.compare.back') }}</a>
+            <x-locale-switch />
+        </div>
         <header class="comparison-header">
-            <p class="eyebrow">PERBANDINGAN LINTAS PLATFORM</p>
+            <p class="eyebrow">{{ __('ui.compare.eyebrow') }}</p>
             <h1>{{ $product->name }}</h1>
             <p>
                 {{ collect([$product->brand, $product->model, $product->variant])->filter()->join(' · ') }}
@@ -19,27 +22,27 @@
         </header>
 
         <div class="comparison-notice" role="note">
-            Harga, kondisi, seller, dan estimasi merupakan informasi dari data sumber/demo, bukan jaminan transaksi.
+            {{ __('ui.compare.notice') }}
         </div>
 
         @if ($listings === [])
             <section class="comparison-empty">
-                <h2>Belum ada listing pembanding</h2>
-                <p>Aktifkan atau sinkronkan listing untuk produk ini melalui panel admin.</p>
+                <h2>{{ __('ui.compare.empty_title') }}</h2>
+                <p>{{ __('ui.compare.empty_body') }}</p>
             </section>
         @else
             <div class="comparison-table-wrap">
                 <table class="comparison-table">
                     <thead>
                         <tr>
-                            <th>Platform</th>
-                            <th>Listing</th>
-                            <th>Harga</th>
-                            <th>Total biaya</th>
-                            <th>Harga pasar</th>
-                            <th>Undervalued</th>
-                            <th>Seller / Lokasi</th>
-                            <th>Aksi</th>
+                            <th>{{ __('ui.compare.platform') }}</th>
+                            <th>{{ __('ui.compare.listing') }}</th>
+                            <th>{{ __('ui.compare.price') }}</th>
+                            <th>{{ __('ui.compare.total_cost') }}</th>
+                            <th>{{ __('ui.compare.market_price') }}</th>
+                            <th>{{ __('ui.compare.undervalued') }}</th>
+                            <th>{{ __('ui.compare.seller_location') }}</th>
+                            <th>{{ __('ui.common.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -48,12 +51,12 @@
                                 <td>{{ $listing['platform'] }}</td>
                                 <td>
                                     <strong>{{ $listing['title'] }}</strong>
-                                    <small>{{ $listing['condition'] }} · berdasarkan keterangan seller</small>
+                                    <small>{{ __('ui.labels.'.$listing['condition']) }} · {{ __('ui.compare.seller_basis') }}</small>
                                 </td>
                                 <td>Rp{{ number_format($listing['item_price'], 0, ',', '.') }}</td>
                                 <td>Rp{{ number_format($listing['costs']['total'], 0, ',', '.') }}</td>
                                 <td>
-                                    {{ $listing['market']['price'] === null ? 'Belum cukup data' : 'Rp'.number_format($listing['market']['price'], 0, ',', '.') }}
+                                    {{ $listing['market']['price'] === null ? __('ui.compare.insufficient_data') : 'Rp'.number_format($listing['market']['price'], 0, ',', '.') }}
                                 </td>
                                 <td>
                                     @if ($listing['undervalued'] === null)
@@ -64,11 +67,11 @@
                                     @endif
                                 </td>
                                 <td>
-                                    {{ $listing['seller_name'] ?: 'Tidak diketahui' }}
-                                    <small>{{ $listing['location'] ?: 'Lokasi tidak tersedia' }}</small>
+                                    {{ $listing['seller_name'] ?: __('ui.common.unknown') }}
+                                    <small>{{ $listing['location'] ?: __('ui.compare.unknown_location') }}</small>
                                 </td>
                                 <td>
-                                    <a href="{{ $listing['source_url'] }}" target="_blank" rel="noopener noreferrer">Buka sumber</a>
+                                    <a href="{{ $listing['source_url'] }}" target="_blank" rel="noopener noreferrer">{{ __('ui.common.open_source') }}</a>
                                 </td>
                             </tr>
                         @endforeach

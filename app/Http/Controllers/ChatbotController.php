@@ -51,9 +51,11 @@ final class ChatbotController extends Controller
             ->orderedForSuggestions()
             ->limit(4)
             ->get(['id', 'title'])
-            ->map(static fn (KnowledgeItem $item): array => [
+            ->map(fn (KnowledgeItem $item): array => [
                 'id' => (int) $item->id,
-                'question' => (string) $item->title,
+                'question' => $this->localizedKnowledgeTitle(
+                    (string) $item->title,
+                ),
             ])
             ->all();
 
@@ -76,7 +78,7 @@ final class ChatbotController extends Controller
                 $normalized,
                 $filters,
                 SearchState::INVALID_INPUT,
-                'Input belum dapat diproses. Tulis nama produk atau pertanyaan dengan huruf atau angka yang jelas.',
+                __('ui.chat.backend.invalid_input'),
                 'invalid_input',
             );
         }
@@ -84,13 +86,15 @@ final class ChatbotController extends Controller
         if ($this->scopeValidation->isOutOfScope($normalized)) {
             $categories = $this->scopeValidation->supportedCategories();
             $categoryNames = implode(', ', array_column($categories, 'name'));
-            $answer = 'Pencarian kendaraan berada di luar cakupan katalog Neomatra.';
+            $answer = __('ui.chat.backend.out_of_scope');
 
             if ($categoryNames !== '') {
-                $answer .= ' Kategori yang didukung: '.$categoryNames.'.';
+                $answer .= __('ui.chat.backend.supported_categories', [
+                    'categories' => $categoryNames,
+                ]);
             }
 
-            $answer .= ' Anda dapat melanjutkan pencarian melalui platform eksternal yang tersedia.';
+            $answer .= __('ui.chat.backend.external_continue');
 
             return $this->earlyStateResponse(
                 $validated,
@@ -120,7 +124,7 @@ final class ChatbotController extends Controller
         if ($intent->needsClarification
             && $intent->intentType === ParsedIntent::TYPE_PRODUCT_SEARCH) {
             $answer = $intent->clarificationQuestion
-                ?? 'Mohon jelaskan produk atau varian yang ingin dicari.';
+                ?? __('ui.chat.backend.clarification');
             $filters['_search'] = $this->searchMetadata(
                 SearchState::NEEDS_CLARIFICATION,
                 $intent,
@@ -167,6 +171,7 @@ final class ChatbotController extends Controller
                 'requested_budget' => $intent->budgetMax,
                 'closest_price' => null,
                 'difference' => null,
+                'budget_difference' => null,
                 'meta' => $this->meta(
                     false,
                     $resolved->usedChatApi,
@@ -235,7 +240,7 @@ final class ChatbotController extends Controller
                 'error' => [
                     'code' => 'embedding_unavailable',
                     'message' => $embedding->failure?->safeMessage
-                        ?? 'Layanan semantic search sementara tidak tersedia.',
+                        ?? __('ui.chat.backend.semantic_unavailable'),
                 ],
                 'intent' => $intent->toArray(),
                 'needs_clarification' => false,
@@ -261,6 +266,7 @@ final class ChatbotController extends Controller
                 'requested_budget' => $intent->budgetMax,
                 'closest_price' => null,
                 'difference' => null,
+                'budget_difference' => null,
             ], 503);
         }
 
@@ -442,9 +448,11 @@ final class ChatbotController extends Controller
             'listings' => $this->publicListings($listings),
             'results' => $this->publicListings($listings),
             'matches' => array_map(
-                static fn (array $match): array => [
+                fn (array $match): array => [
                     'id' => (int) $match['id'],
-                    'title' => (string) $match['title'],
+                    'title' => $this->localizedKnowledgeTitle(
+                        (string) $match['title'],
+                    ),
                     'similarity' => round((float) $match['similarity'], 6),
                 ],
                 $knowledgeForResponse,
@@ -481,6 +489,7 @@ final class ChatbotController extends Controller
             'requested_budget' => $intent->budgetMax,
             'closest_price' => $searchOutcome?->closestPrice,
             'difference' => $searchOutcome?->budgetDifference,
+            'budget_difference' => $searchOutcome?->budgetDifference,
             'supported_categories' => [],
             'external_handoff' => in_array($searchState, [
                 SearchState::UNKNOWN_PRODUCT,
@@ -582,6 +591,7 @@ final class ChatbotController extends Controller
             'requested_budget' => null,
             'closest_price' => null,
             'difference' => null,
+            'budget_difference' => null,
             'search_entry_point_html' => null,
             'meta' => [
                 ...$this->meta(false, false, false, false),
@@ -812,10 +822,24 @@ final class ChatbotController extends Controller
             ->select(['id', 'title'])
             ->lazyById(100)
             ->contains(
-                static fn (KnowledgeItem $item): bool => Normalizer::text(
-                    (string) $item->title,
-                ) === $normalized,
+                fn (KnowledgeItem $item): bool => in_array(
+                    $normalized,
+                    $this->knowledgeTitleVariants((string) $item->title),
+                    true,
+                ),
             );
+    }
+
+    /** @return list<string> */
+    private function knowledgeTitleVariants(string $title): array
+    {
+        $variants = [Normalizer::text($title)];
+
+        foreach (explode(' / ', $title, 2) as $part) {
+            $variants[] = Normalizer::text($part);
+        }
+
+        return array_values(array_unique(array_filter($variants)));
     }
 
     /**
@@ -868,12 +892,11 @@ final class ChatbotController extends Controller
         if ($listings !== []) {
             $first = $listings[0];
 
-            return sprintf(
-                'Ditemukan %d listing. Hasil teratas adalah %s dengan total biaya estimasi Rp%s. Periksa detail, sumber, dan sinyal risiko sebelum mengambil keputusan.',
-                count($listings),
-                (string) $first['title'],
-                number_format((int) $first['costs']['total'], 0, ',', '.'),
-            );
+            return __('ui.chat.backend.found', [
+                'count' => count($listings),
+                'title' => (string) $first['title'],
+                'cost' => number_format((int) $first['costs']['total'], 0, ',', '.'),
+            ]);
         }
 
         if ($exactKnowledgeAnswer !== null) {
@@ -884,20 +907,19 @@ final class ChatbotController extends Controller
             $product = mb_substr(trim($intent->product), 0, 160, 'UTF-8');
 
             $answer = $product === ''
-                ? 'Belum ditemukan listing aktif yang cocok. Coba sebutkan merek, model, varian, kondisi, budget, atau lokasi dengan lebih spesifik.'
-                : sprintf(
-                    'Belum ditemukan listing aktif yang cocok untuk "%s". Coba perjelas merek, model, varian, kondisi, budget, atau tambahkan data produk dan listing melalui panel admin.',
-                    $product,
-                );
+                ? __('ui.chat.backend.no_listing_generic')
+                : __('ui.chat.backend.no_listing_product', [
+                    'product' => $product,
+                ]);
 
             return $webUnavailable
-                ? $answer.' Pencarian web langsung juga sementara tidak tersedia; silakan coba kembali.'
+                ? $answer.__('ui.chat.backend.web_unavailable_suffix')
                 : $answer;
         }
 
         return $webUnavailable
-            ? 'Pencarian web langsung dan layanan penjelasan sementara tidak tersedia. Silakan coba kembali beberapa saat lagi.'
-            : 'Layanan penjelasan sedang tidak tersedia dan knowledge Top-K belum dapat dipastikan menjawab pertanyaan ini. Silakan pilih salah satu pertanyaan yang tersedia atau coba kembali.';
+            ? __('ui.chat.backend.all_ai_unavailable')
+            : __('ui.chat.backend.explanation_unavailable');
     }
 
     /** @param  list<array<string, mixed>>  $knowledge */
@@ -906,19 +928,49 @@ final class ChatbotController extends Controller
         array $knowledge,
     ): ?string {
         foreach ($knowledge as $item) {
-            if (Normalizer::text((string) ($item['title'] ?? ''))
-                    !== $normalizedQuestion) {
+            if (! in_array(
+                $normalizedQuestion,
+                $this->knowledgeTitleVariants(
+                    (string) ($item['title'] ?? ''),
+                ),
+                true,
+            )) {
                 continue;
             }
 
             $content = trim((string) ($item['content'] ?? ''));
 
             if ($content !== '') {
-                return $content;
+                return $this->localizedKnowledgeContent($content);
             }
         }
 
         return null;
+    }
+
+    private function localizedKnowledgeTitle(string $title): string
+    {
+        $parts = array_values(array_filter(array_map(
+            'trim',
+            explode(' / ', $title, 2),
+        )));
+
+        if (count($parts) !== 2) {
+            return $title;
+        }
+
+        return app()->isLocale('en') ? $parts[1] : $parts[0];
+    }
+
+    private function localizedKnowledgeContent(string $content): string
+    {
+        $pattern = app()->isLocale('en')
+            ? '/(?:^|\s)EN:\s*(.+)$/su'
+            : '/(?:^|\s)ID:\s*(.+?)(?=\s+EN:|$)/su';
+
+        return preg_match($pattern, $content, $matches) === 1
+            ? trim((string) $matches[1])
+            : $content;
     }
 
     private function shouldUseWebGrounding(

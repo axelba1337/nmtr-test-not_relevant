@@ -90,7 +90,9 @@ final class ScopeValidationService
                 return $position === false ? PHP_INT_MAX : $position;
             })
             ->map(static fn (Platform $platform): array => [
-                'name' => 'Cari di '.$platform->name,
+                'name' => __('ui.chat.backend.external_search', [
+                    'platform' => $platform->name,
+                ]),
                 'platform' => (string) $platform->name,
                 'base_url' => (string) $platform->base_url,
                 'search_term' => mb_substr(trim($message), 0, 200, 'UTF-8'),

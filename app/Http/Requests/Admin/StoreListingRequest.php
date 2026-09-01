@@ -69,10 +69,16 @@ class StoreListingRequest extends FormRequest
             if (! is_array(json_decode($payload, true))) {
                 $validator->errors()->add(
                     'raw_payload',
-                    'Raw payload harus berupa object atau array JSON.',
+                    __('ui.validation.custom.raw_payload_object'),
                 );
             }
         }];
+    }
+
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return __('ui.validation.attributes.listing');
     }
 
     protected function prepareForValidation(): void

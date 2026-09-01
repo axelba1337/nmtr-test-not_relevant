@@ -309,9 +309,9 @@ final class ListingSearchService
             $risk = $undervalued === null
                 ? [
                     'signal' => 'insufficient_market_data',
-                    'label' => 'Data pembanding belum cukup',
+                    'label' => __('ui.messages.search.insufficient_market_data'),
                     'requires_review' => true,
-                    'disclaimer' => 'Kondisi, seller, harga, dan margin merupakan informasi atau estimasi, bukan jaminan keamanan maupun keuntungan.',
+                    'disclaimer' => __('ui.messages.search.disclaimer'),
                 ]
                 : $this->risk->fromUndervaluedPercentage(
                     $undervalued['percentage'],
@@ -344,7 +344,7 @@ final class ListingSearchService
                 'source_url' => $this->safeUrl($listing->product_url),
                 'platform' => (string) $listing->platform?->name,
                 'condition' => (string) $listing->condition,
-                'condition_label' => 'Berdasarkan keterangan seller',
+                'condition_label' => __('ui.messages.search.condition_seller'),
                 'seller_name' => $listing->seller_name,
                 'seller_type' => (string) $listing->seller_type,
                 'location' => $listing->location,

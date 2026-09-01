@@ -1,27 +1,27 @@
 @extends('admin.layout')
 
-@section('title', 'Edit Knowledge')
-@section('page-title', 'Edit Knowledge')
+@section('title', __('ui.admin_pages.knowledge.edit.title'))
+@section('page-title', __('ui.admin_pages.knowledge.edit.title'))
 
 @section('content')
     <section class="admin-card admin-card--form">
         <div class="admin-card__heading admin-card__heading--actions">
             <div>
-                <p class="admin-card__eyebrow">Knowledge Base</p>
-                <h2>Edit Knowledge</h2>
+                <p class="admin-card__eyebrow">{{ __('ui.admin_pages.knowledge.common.eyebrow') }}</p>
+                <h2>{{ __('ui.admin_pages.knowledge.edit.heading') }}</h2>
                 <p>
-                    Embedding dibuat ulang jika judul, kategori, kata kunci, isi, atau nama sumber berubah.
+                    {{ __('ui.admin_pages.knowledge.edit.description') }}
                 </p>
             </div>
 
             @php
                 $embeddingStatus = $item->embeddingStatus();
                 $embeddingLabel = match ($embeddingStatus) {
-                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_READY => 'Embedding siap',
-                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_READY_WITH_WARNING => 'Embedding siap dengan peringatan',
-                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_FAILED => 'Embedding gagal',
-                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_STALE => 'Embedding kedaluwarsa',
-                    default => 'Embedding belum dibuat',
+                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_READY => __('ui.admin_pages.knowledge.embedding.ready_full'),
+                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_READY_WITH_WARNING => __('ui.admin_pages.knowledge.embedding.ready_with_warning_full'),
+                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_FAILED => __('ui.admin_pages.knowledge.embedding.failed_full'),
+                    \App\Models\KnowledgeItem::EMBEDDING_STATUS_STALE => __('ui.admin_pages.knowledge.embedding.stale_full'),
+                    default => __('ui.admin_pages.knowledge.embedding.not_created_full'),
                 };
             @endphp
             <span class="badge badge--neutral">{{ $embeddingLabel }}</span>
@@ -36,7 +36,7 @@
             @method('PUT')
             @include('admin.knowledge._form', [
                 'item' => $item,
-                'submitLabel' => 'Simpan Perubahan',
+                'submitLabel' => __('ui.admin_pages.knowledge.edit.submit'),
             ])
         </form>
     </section>

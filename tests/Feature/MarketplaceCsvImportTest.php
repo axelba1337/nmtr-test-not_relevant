@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Services\Search\ListingSearchService;
 use Database\Seeders\NeomatraCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class MarketplaceCsvImportTest extends TestCase
@@ -57,6 +58,40 @@ final class MarketplaceCsvImportTest extends TestCase
         $this->assertStringContainsString('olx.co.id', $listing->product_url);
     }
 
+    #[DataProvider('rtx3060MarketplaceWordings')]
+    public function test_common_rtx_3060_wording_maps_to_the_same_product(
+        string $suffix,
+        string $title,
+    ): void {
+        $row = $this->row();
+        $row[1] = 'REAL-OLX-RTX3060-'.$suffix;
+        $row[2] = $title;
+        $row[10] = 'https://www.olx.co.id/item/rtx-3060-'.strtolower($suffix);
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv([$row]),
+        ]));
+        $this->assertDatabaseHas('listings', [
+            'external_listing_id' => $row[1],
+            'product_id' => Product::query()
+                ->where('model', 'RTX 3060')
+                ->firstOrFail()
+                ->id,
+        ]);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function rtx3060MarketplaceWordings(): iterable
+    {
+        yield 'compact model' => ['COMPACT', 'RTX3060 12GB GDDR6'];
+        yield 'VGA wording' => ['VGA', 'VGA RTX3060 12GB GDDR6'];
+        yield 'GeForce wording' => ['GEFORCE', 'GeForce RTX 3060 12GB GDDR6'];
+        yield 'Indonesian wording' => [
+            'KARTU-GRAFIS',
+            'Kartu grafis RTX 3060 12GB GDDR6',
+        ];
+    }
+
     public function test_facebook_accepts_only_marketplace_item_urls(): void
     {
         $valid = $this->rowForPlatform(
@@ -66,7 +101,7 @@ final class MarketplaceCsvImportTest extends TestCase
         );
         $invalid = [];
 
-        foreach (['groups/123', 'posts/123', 'photo/123'] as $index => $path) {
+        foreach (['groups/123', 'posts/123', 'photo/123', 'pages/123'] as $index => $path) {
             $invalid[] = $this->rowForPlatform(
                 'facebook',
                 'INVALID-FB-'.($index + 1),
@@ -217,6 +252,24 @@ final class MarketplaceCsvImportTest extends TestCase
         $this->assertSame(0, $this->artisan('marketplace:import', ['path' => $path]));
         $this->assertDatabaseHas('listings', [
             'external_listing_id' => 'REAL-OLX-LAPTOP-001',
+            'product_id' => null,
+        ]);
+    }
+
+    public function test_laptop_signals_in_description_do_not_match_a_standalone_gpu(): void
+    {
+        $row = $this->row();
+        $row[1] = 'REAL-TOKOPEDIA-LAPTOP-DESCRIPTION-001';
+        $row[2] = 'Asus TUF Gaming A16 FA608UM-R7N56G6G-HM';
+        $row[3] = 'Ryzen 7 260, RAM 16GB, SSD 512GB, GeForce RTX 3060 12GB, layar 16 inch WUXGA 165Hz.';
+        $row[10] = 'https://www.olx.co.id/item/asus-tuf-a16-real-iid-900003';
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv([$row]),
+        ]));
+
+        $this->assertDatabaseHas('listings', [
+            'external_listing_id' => 'REAL-TOKOPEDIA-LAPTOP-DESCRIPTION-001',
             'product_id' => null,
         ]);
     }

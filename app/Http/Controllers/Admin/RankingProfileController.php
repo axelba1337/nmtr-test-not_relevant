@@ -52,7 +52,7 @@ final class RankingProfileController extends Controller
         });
 
         return redirect()->route('admin.ranking.edit')
-            ->with('success', 'Bobot ranking berhasil diperbarui.');
+            ->with('success', __('ui.messages.admin.ranking.updated'));
     }
 
     private function ensureAdmin(Request $request): void

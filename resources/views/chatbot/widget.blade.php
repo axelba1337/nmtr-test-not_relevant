@@ -14,6 +14,8 @@
             data-chatbot
             data-endpoint="{{ route('chatbot.query') }}"
             data-suggestions-endpoint="{{ route('chatbot.suggestions') }}"
+            data-locale="{{ app()->getLocale() }}"
+            data-translations="{{ json_encode(__('ui.chat.js'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
             aria-labelledby="chatbot-title"
         >
             <header class="chat-header">
@@ -23,106 +25,102 @@
                         <h1 id="chatbot-title">{{ config('app.name') }}</h1>
                     </div>
                     <div class="chat-header__actions">
+                        <x-locale-switch />
                         <p class="chat-status" data-mono>
                             <span class="chat-status__dot" aria-hidden="true"></span>
-                            Siap membantu
+                            {{ __('ui.chat.status') }}
                         </p>
-                        <a class="admin-link" href="{{ route('admin.login') }}">Admin</a>
+                        <a class="admin-link" href="{{ route('admin.login') }}">{{ __('ui.common.admin') }}</a>
                     </div>
                 </div>
             </header>
 
-            <section class="workspace-overview" aria-label="Kapabilitas sistem">
+            <section class="workspace-overview" aria-label="{{ __('ui.chat.capabilities') }}">
                 <div class="workspace-overview__lead">
-                    <p class="eyebrow">Natural language product intelligence</p>
-                    <h2>Cari produk. Uji harga. Bandingkan sumber.</h2>
-                    <p>Tulis kebutuhan Anda secara natural untuk menelusuri knowledge, data marketplace, dan sumber web yang tersedia.</p>
+                    <p class="eyebrow">{{ __('ui.chat.lead_eyebrow') }}</p>
+                    <h2>{{ __('ui.chat.lead_title') }}</h2>
+                    <p>{{ __('ui.chat.lead_body') }}</p>
                 </div>
                 <dl class="system-matrix" data-mono>
-                    <div><dt>ENGINE</dt><dd>SEMANTIC SEARCH</dd></div>
-                    <div><dt>DATA</dt><dd>MARKETPLACE + WEB</dd></div>
-                    <div><dt>OUTPUT</dt><dd>RANKED INTELLIGENCE</dd></div>
+                    <div><dt>{{ __('ui.chat.engine') }}</dt><dd>{{ __('ui.chat.semantic_search') }}</dd></div>
+                    <div><dt>{{ __('ui.chat.data') }}</dt><dd>{{ __('ui.chat.marketplace_web') }}</dd></div>
+                    <div><dt>{{ __('ui.chat.output') }}</dt><dd>{{ __('ui.chat.ranked_intelligence') }}</dd></div>
                 </dl>
             </section>
 
             <form class="composer" data-form>
                 <div class="workspace-grid">
-                    <aside class="workspace-rail" aria-label="Filter pencarian">
+                    <aside class="workspace-rail" aria-label="{{ __('ui.chat.filters_aria') }}">
                         <details class="quick-filters" data-filters open>
-                            <summary>FILTER / PARAMETERS</summary>
+                            <summary>{{ __('ui.chat.filters') }}</summary>
                             <div class="quick-filters__grid">
                         <label>
-                            <span>Mode</span>
+                            <span>{{ __('ui.chat.mode') }}</span>
                             <select name="mode" data-filter>
-                                <option value="">Otomatis</option>
-                                <option value="buyer">Buyer</option>
-                                <option value="reseller">Reseller</option>
+                                <option value="">{{ __('ui.chat.automatic') }}</option>
+                                <option value="buyer">{{ __('ui.chat.buyer') }}</option>
+                                <option value="reseller">{{ __('ui.chat.reseller') }}</option>
                             </select>
                         </label>
                         <label>
-                            <span>Budget maksimum</span>
-                            <input name="budget_max" type="number" min="0" step="1000" placeholder="Contoh: 2800000" data-filter>
+                            <span>{{ __('ui.chat.max_budget') }}</span>
+                            <input name="budget_max" type="number" min="0" step="1000" placeholder="{{ __('ui.chat.budget_example') }}" data-filter>
                         </label>
                         <label>
-                            <span>Kondisi</span>
+                            <span>{{ __('ui.chat.condition') }}</span>
                             <select name="condition" data-filter>
-                                <option value="">Semua kondisi</option>
-                                <option value="new">Baru</option>
-                                <option value="open_box">Open box</option>
-                                <option value="used">Bekas</option>
-                                <option value="refurbished">Refurbished</option>
-                                <option value="ex_display">Ex-display</option>
-                                <option value="unknown">Tidak diketahui</option>
+                                <option value="">{{ __('ui.chat.all_conditions') }}</option>
+                                @foreach (\App\Models\Listing::conditions() as $condition)
+                                    <option value="{{ $condition }}">{{ __('ui.labels.'.$condition) }}</option>
+                                @endforeach
                             </select>
                         </label>
                         <label>
-                            <span>Tipe seller</span>
+                            <span>{{ __('ui.chat.seller_type') }}</span>
                             <select name="seller_type" data-filter>
-                                <option value="">Semua seller</option>
-                                <option value="official">Official</option>
-                                <option value="store">Toko</option>
-                                <option value="reseller">Reseller</option>
-                                <option value="individual">Perorangan</option>
-                                <option value="unknown">Tidak diketahui</option>
+                                <option value="">{{ __('ui.chat.all_sellers') }}</option>
+                                @foreach (\App\Models\Listing::sellerTypes() as $sellerType)
+                                    <option value="{{ $sellerType }}">{{ __('ui.labels.'.$sellerType) }}</option>
+                                @endforeach
                             </select>
                         </label>
                         <label class="quick-filters__location">
-                            <span>Lokasi</span>
-                            <input name="location" type="text" maxlength="120" placeholder="Contoh: Surabaya" data-filter>
+                            <span>{{ __('ui.chat.location') }}</span>
+                            <input name="location" type="text" maxlength="120" placeholder="{{ __('ui.chat.location_example') }}" data-filter>
                         </label>
                             </div>
                         </details>
                         <div class="rail-status" data-mono>
-                            <span>SOURCE MODE</span><strong>HYBRID RETRIEVAL</strong>
-                            <span>RANKING</span><strong>DETERMINISTIC</strong>
+                            <span>{{ __('ui.chat.source_mode') }}</span><strong>{{ __('ui.chat.hybrid_retrieval') }}</strong>
+                            <span>{{ __('ui.chat.ranking') }}</span><strong>{{ __('ui.chat.deterministic') }}</strong>
                         </div>
                     </aside>
 
                     <div class="console-panel">
                         <div class="transcript" data-transcript role="log" aria-live="polite" aria-relevant="additions">
                             <article class="message message--assistant">
-                                <p class="message__label">NEOMATRA / SYSTEM READY</p>
-                                <p class="message__body">Halo! Tanyakan apa saja atau sebutkan produk yang ingin Anda cari. Jika tersedia, saya akan memadukan sumber web, knowledge Neomatra, dan data marketplace untuk memberi jawaban yang jelas.</p>
+                                <p class="message__label">{{ __('ui.chat.welcome_label') }}</p>
+                                <p class="message__body">{{ __('ui.chat.welcome') }}</p>
                             </article>
 
                             <section class="suggestions" data-suggestions aria-labelledby="suggestions-title" hidden>
-                                <p class="suggestions__label" id="suggestions-title">QUICK QUERY / Pertanyaan yang disarankan</p>
+                                <p class="suggestions__label" id="suggestions-title">{{ __('ui.chat.suggestions') }}</p>
                                 <div class="suggestions__list" data-suggestions-list></div>
                             </section>
                         </div>
 
                         <div class="composer-dock">
-                            <label class="composer__label" for="chatbot-message">SEARCH / NATURAL LANGUAGE QUERY</label>
+                            <label class="composer__label" for="chatbot-message">{{ __('ui.chat.input_label') }}</label>
                             <div class="composer__controls">
-                                <input id="chatbot-message" name="message" type="text" required maxlength="2000" autocomplete="off" placeholder="Contoh: RTX 3060 12 GB bekas Surabaya maksimal Rp2.800.000" data-input>
-                                <button type="submit" data-submit>Kirim / Search →</button>
+                                <input id="chatbot-message" name="message" type="text" required maxlength="2000" autocomplete="off" placeholder="{{ __('ui.chat.input_placeholder') }}" data-input>
+                                <button type="submit" data-submit>{{ __('ui.chat.send') }}</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </form>
             <p class="chat-disclaimer">
-                Data kondisi, seller, harga, dan margin bersifat informasional. Transaksi tetap dilakukan di platform sumber.
+                {{ __('ui.chat.disclaimer') }}
             </p>
         </section>
     </main>

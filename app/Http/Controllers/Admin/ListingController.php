@@ -87,7 +87,7 @@ final class ListingController extends Controller
         Listing::query()->create($data);
 
         return redirect()->route('admin.listings.index')
-            ->with('success', 'Listing berhasil ditambahkan.');
+            ->with('success', __('ui.messages.admin.listing.created'));
     }
 
     public function edit(Request $request, Listing $listing): View
@@ -112,7 +112,7 @@ final class ListingController extends Controller
         $listing->update($data);
 
         return redirect()->route('admin.listings.index')
-            ->with('success', 'Listing berhasil diperbarui.');
+            ->with('success', __('ui.messages.admin.listing.updated'));
     }
 
     public function destroy(Request $request, Listing $listing): RedirectResponse
@@ -121,7 +121,7 @@ final class ListingController extends Controller
         $listing->delete();
 
         return redirect()->route('admin.listings.index')
-            ->with('success', 'Listing berhasil dihapus.');
+            ->with('success', __('ui.messages.admin.listing.deleted'));
     }
 
     /**
@@ -161,7 +161,7 @@ final class ListingController extends Controller
 
         if ($exists) {
             throw ValidationException::withMessages([
-                'external_listing_id' => 'Listing dari sumber yang sama sudah tersedia.',
+                'external_listing_id' => __('ui.messages.admin.listing.duplicate'),
             ]);
         }
     }

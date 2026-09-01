@@ -781,7 +781,8 @@ final class GeminiChatAdapter implements ChatClient
 
     private function intentSystemInstruction(): string
     {
-        return 'Anda hanya mengekstrak intent dan mengklasifikasikannya untuk Neomatra. '
+        return $this->languageInstruction().' '
+            .'Anda hanya mengekstrak intent dan mengklasifikasikannya untuk Neomatra. '
             .'Gunakan product_search untuk pencarian atau perbandingan listing, '
             .'knowledge_question untuk pertanyaan tentang cara kerja, data, dan '
             .'batasan internal Neomatra, serta general_question untuk percakapan '
@@ -872,8 +873,8 @@ final class GeminiChatAdapter implements ChatClient
 
     private function explanationSystemInstruction(): string
     {
-        return 'Anda adalah asisten Neomatra. Jelaskan hasil secara singkat '
-            .'menggunakan bahasa pengguna. DATA_BACKEND_TERPERCAYA berisi '
+        return $this->languageInstruction().' '
+            .'Anda adalah asisten Neomatra. Jelaskan hasil secara singkat. DATA_BACKEND_TERPERCAYA berisi '
             .'intent, listing, harga pasar, total biaya, undervalued, margin, '
             .'risk, freshness, dan ranking yang sudah divalidasi atau dihitung '
             .'backend. Jangan mengubah, menghitung ulang, melengkapi, atau '
@@ -892,8 +893,9 @@ final class GeminiChatAdapter implements ChatClient
 
     private function webGroundingSystemInstruction(): string
     {
-        return 'Anda adalah asisten Neomatra dengan Google Search grounding. '
-            .'Jawab secara natural dalam bahasa pengguna. Jadikan pencarian '
+        return $this->languageInstruction().' '
+            .'Anda adalah asisten Neomatra dengan Google Search grounding. '
+            .'Jadikan pencarian '
             .'web sebagai sumber utama untuk fakta umum, spesifikasi produk, '
             .'dan informasi terbaru; gunakan knowledge Neomatra sebagai '
             .'konteks pendukung. DATA_BACKEND_TERPERCAYA tetap menjadi satu-satunya '
@@ -908,6 +910,11 @@ final class GeminiChatAdapter implements ChatClient
             .'dengan jelas bahwa informasi belum dapat diverifikasi. Jangan '
             .'menulis daftar URL atau markup HTML; atribusi sumber ditampilkan '
             .'aplikasi dari metadata grounding.';
+    }
+
+    private function languageInstruction(): string
+    {
+        return (string) __('ui.ai.locale_instruction');
     }
 
     /** @return array<string, mixed> */

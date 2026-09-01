@@ -47,10 +47,16 @@ final class UpdateRankingProfileRequest extends FormRequest
             if (abs($sum - 1.0) > 0.0001) {
                 $validator->errors()->add(
                     'relevance_weight',
-                    'Total seluruh bobot harus tepat 1,00.',
+                    __('ui.validation.custom.ranking_weight_total'),
                 );
             }
         }];
+    }
+
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return __('ui.validation.attributes.ranking');
     }
 
     protected function prepareForValidation(): void

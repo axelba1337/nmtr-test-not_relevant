@@ -27,7 +27,7 @@ final class KnowledgeEmbeddingController extends Controller
         if ($lock === null) {
             return back()->with(
                 'warning',
-                'Proses rebuild knowledge lain masih berjalan.',
+                __('ui.messages.admin.embedding.locked'),
             );
         }
 
@@ -39,7 +39,7 @@ final class KnowledgeEmbeddingController extends Controller
         } catch (Throwable) {
             return back()->with(
                 'error',
-                'Embedding belum dapat dibuat. Silakan coba kembali.',
+                __('ui.messages.admin.embedding.single_error'),
             );
         } finally {
             $lock->release();
@@ -48,18 +48,21 @@ final class KnowledgeEmbeddingController extends Controller
         if ($status === KnowledgeEmbeddingService::STATUS_FAILED) {
             return back()->with(
                 'warning',
-                'Embedding baru gagal dibuat. Embedding lama tetap disimpan.',
+                __('ui.messages.admin.embedding.failed_preserved'),
             );
         }
 
         if ($status === KnowledgeEmbeddingService::STATUS_SKIPPED) {
             return back()->with(
                 'warning',
-                'Rebuild dilewati karena FAQ berubah atau sudah tidak tersedia.',
+                __('ui.messages.admin.embedding.skipped'),
             );
         }
 
-        return back()->with('success', 'Embedding FAQ berhasil dibuat ulang.');
+        return back()->with(
+            'success',
+            __('ui.messages.admin.embedding.single_success'),
+        );
     }
 
     public function rebuildAll(Request $request): RedirectResponse
@@ -70,7 +73,7 @@ final class KnowledgeEmbeddingController extends Controller
         if ($lock === null) {
             return back()->with(
                 'warning',
-                'Proses rebuild knowledge lain masih berjalan.',
+                __('ui.messages.admin.embedding.locked'),
             );
         }
 
@@ -79,18 +82,17 @@ final class KnowledgeEmbeddingController extends Controller
         } catch (Throwable) {
             return back()->with(
                 'error',
-                'Knowledge belum dapat dibangun ulang. Silakan coba kembali.',
+                __('ui.messages.admin.embedding.all_error'),
             );
         } finally {
             $lock->release();
         }
 
-        $message = sprintf(
-            'Rebuild selesai: %d berhasil, %d gagal, %d dilewati.',
-            $counts[KnowledgeEmbeddingService::STATUS_PROCESSED],
-            $counts[KnowledgeEmbeddingService::STATUS_FAILED],
-            $counts[KnowledgeEmbeddingService::STATUS_SKIPPED],
-        );
+        $message = __('ui.messages.admin.embedding.completed', [
+            'processed' => $counts[KnowledgeEmbeddingService::STATUS_PROCESSED],
+            'failed' => $counts[KnowledgeEmbeddingService::STATUS_FAILED],
+            'skipped' => $counts[KnowledgeEmbeddingService::STATUS_SKIPPED],
+        ]);
 
         return back()->with(
             $counts[KnowledgeEmbeddingService::STATUS_FAILED] > 0

@@ -20,6 +20,12 @@ final class UpdateUnansweredQueryRequest extends FormRequest
         ];
     }
 
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return __('ui.validation.attributes.unanswered');
+    }
+
     protected function prepareForValidation(): void
     {
         $notes = trim((string) $this->input('review_notes', ''));

@@ -26,7 +26,10 @@ final class RiskSignalService
         if ($percentage > 35) {
             return [
                 'signal' => self::SIGNAL_HIGH,
-                'label' => 'Anomali harga atau risiko tinggi',
+                'label' => $this->translate(
+                    'ui.messages.search.risk_high',
+                    'Anomali harga atau risiko tinggi',
+                ),
                 'requires_review' => true,
                 'disclaimer' => $this->disclaimer(),
             ];
@@ -35,7 +38,10 @@ final class RiskSignalService
         if ($percentage >= 20) {
             return [
                 'signal' => self::SIGNAL_REVIEW,
-                'label' => 'Perlu pemeriksaan lebih lanjut',
+                'label' => $this->translate(
+                    'ui.messages.search.risk_review',
+                    'Perlu pemeriksaan lebih lanjut',
+                ),
                 'requires_review' => true,
                 'disclaimer' => $this->disclaimer(),
             ];
@@ -43,7 +49,10 @@ final class RiskSignalService
 
         return [
             'signal' => self::SIGNAL_NONE,
-            'label' => 'Tidak ada sinyal harga khusus',
+            'label' => $this->translate(
+                'ui.messages.search.risk_none',
+                'Tidak ada sinyal harga khusus',
+            ),
             'requires_review' => false,
             'disclaimer' => $this->disclaimer(),
         ];
@@ -51,6 +60,14 @@ final class RiskSignalService
 
     private function disclaimer(): string
     {
-        return 'Kondisi, seller, harga, dan margin merupakan informasi atau estimasi, bukan jaminan keamanan maupun keuntungan.';
+        return $this->translate(
+            'ui.messages.search.disclaimer',
+            'Kondisi, seller, harga, dan margin merupakan informasi atau estimasi, bukan jaminan keamanan maupun keuntungan.',
+        );
+    }
+
+    private function translate(string $key, string $fallback): string
+    {
+        return app()->bound('translator') ? __($key) : $fallback;
     }
 }

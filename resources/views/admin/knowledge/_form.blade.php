@@ -1,6 +1,6 @@
 @if ($errors->any())
     <div class="alert alert--error" role="alert">
-        <p>Periksa kembali data knowledge:</p>
+        <p>{{ __('ui.admin_pages.knowledge.form.validation_intro') }}</p>
         <ul>
             @foreach ($errors->all() as $error)
                 <li>{{ $error }}</li>
@@ -11,7 +11,7 @@
 
 <div class="admin-form__grid">
     <div class="form-field admin-form__full">
-        <label for="title">Judul</label>
+        <label for="title">{{ __('ui.admin_pages.knowledge.form.title') }}</label>
         <input
             id="title"
             name="title"
@@ -27,7 +27,7 @@
     </div>
 
     <div class="form-field admin-form__full">
-        <label for="content">Isi knowledge</label>
+        <label for="content">{{ __('ui.admin_pages.knowledge.form.content') }}</label>
         <textarea
             id="content"
             name="content"
@@ -38,16 +38,16 @@
         @error('content')
             <p class="form-field__error">{{ $message }}</p>
         @enderror
-        <p class="form-field__hint">Judul, kategori, kata kunci, isi, dan nama sumber digunakan saat membuat embedding.</p>
+        <p class="form-field__hint">{{ __('ui.admin_pages.knowledge.form.content_hint') }}</p>
     </div>
 
     <div class="form-field">
-        <label for="category_id">Kategori</label>
+        <label for="category_id">{{ __('ui.admin_pages.knowledge.form.category') }}</label>
         <select id="category_id" name="category_id">
-            <option value="">Tanpa kategori</option>
+            <option value="">{{ __('ui.admin_pages.knowledge.common.no_category') }}</option>
             @foreach ($categories as $category)
                 <option value="{{ $category->id }}" @selected((string) old('category_id', $item?->category_id) === (string) $category->id)>
-                    {{ $category->name }}{{ $category->is_active ? '' : ' (nonaktif)' }}
+                    {{ $category->name }}{{ $category->is_active ? '' : __('ui.admin_pages.knowledge.form.inactive_suffix') }}
                 </option>
             @endforeach
         </select>
@@ -63,15 +63,15 @@
             : $keywordValue;
     @endphp
     <div class="form-field">
-        <label for="keywords">Kata kunci / sinonim</label>
-        <textarea id="keywords" name="keywords" rows="4" maxlength="4000" placeholder="Pisahkan dengan koma atau baris baru">{{ $keywordValue }}</textarea>
+        <label for="keywords">{{ __('ui.admin_pages.knowledge.form.keywords') }}</label>
+        <textarea id="keywords" name="keywords" rows="4" maxlength="4000" placeholder="{{ __('ui.admin_pages.knowledge.form.keywords_placeholder') }}">{{ $keywordValue }}</textarea>
         @error('keywords')
             <p class="form-field__error">{{ $message }}</p>
         @enderror
     </div>
 
     <div class="form-field">
-        <label for="source_name">Nama sumber</label>
+        <label for="source_name">{{ __('ui.admin_pages.knowledge.form.source_name') }}</label>
         <input id="source_name" name="source_name" type="text" maxlength="255" value="{{ old('source_name', $item?->source_name) }}">
         @error('source_name')
             <p class="form-field__error">{{ $message }}</p>
@@ -79,15 +79,15 @@
     </div>
 
     <div class="form-field">
-        <label for="source_url">URL sumber</label>
-        <input id="source_url" name="source_url" type="url" maxlength="2048" value="{{ old('source_url', $item?->source_url) }}" placeholder="https://...">
+        <label for="source_url">{{ __('ui.admin_pages.knowledge.form.source_url') }}</label>
+        <input id="source_url" name="source_url" type="url" maxlength="2048" value="{{ old('source_url', $item?->source_url) }}" placeholder="{{ __('ui.admin_pages.knowledge.form.source_url_placeholder') }}">
         @error('source_url')
             <p class="form-field__error">{{ $message }}</p>
         @enderror
     </div>
 
     <div class="form-field">
-        <label for="sort_order">Urutan</label>
+        <label for="sort_order">{{ __('ui.admin_pages.knowledge.form.sort_order') }}</label>
         <input
             id="sort_order"
             name="sort_order"
@@ -101,11 +101,11 @@
         @error('sort_order')
             <p class="form-field__error">{{ $message }}</p>
         @enderror
-        <p class="form-field__hint">Angka lebih kecil ditampilkan lebih dahulu.</p>
+        <p class="form-field__hint">{{ __('ui.admin_pages.knowledge.form.sort_order_hint') }}</p>
     </div>
 
     <fieldset class="form-options">
-        <legend>Status knowledge</legend>
+        <legend>{{ __('ui.admin_pages.knowledge.form.status') }}</legend>
 
         <label class="check-field">
             <input type="hidden" name="is_active" value="0">
@@ -116,8 +116,8 @@
                 @checked((bool) old('is_active', $item?->is_active ?? true))
             >
             <span>
-                <strong>Aktif</strong>
-                <small>Knowledge dapat digunakan dalam retrieval.</small>
+                <strong>{{ __('ui.admin_pages.knowledge.common.active') }}</strong>
+                <small>{{ __('ui.admin_pages.knowledge.form.active_hint') }}</small>
             </span>
         </label>
 
@@ -130,8 +130,8 @@
                 @checked((bool) old('is_featured', $item?->is_featured ?? false))
             >
             <span>
-                <strong>Featured</strong>
-                <small>Prioritaskan sebagai contoh pertanyaan.</small>
+                <strong>{{ __('ui.admin_pages.knowledge.form.featured') }}</strong>
+                <small>{{ __('ui.admin_pages.knowledge.form.featured_hint') }}</small>
             </span>
         </label>
     </fieldset>
@@ -139,7 +139,7 @@
 
 <div class="form-actions">
     <a class="button button--secondary" href="{{ route('admin.knowledge.index') }}">
-        Batal
+        {{ __('ui.admin_pages.knowledge.form.cancel') }}
     </a>
     <button
         class="button button--primary"

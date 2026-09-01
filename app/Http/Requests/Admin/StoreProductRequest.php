@@ -42,7 +42,7 @@ class StoreProductRequest extends FormRequest
                 && ! is_array(json_decode($attributes, true))) {
                 $validator->errors()->add(
                     'attributes',
-                    'Atribut harus berupa object atau array JSON.',
+                    __('ui.validation.custom.product_attributes_object'),
                 );
             }
 
@@ -55,13 +55,19 @@ class StoreProductRequest extends FormRequest
                 if (mb_strlen(trim($alias), 'UTF-8') > 255) {
                     $validator->errors()->add(
                         'aliases',
-                        'Setiap alias maksimal 255 karakter.',
+                        __('ui.validation.custom.product_alias_max'),
                     );
 
                     break;
                 }
             }
         }];
+    }
+
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return __('ui.validation.attributes.product');
     }
 
     protected function prepareForValidation(): void

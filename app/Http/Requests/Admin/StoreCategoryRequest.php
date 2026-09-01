@@ -53,7 +53,7 @@ class StoreCategoryRequest extends FormRequest
                 if ($parentId === (int) $category->id) {
                     $validator->errors()->add(
                         'parent_id',
-                        'Kategori induk tidak boleh membentuk siklus.',
+                        __('ui.validation.custom.category_parent_cycle'),
                     );
 
                     return;
@@ -65,6 +65,12 @@ class StoreCategoryRequest extends FormRequest
                     ->value('parent_id') ?? 0);
             }
         }];
+    }
+
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return __('ui.validation.attributes.category');
     }
 
     protected function prepareForValidation(): void

@@ -43,7 +43,7 @@ final class AuthenticatedSessionController extends Controller
 
         if (! $authenticated) {
             throw ValidationException::withMessages([
-                'email' => 'Email atau password admin tidak valid.',
+                'email' => __('ui.messages.admin.auth.invalid_credentials'),
             ]);
         }
 

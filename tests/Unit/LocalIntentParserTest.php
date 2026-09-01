@@ -63,6 +63,16 @@ final class LocalIntentParserTest extends TestCase
         ], SearchState::all());
     }
 
+    public function test_platform_alias_does_not_leak_into_seller_type(): void
+    {
+        $parsed = app(LocalIntentParser::class)->parse(
+            'tokobagus RTX 3070',
+        );
+
+        $this->assertSame('olx', $parsed['platform']);
+        $this->assertNull($parsed['seller_type']);
+    }
+
     /** @return iterable<string, array{string, string}> */
     public static function conditionCases(): iterable
     {

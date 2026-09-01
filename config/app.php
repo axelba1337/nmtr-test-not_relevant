@@ -13,7 +13,7 @@ return [
 
     'locale' => env('APP_LOCALE', 'id'),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'id'),
 
     'cipher' => 'AES-256-CBC',
 

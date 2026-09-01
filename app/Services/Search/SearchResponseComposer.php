@@ -17,19 +17,18 @@ final class SearchResponseComposer
             $first = $outcome->results[0];
             $detail = $outcome->alternativeDetails[0] ?? [];
             $difference = match (true) {
-                ($detail['different_brand'] ?? false) === true => ' Alternatif teratas berasal dari brand berbeda.',
-                ($detail['different_family'] ?? false) === true => ' Alternatif teratas berasal dari family berbeda.',
-                ($detail['different_generation'] ?? false) === true => ' Alternatif teratas berasal dari generasi berbeda.',
-                default => ' Alternatif teratas berada pada brand, family, dan generasi yang paling dekat.',
+                ($detail['different_brand'] ?? false) === true => __('ui.search_response.different_brand'),
+                ($detail['different_family'] ?? false) === true => __('ui.search_response.different_family'),
+                ($detail['different_generation'] ?? false) === true => __('ui.search_response.different_generation'),
+                default => __('ui.search_response.closest_family'),
             };
 
-            return sprintf(
-                'Produk exact belum memiliki listing usable. Ditemukan %d listing produk terkait; prioritas teratas adalah %s dengan total biaya estimasi Rp%s.%s',
-                count($outcome->results),
-                (string) $first['product']['name'],
-                number_format((int) $first['costs']['total'], 0, ',', '.'),
-                $difference,
-            );
+            return __('ui.search_response.alternative', [
+                'count' => count($outcome->results),
+                'product' => (string) $first['product']['name'],
+                'cost' => number_format((int) $first['costs']['total'], 0, ',', '.'),
+                'detail' => $difference,
+            ]);
         }
 
         if ($outcome->state === SearchState::FILTER_TOO_STRICT
@@ -37,60 +36,55 @@ final class SearchResponseComposer
             $first = $outcome->results[0];
             $relaxed = implode(', ', array_map(
                 static fn (string $filter): string => match ($filter) {
-                    'seller_type' => 'tipe seller',
-                    'location' => 'lokasi',
-                    'platforms' => 'platform',
-                    'budget' => 'budget',
+                    'seller_type' => __('ui.search_response.filters.seller_type'),
+                    'location' => __('ui.search_response.filters.location'),
+                    'platforms' => __('ui.search_response.filters.platforms'),
+                    'budget' => __('ui.search_response.filters.budget'),
                     default => $filter,
                 },
                 $outcome->relaxedFilters,
             ));
             $budgetNote = $outcome->budgetDifference !== null
                 && $outcome->budgetDifference > 0
-                ? sprintf(
-                    ' Alternatif terdekat melebihi budget sekitar Rp%s.',
-                    number_format($outcome->budgetDifference, 0, ',', '.'),
-                )
+                ? __('ui.search_response.budget_note', [
+                    'amount' => number_format($outcome->budgetDifference, 0, ',', '.'),
+                ])
                 : '';
 
-            return sprintf(
-                'Filter awal terlalu ketat. Ditemukan %d alternatif setelah melonggarkan %s. Hasil terdekat: %s dengan total biaya estimasi Rp%s.%s',
-                count($outcome->results),
-                $relaxed === '' ? 'filter opsional' : $relaxed,
-                (string) $first['title'],
-                number_format((int) $first['costs']['total'], 0, ',', '.'),
-                $budgetNote,
-            );
+            return __('ui.search_response.strict', [
+                'count' => count($outcome->results),
+                'filters' => $relaxed === '' ? __('ui.search_response.optional_filters') : $relaxed,
+                'title' => (string) $first['title'],
+                'cost' => number_format((int) $first['costs']['total'], 0, ',', '.'),
+                'note' => $budgetNote,
+            ]);
         }
 
         if ($outcome->state === SearchState::PARTIAL_RESULT
             && $outcome->results !== []) {
-            return sprintf(
-                'Sebagian sumber berhasil diperiksa; %d hasil berikut berasal dari platform yang tersedia. Platform yang gagal: %s.',
-                count($outcome->results),
-                implode(', ', $outcome->platformsFailed),
-            );
+            return __('ui.search_response.partial', [
+                'count' => count($outcome->results),
+                'platforms' => implode(', ', $outcome->platformsFailed),
+            ]);
         }
 
         if ($outcome->state === SearchState::PLATFORM_UNAVAILABLE) {
-            return 'Platform sumber sedang tidak tersedia. Coba lagi setelah sumber marketplace aktif, atau gunakan tautan platform eksternal yang tersedia.';
+            return __('ui.search_response.platform_unavailable');
         }
 
         $product = mb_substr(trim($intent->product), 0, 160, 'UTF-8');
 
-        return sprintf(
-            'Produk%s dikenali, tetapi belum memiliki listing aktif yang dapat dibandingkan. Coba kondisi atau lokasi lain, atau buka platform eksternal yang tersedia.',
-            $product === '' ? '' : ' "'.$product.'"',
-        );
+        return __('ui.search_response.no_listing', [
+            'product' => $product === '' ? '' : ' "'.$product.'"',
+        ]);
     }
 
     public function unknownProduct(ParsedIntent $intent): string
     {
         $product = mb_substr(trim($intent->product), 0, 160, 'UTF-8');
 
-        return sprintf(
-            'Produk%s belum dikenali pada katalog aktif. Periksa nama model atau varian, lalu coba lagi; Anda juga dapat meneruskan pencarian ke platform eksternal yang tersedia.',
-            $product === '' ? '' : ' "'.$product.'"',
-        );
+        return __('ui.search_response.unknown_product', [
+            'product' => $product === '' ? '' : ' "'.$product.'"',
+        ]);
     }
 }

@@ -1,3 +1,23 @@
+let adminTranslations = {};
+
+try {
+    adminTranslations = JSON.parse(document.body.dataset.adminTranslations || '{}');
+} catch {
+    adminTranslations = {};
+}
+
+const adminText = (key, fallback, replacements = {}) => {
+    let value = typeof adminTranslations[key] === 'string'
+        ? adminTranslations[key]
+        : fallback;
+
+    Object.entries(replacements).forEach(([name, replacement]) => {
+        value = value.replaceAll(`:${name}`, String(replacement));
+    });
+
+    return value;
+};
+
 const adminShell = document.querySelector('[data-admin-shell]');
 
 if (adminShell) {
@@ -13,7 +33,10 @@ if (adminShell) {
         sidebarOverlay.className = 'admin-sidebar-overlay';
         sidebarOverlay.type = 'button';
         sidebarOverlay.dataset.sidebarOverlay = '';
-        sidebarOverlay.setAttribute('aria-label', 'Tutup menu navigasi');
+        sidebarOverlay.setAttribute(
+            'aria-label',
+            adminText('close_navigation', 'Close navigation menu'),
+        );
         sidebarOverlay.hidden = true;
         adminShell.append(sidebarOverlay);
     }
@@ -94,7 +117,13 @@ if (rankingTotal) {
         );
         const isValid = Math.abs(total - 1) <= 0.0001;
 
-        rankingTotal.textContent = `Total bobot: ${total.toFixed(4)}${isValid ? '' : ' (harus 1,0000)'}`;
+        rankingTotal.textContent = adminText(
+            'total_weight',
+            'Total weight: :total',
+            { total: total.toFixed(4) },
+        ) + (isValid
+            ? ''
+            : adminText('weight_required', ' (must equal 1.0000)'));
         rankingTotal.classList.toggle('is-invalid', !isValid);
     };
 
@@ -137,7 +166,7 @@ document.addEventListener('submit', (event) => {
     const submitter = event.submitter;
     const busyLabel = submitter?.dataset.busyLabel
         || form.dataset.busyLabel
-        || 'Memproses…';
+        || adminText('processing', 'Processing…');
 
     form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((button) => {
         button.disabled = true;

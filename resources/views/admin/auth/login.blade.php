@@ -4,21 +4,25 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
-    <title>Login Admin · {{ config('app.name') }}</title>
+    <title>{{ __('ui.admin.login.title') }} · {{ config('app.name') }}</title>
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
 </head>
-<body class="auth-body">
+<body
+    class="auth-body"
+    data-admin-translations="{{ json_encode(__('ui.admin.js'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+>
     <main class="auth-shell">
         <section class="auth-card" aria-labelledby="login-title">
+            <x-locale-switch />
             <div class="auth-card__heading">
                 <p class="auth-card__eyebrow">NMTR / RESTRICTED ACCESS</p>
                 <h1 id="login-title">{{ config('app.name') }}</h1>
-                <p>Masuk untuk mengelola FAQ dan memantau aktivitas chatbot.</p>
+                <p>{{ __('ui.admin.login.description') }}</p>
             </div>
 
             @if ($errors->any())
                 <div class="alert alert--error" role="alert">
-                    <p>Login belum berhasil:</p>
+                    <p>{{ __('ui.admin.login.failed') }}</p>
                     <ul>
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -35,7 +39,7 @@
                 @csrf
 
                 <div class="form-field">
-                    <label for="email">Email</label>
+                    <label for="email">{{ __('ui.admin.login.email') }}</label>
                     <input
                         id="email"
                         name="email"
@@ -49,7 +53,7 @@
                 </div>
 
                 <div class="form-field">
-                    <label for="password">Password</label>
+                    <label for="password">{{ __('ui.admin.login.password') }}</label>
                     <input
                         id="password"
                         name="password"
@@ -64,12 +68,12 @@
                     type="submit"
                     data-disable-on-submit
                 >
-                    Masuk
+                    {{ __('ui.admin.login.submit') }}
                 </button>
             </form>
 
             <a class="auth-card__back" href="{{ route('chatbot') }}">
-                Kembali ke chatbot
+                {{ __('ui.admin.login.back') }}
             </a>
         </section>
     </main>

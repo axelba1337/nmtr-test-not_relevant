@@ -11,11 +11,16 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RankingProfileController;
 use App\Http\Controllers\Admin\UnansweredQueryController;
 use App\Http\Controllers\ListingRedirectController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProductComparisonController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('chatbot.widget'))
     ->name('chatbot');
+
+Route::post('/locale/{locale}', LocaleController::class)
+    ->where('locale', '[A-Za-z_-]+')
+    ->name('locale.update');
 
 Route::get('/products/{product}/compare', ProductComparisonController::class)
     ->name('products.compare');

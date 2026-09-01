@@ -9,6 +9,7 @@ import {
     normalizeSources,
     normalizeSuggestions,
     requestChat,
+    requestSuggestions,
 } from '../../resources/js/chatbot-client.js';
 
 test('request coordinator allows only one fetch for concurrent sends', async () => {
@@ -172,10 +173,12 @@ test('Google Search entry point markup must be a bounded non-empty string', () =
 
 test('chat request sends normalized history and returns normalized sources', async () => {
     let requestBody;
+    let requestHeaders;
     const result = await requestChat({
         endpoint: '/api/chatbot/query',
         fetchImpl: async (_endpoint, options) => {
             requestBody = JSON.parse(options.body);
+            requestHeaders = options.headers;
 
             return {
                 ok: true,
@@ -192,6 +195,7 @@ test('chat request sends normalized history and returns normalized sources', asy
             };
         },
         message: 'Pertanyaan lanjutan',
+        locale: 'en',
         history: [
             { role: 'user', content: 'Pertanyaan awal' },
             { role: 'assistant', content: 'Jawaban awal' },
@@ -203,6 +207,8 @@ test('chat request sends normalized history and returns normalized sources', asy
         { role: 'user', content: 'Pertanyaan awal' },
         { role: 'assistant', content: 'Jawaban awal' },
     ]);
+    assert.equal(requestBody.locale, 'en');
+    assert.equal(requestHeaders['X-Neomatra-Locale'], 'en');
     assert.equal(result.answer, 'Jawaban natural');
     assert.deepEqual(result.sources, [{
         kind: 'web',
@@ -214,6 +220,43 @@ test('chat request sends normalized history and returns normalized sources', asy
         result.search_entry_point_html,
         '<div>Google Search</div>',
     );
+});
+
+test('AJAX locale is allowlisted for chat and suggestions', async () => {
+    let chatOptions;
+    let suggestionOptions;
+
+    await requestChat({
+        endpoint: '/api/chatbot/query',
+        locale: 'fr',
+        message: 'Question',
+        fetchImpl: async (_endpoint, options) => {
+            chatOptions = options;
+
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({ answer: 'Jawaban' }),
+            };
+        },
+    });
+    await requestSuggestions({
+        endpoint: '/api/chatbot/suggestions',
+        locale: 'en',
+        fetchImpl: async (_endpoint, options) => {
+            suggestionOptions = options;
+
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({ suggestions: [] }),
+            };
+        },
+    });
+
+    assert.equal(JSON.parse(chatOptions.body).locale, 'id');
+    assert.equal(chatOptions.headers['X-Neomatra-Locale'], 'id');
+    assert.equal(suggestionOptions.headers['X-Neomatra-Locale'], 'en');
 });
 
 test('chat request preserves a safe server error code', async () => {

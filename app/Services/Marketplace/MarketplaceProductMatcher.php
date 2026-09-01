@@ -22,7 +22,12 @@ final class MarketplaceProductMatcher
             $referenced = $this->matchReference($listing);
 
             return $referenced !== null
-                && $this->isCompatible($referenced, $listing, $title)
+                && $this->isCompatible(
+                    $referenced,
+                    $listing,
+                    $title,
+                    $description,
+                )
                     ? $referenced
                     : null;
         }
@@ -40,7 +45,12 @@ final class MarketplaceProductMatcher
                 $title,
                 $description,
             ): void {
-                if (! $this->isCompatible($product, $listing, $title)) {
+                if (! $this->isCompatible(
+                    $product,
+                    $listing,
+                    $title,
+                    $description,
+                )) {
                     return;
                 }
 
@@ -155,10 +165,15 @@ final class MarketplaceProductMatcher
         Product $product,
         MarketplaceListingData $listing,
         string $title,
+        string $description,
     ): bool {
         $categorySlug = (string) $product->category?->slug;
 
-        if ($this->hasCategoryConflict($categorySlug, $title)) {
+        if ($this->hasCategoryConflict(
+            $categorySlug,
+            $title,
+            $description,
+        )) {
             return false;
         }
 
@@ -210,8 +225,12 @@ final class MarketplaceProductMatcher
         return true;
     }
 
-    private function hasCategoryConflict(string $categorySlug, string $title): bool
-    {
+    private function hasCategoryConflict(
+        string $categorySlug,
+        string $title,
+        string $description,
+    ): bool {
+        $listingText = trim($title.' '.$description);
         $standaloneComponents = [
             'gpu',
             'cpu',
@@ -226,8 +245,13 @@ final class MarketplaceProductMatcher
         if (in_array($categorySlug, $standaloneComponents, true)
             && preg_match(
                 '/\b(laptop|notebook|pc\s*(?:gaming|rakitan|desktop|fullset|full\s*set)|komputer\s*(?:rakitan|gaming)|mini\s*pc|all\s*in\s*one)\b/u',
-                $title,
+                $listingText,
             ) === 1) {
+            return true;
+        }
+
+        if (in_array($categorySlug, $standaloneComponents, true)
+            && $this->looksLikeCompleteComputer($listingText)) {
             return true;
         }
 
@@ -281,6 +305,14 @@ final class MarketplaceProductMatcher
         }
 
         return false;
+    }
+
+    private function looksLikeCompleteComputer(string $text): bool
+    {
+        return preg_match('/\b(ryzen|intel\s+core|core\s+i[3579]|processor|prosesor|cpu)\b/u', $text) === 1
+            && preg_match('/\b(ram|memory|memori)\b/u', $text) === 1
+            && preg_match('/\b(ssd|hdd|storage|penyimpanan)\b/u', $text) === 1
+            && preg_match('/\b(layar|screen|display)\b/u', $text) === 1;
     }
 
     private function isUnsafeAdvertisement(string $title): bool

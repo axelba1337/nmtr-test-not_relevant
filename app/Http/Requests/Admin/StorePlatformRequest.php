@@ -43,6 +43,12 @@ class StorePlatformRequest extends FormRequest
         ];
     }
 
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return __('ui.validation.attributes.platform');
+    }
+
     protected function prepareForValidation(): void
     {
         $name = trim((string) $this->input('name', ''));

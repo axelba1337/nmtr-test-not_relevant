@@ -74,10 +74,8 @@ final class ChatbotPageTest extends TestCase
             'title.textContent = source.title;',
             $javascript,
         );
-        $this->assertStringContainsString(
-            "submit.textContent = busy ? 'Mengirim…' : 'Kirim';",
-            $javascript,
-        );
+        $this->assertStringContainsString("t('sending'", $javascript);
+        $this->assertStringContainsString("t('send'", $javascript);
         $this->assertStringContainsString(
             'history: [...conversationHistory]',
             $javascript,
@@ -96,7 +94,7 @@ final class ChatbotPageTest extends TestCase
             $javascript,
         );
         $this->assertStringContainsString(
-            "iframe.title = 'Saran penelusuran Google terkait jawaban';",
+            "iframe.title = t('google_title'",
             $javascript,
         );
         $this->assertStringContainsString(

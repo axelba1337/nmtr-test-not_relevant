@@ -159,17 +159,61 @@ final class RelatedProductRetriever
                 : $left['product']->getKey() <=> $right['product']->getKey();
         });
 
-        $ranked = array_slice($ranked, 0, 20);
-
         if ($ranked === []) {
             return null;
         }
 
-        $appliedIntent = $this->withAppliedFilters(
-            $intent,
-            $exactOutcome->appliedFilters,
-        );
-        $results = $this->listings->search($ranked, $appliedIntent);
+        $effectiveOutcome = $exactOutcome;
+        $selectedRanked = $ranked;
+
+        if ($requestedProductId === null) {
+            $selectedRanked = [];
+            $availabilityIntent = $this->withAppliedFilters($intent, [
+                'conditions' => $intent->conditions,
+                'platforms' => [],
+                'seller_types' => [],
+                'locations' => [],
+                'budget_min' => null,
+                'budget_max' => null,
+            ]);
+
+            foreach (range(1, 4) as $tier) {
+                $tierCandidates = array_values(array_filter(
+                    $ranked,
+                    static fn (array $candidate): bool => $candidate['_tier'] === $tier,
+                ));
+
+                if ($tierCandidates === []
+                    || $this->listings->search($tierCandidates, $availabilityIntent) === []) {
+                    continue;
+                }
+
+                $tierOutcome = $this->listings->searchProgressively(
+                    $tierCandidates,
+                    $intent,
+                );
+
+                if ($tierOutcome->results === []) {
+                    continue;
+                }
+
+                $selectedRanked = $tierCandidates;
+                $effectiveOutcome = $tierOutcome;
+
+                break;
+            }
+        }
+
+        if ($selectedRanked === []) {
+            return null;
+        }
+
+        $results = $requestedProductId === null
+            ? $effectiveOutcome->results
+            : $this->listings->search(
+                $selectedRanked,
+                $this->withAppliedFilters($intent, $exactOutcome->appliedFilters),
+            );
 
         if ($results === []) {
             return null;
@@ -177,7 +221,7 @@ final class RelatedProductRetriever
 
         $byProduct = [];
 
-        foreach ($ranked as $candidate) {
+        foreach ($selectedRanked as $candidate) {
             $productId = (int) $candidate['product']->getKey();
             $byProduct[$productId] = $candidate;
         }
@@ -225,7 +269,7 @@ final class RelatedProductRetriever
         $closestPrice = null;
         $difference = null;
 
-        if (in_array('budget', $exactOutcome->relaxedFilters, true)
+        if (in_array('budget', $effectiveOutcome->relaxedFilters, true)
             && $intent->budgetMax !== null) {
             $closestPrice = (int) $results[0]['costs']['total'];
             $difference = max(0, $closestPrice - $intent->budgetMax);
@@ -234,12 +278,12 @@ final class RelatedProductRetriever
         return new ListingSearchOutcome(
             SearchState::ALTERNATIVE_PRODUCT,
             $results,
-            $exactOutcome->requestedFilters,
-            $exactOutcome->appliedFilters,
-            $exactOutcome->relaxedFilters,
-            $exactOutcome->attemptCount + 1,
-            $exactOutcome->platformsSearched,
-            $exactOutcome->platformsFailed,
+            $effectiveOutcome->requestedFilters,
+            $effectiveOutcome->appliedFilters,
+            $effectiveOutcome->relaxedFilters,
+            $effectiveOutcome->attemptCount + 1,
+            $effectiveOutcome->platformsSearched,
+            $effectiveOutcome->platformsFailed,
             $closestPrice,
             $difference,
             $strategy,

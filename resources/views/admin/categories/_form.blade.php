@@ -4,26 +4,26 @@
 
     @if ($errors->any())
         <div class="alert alert--error" role="alert">
-            <p>Periksa kembali data kategori.</p>
+            <p>{{ __('ui.admin_pages.categories.check_data') }}</p>
             <ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
         </div>
     @endif
 
     <div class="admin-form__grid">
         <div class="form-field">
-            <label for="category-name">Nama kategori</label>
+            <label for="category-name">{{ __('ui.admin_pages.categories.name') }}</label>
             <input id="category-name" name="name" value="{{ old('name', $category->name ?? '') }}" required maxlength="255" @error('name') aria-invalid="true" @enderror>
             @error('name')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-field">
-            <label for="category-slug">Slug</label>
-            <input id="category-slug" name="slug" value="{{ old('slug', $category->slug ?? '') }}" maxlength="255" placeholder="Dibuat otomatis jika kosong" @error('slug') aria-invalid="true" @enderror>
+            <label for="category-slug">{{ __('ui.admin_pages.categories.slug') }}</label>
+            <input id="category-slug" name="slug" value="{{ old('slug', $category->slug ?? '') }}" maxlength="255" placeholder="{{ __('ui.admin_pages.common.auto_slug') }}" @error('slug') aria-invalid="true" @enderror>
             @error('slug')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-field">
-            <label for="category-parent">Kategori induk</label>
+            <label for="category-parent">{{ __('ui.admin_pages.categories.parent') }}</label>
             <select id="category-parent" name="parent_id" @error('parent_id') aria-invalid="true" @enderror>
-                <option value="">Tanpa induk</option>
+                <option value="">{{ __('ui.admin_pages.categories.no_parent') }}</option>
                 @foreach ($parents as $parent)
                     <option value="{{ $parent->id }}" @selected((string) old('parent_id', $category->parent_id ?? '') === (string) $parent->id)>{{ $parent->name }}</option>
                 @endforeach
@@ -31,27 +31,27 @@
             @error('parent_id')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-field">
-            <label for="category-order">Urutan</label>
+            <label for="category-order">{{ __('ui.admin_pages.common.sort_order') }}</label>
             <input id="category-order" name="sort_order" type="number" min="0" value="{{ old('sort_order', $category->sort_order ?? 0) }}" required>
             @error('sort_order')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-field form-field--full">
-            <label for="category-description">Deskripsi</label>
+            <label for="category-description">{{ __('ui.admin_pages.common.description') }}</label>
             <textarea id="category-description" name="description" maxlength="10000">{{ old('description', $category->description ?? '') }}</textarea>
             @error('description')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <fieldset class="form-options form-field--full">
-            <legend>Status</legend>
+            <legend>{{ __('ui.common.status') }}</legend>
             <input type="hidden" name="is_active" value="0">
             <label class="check-field">
                 <input name="is_active" type="checkbox" value="1" @checked(old('is_active', $category->is_active ?? true))>
-                <span><strong>Kategori aktif</strong><small>Dapat dipilih untuk produk dan knowledge baru.</small></span>
+                <span><strong>{{ __('ui.admin_pages.categories.active') }}</strong><small>{{ __('ui.admin_pages.categories.active_help') }}</small></span>
             </label>
         </fieldset>
     </div>
 
     <div class="form-actions">
-        <a class="button button--secondary" href="{{ route('admin.categories.index') }}">Batal</a>
-        <button class="button button--primary" type="submit" data-busy-label="Menyimpan…">{{ $submitLabel }}</button>
+        <a class="button button--secondary" href="{{ route('admin.categories.index') }}">{{ __('ui.common.cancel') }}</a>
+        <button class="button button--primary" type="submit" data-busy-label="{{ __('ui.common.saving') }}">{{ $submitLabel }}</button>
     </div>
 </form>

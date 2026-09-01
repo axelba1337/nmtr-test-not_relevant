@@ -67,7 +67,7 @@ final class PlatformController extends Controller
         Platform::query()->create($request->validated());
 
         return redirect()->route('admin.platforms.index')
-            ->with('success', 'Platform berhasil ditambahkan.');
+            ->with('success', __('ui.messages.admin.platform.created'));
     }
 
     public function edit(Request $request, Platform $platform): View
@@ -85,14 +85,14 @@ final class PlatformController extends Controller
 
         if ($platform->isDirty('slug') && $platform->listings()->exists()) {
             throw ValidationException::withMessages([
-                'slug' => 'Slug platform tidak dapat diubah setelah memiliki listing.',
+                'slug' => __('ui.messages.admin.platform.slug_locked'),
             ]);
         }
 
         $platform->save();
 
         return redirect()->route('admin.platforms.index')
-            ->with('success', 'Platform berhasil diperbarui.');
+            ->with('success', __('ui.messages.admin.platform.updated'));
     }
 
     public function destroy(Request $request, Platform $platform): RedirectResponse
@@ -102,14 +102,14 @@ final class PlatformController extends Controller
         if ($platform->listings()->exists()) {
             return back()->with(
                 'warning',
-                'Platform masih memiliki listing dan belum dapat dihapus.',
+                __('ui.messages.admin.platform.in_use'),
             );
         }
 
         $platform->delete();
 
         return redirect()->route('admin.platforms.index')
-            ->with('success', 'Platform berhasil dihapus.');
+            ->with('success', __('ui.messages.admin.platform.deleted'));
     }
 
     public function sync(
@@ -128,16 +128,15 @@ final class PlatformController extends Controller
                 : null,
             (int) $request->user()->id,
         );
-        $message = sprintf(
-            'Sinkronisasi %s: %d dilihat, %d baru, %d diperbarui, %d tidak berubah, %d dilewati, %d gagal.',
-            $report->status,
-            $report->seen,
-            $report->created,
-            $report->updated,
-            $report->unchanged,
-            $report->skipped,
-            $report->failed,
-        );
+        $message = __('ui.messages.admin.platform.sync_completed', [
+            'status' => $report->status,
+            'seen' => $report->seen,
+            'created' => $report->created,
+            'updated' => $report->updated,
+            'unchanged' => $report->unchanged,
+            'skipped' => $report->skipped,
+            'failed' => $report->failed,
+        ]);
 
         if (filled($report->errorMessage)) {
             $message .= ' '.$report->errorMessage;

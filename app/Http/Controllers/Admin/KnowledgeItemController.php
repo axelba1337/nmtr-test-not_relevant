@@ -95,13 +95,16 @@ final class KnowledgeItemController extends Controller
                 ->route('admin.knowledge.index')
                 ->with(
                     'warning',
-                    'Knowledge tersimpan, tetapi embedding belum berhasil dibuat.',
+                    __('ui.messages.admin.knowledge.created_embedding_failed'),
                 );
         }
 
         return redirect()
             ->route('admin.knowledge.index')
-            ->with('success', 'Knowledge dan embedding berhasil disimpan.');
+            ->with(
+                'success',
+                __('ui.messages.admin.knowledge.created'),
+            );
     }
 
     public function edit(
@@ -133,7 +136,7 @@ final class KnowledgeItemController extends Controller
         if (! $sourceChanged) {
             return redirect()
                 ->route('admin.knowledge.index')
-                ->with('success', 'Knowledge berhasil diperbarui.');
+                ->with('success', __('ui.messages.admin.knowledge.updated'));
         }
 
         $status = $this->embeddingService->rebuild(
@@ -146,13 +149,16 @@ final class KnowledgeItemController extends Controller
                 ->route('admin.knowledge.index')
                 ->with(
                     'warning',
-                    'Knowledge diperbarui, tetapi embedding baru gagal dibuat. Vector lama tetap disimpan.',
+                    __('ui.messages.admin.knowledge.updated_embedding_failed'),
                 );
         }
 
         return redirect()
             ->route('admin.knowledge.index')
-            ->with('success', 'Knowledge dan embedding berhasil diperbarui.');
+            ->with(
+                'success',
+                __('ui.messages.admin.knowledge.updated_with_embedding'),
+            );
     }
 
     public function destroy(
@@ -164,7 +170,7 @@ final class KnowledgeItemController extends Controller
 
         return redirect()
             ->route('admin.knowledge.index')
-            ->with('success', 'Knowledge berhasil dihapus.');
+            ->with('success', __('ui.messages.admin.knowledge.deleted'));
     }
 
     public function toggleActive(
@@ -179,8 +185,8 @@ final class KnowledgeItemController extends Controller
         return back()->with(
             'success',
             $knowledgeItem->is_active
-                ? 'Knowledge berhasil diaktifkan.'
-                : 'Knowledge berhasil dinonaktifkan.',
+                ? __('ui.messages.admin.knowledge.activated')
+                : __('ui.messages.admin.knowledge.deactivated'),
         );
     }
 
@@ -196,8 +202,8 @@ final class KnowledgeItemController extends Controller
         return back()->with(
             'success',
             $knowledgeItem->is_featured
-                ? 'Knowledge ditandai sebagai featured.'
-                : 'Tanda featured knowledge dihapus.',
+                ? __('ui.messages.admin.knowledge.featured')
+                : __('ui.messages.admin.knowledge.unfeatured'),
         );
     }
 

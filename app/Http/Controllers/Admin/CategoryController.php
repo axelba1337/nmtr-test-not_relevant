@@ -64,7 +64,7 @@ final class CategoryController extends Controller
         Category::query()->create($request->validated());
 
         return redirect()->route('admin.categories.index')
-            ->with('success', 'Kategori berhasil ditambahkan.');
+            ->with('success', __('ui.messages.admin.category.created'));
     }
 
     public function edit(Request $request, Category $category): View
@@ -100,8 +100,8 @@ final class CategoryController extends Controller
             ->with(
                 $semanticChanged ? 'warning' : 'success',
                 $semanticChanged
-                    ? 'Kategori diperbarui. Embedding produk, alias, dan knowledge terkait perlu dibangun ulang.'
-                    : 'Kategori berhasil diperbarui.',
+                    ? __('ui.messages.admin.category.updated_embeddings_stale')
+                    : __('ui.messages.admin.category.updated'),
             );
     }
 
@@ -112,7 +112,7 @@ final class CategoryController extends Controller
         if ($category->products()->exists()) {
             return back()->with(
                 'warning',
-                'Kategori masih digunakan produk dan belum dapat dihapus.',
+                __('ui.messages.admin.category.in_use'),
             );
         }
 
@@ -124,7 +124,7 @@ final class CategoryController extends Controller
         });
 
         return redirect()->route('admin.categories.index')
-            ->with('success', 'Kategori berhasil dihapus.');
+            ->with('success', __('ui.messages.admin.category.deleted'));
     }
 
     private function parentOptions(?Category $except = null)

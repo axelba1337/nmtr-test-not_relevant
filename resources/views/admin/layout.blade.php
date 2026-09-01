@@ -5,17 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Admin') · {{ config('app.name') }}</title>
+    <title>@yield('title', __('ui.admin.title')) · {{ config('app.name') }}</title>
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
 </head>
-<body class="admin-body">
-    <a class="skip-link" href="#admin-content">Lewati ke konten utama</a>
+<body
+    class="admin-body"
+    data-admin-translations="{{ json_encode(__('ui.admin.js'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+>
+    <a class="skip-link" href="#admin-content">{{ __('ui.admin.skip') }}</a>
 
     <div class="admin-shell" data-admin-shell>
         <aside
             class="admin-sidebar"
             id="admin-sidebar"
-            aria-label="Navigasi admin"
+            aria-label="{{ __('ui.admin.navigation') }}"
             data-admin-sidebar
         >
             <div class="admin-sidebar__brand">
@@ -23,72 +26,72 @@
                 <span class="admin-sidebar__name">{{ config('app.name') }}</span>
             </div>
 
-            <nav class="admin-nav" aria-label="Menu utama">
-                <p class="admin-nav__label">Ringkasan</p>
+            <nav class="admin-nav" aria-label="{{ __('ui.admin.main_menu') }}">
+                <p class="admin-nav__label">{{ __('ui.admin.summary') }}</p>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}"
                     href="{{ route('admin.dashboard') }}"
                     @if (request()->routeIs('admin.dashboard')) aria-current="page" @endif
                 >
-                    Dashboard
+                    {{ __('ui.admin.dashboard') }}
                 </a>
-                <p class="admin-nav__label admin-nav__label--spaced">Katalog</p>
+                <p class="admin-nav__label admin-nav__label--spaced">{{ __('ui.admin.catalog') }}</p>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.categories.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.categories.index') }}"
                     @if (request()->routeIs('admin.categories.*')) aria-current="page" @endif
                 >
-                    Kategori
+                    {{ __('ui.admin.categories') }}
                 </a>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.products.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.products.index') }}"
                     @if (request()->routeIs('admin.products.*')) aria-current="page" @endif
                 >
-                    Produk &amp; Alias
+                    {{ __('ui.admin.products_aliases') }}
                 </a>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.platforms.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.platforms.index') }}"
                     @if (request()->routeIs('admin.platforms.*')) aria-current="page" @endif
                 >
-                    Platform
+                    {{ __('ui.admin.platforms') }}
                 </a>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.listings.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.listings.index') }}"
                     @if (request()->routeIs('admin.listings.*')) aria-current="page" @endif
                 >
-                    Listing
+                    {{ __('ui.admin.listings') }}
                 </a>
-                <p class="admin-nav__label admin-nav__label--spaced">AI &amp; Evaluasi</p>
+                <p class="admin-nav__label admin-nav__label--spaced">{{ __('ui.admin.ai_evaluation') }}</p>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.knowledge.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.knowledge.index') }}"
                     @if (request()->routeIs('admin.knowledge.*')) aria-current="page" @endif
                 >
-                    Knowledge Base
+                    {{ __('ui.admin.knowledge') }}
                 </a>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.unanswered.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.unanswered.index') }}"
                     @if (request()->routeIs('admin.unanswered.*')) aria-current="page" @endif
                 >
-                    Unanswered Queries
+                    {{ __('ui.admin.unanswered') }}
                 </a>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.ranking.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.ranking.edit') }}"
                     @if (request()->routeIs('admin.ranking.*')) aria-current="page" @endif
                 >
-                    Bobot Ranking
+                    {{ __('ui.admin.ranking') }}
                 </a>
             </nav>
 
             <form class="admin-sidebar__logout" method="POST" action="{{ route('admin.logout') }}">
                 @csrf
                 <button class="admin-nav__link admin-nav__button" type="submit">
-                    Logout
+                    {{ __('ui.admin.logout') }}
                 </button>
             </form>
         </aside>
@@ -103,17 +106,20 @@
                         aria-expanded="false"
                         data-admin-menu-toggle
                     >
-                        Menu
+                        {{ __('ui.admin.menu') }}
                     </button>
                     <div>
                         <p class="admin-topbar__eyebrow">ADMINISTRATION / CONTROL PLANE</p>
-                        <h1>@yield('page-title', 'Panel Admin')</h1>
+                        <h1>@yield('page-title', __('ui.admin.panel'))</h1>
                     </div>
                 </div>
 
-                <div class="admin-identity">
-                    <span class="admin-identity__label">Masuk sebagai</span>
-                    <strong>{{ auth()->user()?->name }}</strong>
+                <div class="admin-topbar__actions">
+                    <x-locale-switch />
+                    <div class="admin-identity">
+                        <span class="admin-identity__label">{{ __('ui.admin.signed_in_as') }}</span>
+                        <strong>{{ auth()->user()?->name }}</strong>
+                    </div>
                 </div>
             </header>
 

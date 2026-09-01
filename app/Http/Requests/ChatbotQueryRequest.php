@@ -49,16 +49,7 @@ final class ChatbotQueryRequest extends FormRequest
     /** @return array<string, string> */
     public function attributes(): array
     {
-        return [
-            'message' => 'pertanyaan',
-            'budget_max' => 'budget maksimum',
-            'location' => 'lokasi',
-            'platform' => 'platform',
-            'condition' => 'kondisi',
-            'seller_type' => 'tipe seller',
-            'mode' => 'mode pencarian',
-            'history' => 'riwayat percakapan',
-        ];
+        return __('ui.validation.attributes.chatbot');
     }
 
     protected function prepareForValidation(): void

@@ -12,6 +12,28 @@ const chatbot = document.querySelector('[data-chatbot]');
 if (chatbot) {
     const endpoint = chatbot.dataset.endpoint;
     const suggestionsEndpoint = chatbot.dataset.suggestionsEndpoint;
+    const locale = ['id', 'en'].includes(chatbot.dataset.locale)
+        ? chatbot.dataset.locale
+        : 'id';
+    let translations = {};
+
+    try {
+        translations = JSON.parse(chatbot.dataset.translations || '{}');
+    } catch {
+        translations = {};
+    }
+
+    const t = (key, fallback, replacements = {}) => {
+        let value = typeof translations[key] === 'string'
+            ? translations[key]
+            : fallback;
+
+        Object.entries(replacements).forEach(([name, replacement]) => {
+            value = value.replaceAll(`:${name}`, String(replacement));
+        });
+
+        return value;
+    };
     const form = chatbot.querySelector('[data-form]');
     const input = chatbot.querySelector('[data-input]');
     const submit = chatbot.querySelector('[data-submit]');
@@ -80,7 +102,7 @@ if (chatbot) {
 
         container.className = 'search-entry-point';
         iframe.className = 'search-entry-point__frame';
-        iframe.title = 'Saran penelusuran Google terkait jawaban';
+        iframe.title = t('google_title', 'Google search suggestions');
         iframe.loading = 'lazy';
         iframe.referrerPolicy = 'no-referrer';
         iframe.setAttribute(
@@ -101,13 +123,17 @@ if (chatbot) {
         const summary = document.createElement('summary');
         const list = document.createElement('ol');
         const kindLabels = {
-            web: 'Web',
-            knowledge: 'Knowledge Neomatra',
-            marketplace: 'Marketplace',
+            web: t('source_web', 'Web'),
+            knowledge: t('source_knowledge', 'Neomatra Knowledge'),
+            marketplace: t('source_marketplace', 'Marketplace'),
         };
 
         details.className = 'answer-sources';
-        summary.textContent = `Sumber jawaban (${validSources.length})`;
+        summary.textContent = t(
+            'answer_sources',
+            'Answer sources (:count)',
+            { count: validSources.length },
+        );
         details.append(summary);
 
         validSources.forEach((source) => {
@@ -165,10 +191,10 @@ if (chatbot) {
         article.classList.add('message', `message--${role}`);
         label.className = 'message__label';
         label.textContent = role === 'user'
-            ? 'USER / QUERY'
+            ? t('label_user', 'USER / QUERY')
             : role === 'error'
-                ? 'SYSTEM / ERROR'
-                : 'NEOMATRA / RESPONSE';
+                ? t('label_error', 'SYSTEM / ERROR')
+                : t('label_assistant', 'NEOMATRA / RESPONSE');
         body.className = 'message__body';
         appendPlainText(body, text);
         article.append(label, body);
@@ -183,7 +209,7 @@ if (chatbot) {
         const citedKnowledgeTitles = new Set(
             validSources
                 .filter((source) => source.kind === 'knowledge')
-                .map((source) => source.title.toLocaleLowerCase('id-ID')),
+                .map((source) => source.title.toLocaleLowerCase(locale)),
         );
 
         const validMatches = Array.isArray(matches)
@@ -192,7 +218,7 @@ if (chatbot) {
                 && typeof match.title === 'string'
                 && match.title.trim() !== ''
                 && !citedKnowledgeTitles.has(
-                    match.title.trim().toLocaleLowerCase('id-ID'),
+                    match.title.trim().toLocaleLowerCase(locale),
                 )
             ))
             : [];
@@ -203,7 +229,11 @@ if (chatbot) {
             const list = document.createElement('ul');
 
             details.className = 'matches';
-            summary.textContent = `Knowledge Neomatra (${validMatches.length})`;
+            summary.textContent = t(
+                'knowledge',
+                'Neomatra Knowledge (:count)',
+                { count: validMatches.length },
+            );
             details.append(summary);
 
             validMatches.forEach((match) => {
@@ -239,9 +269,11 @@ if (chatbot) {
     };
 
     const formatMoney = (value, currency = 'IDR') => {
-        if (!Number.isSafeInteger(Number(value))) return 'Belum tersedia';
+        if (!Number.isSafeInteger(Number(value))) {
+            return t('unavailable', 'Unavailable');
+        }
 
-        return new Intl.NumberFormat('id-ID', {
+        return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'id-ID', {
             style: 'currency',
             currency,
             maximumFractionDigits: 0,
@@ -249,12 +281,12 @@ if (chatbot) {
     };
 
     const conditionLabels = {
-        new: 'Baru',
-        open_box: 'Open box',
-        used: 'Bekas',
-        refurbished: 'Refurbished',
-        ex_display: 'Ex-display',
-        unknown: 'Tidak diketahui',
+        new: t('condition_new', 'New'),
+        open_box: t('condition_open_box', 'Open box'),
+        used: t('condition_used', 'Used'),
+        refurbished: t('condition_refurbished', 'Refurbished'),
+        ex_display: t('condition_ex_display', 'Ex-display'),
+        unknown: t('condition_unknown', 'Unknown'),
     };
 
     const appendListingResults = (listings) => {
@@ -268,8 +300,12 @@ if (chatbot) {
 
         section.className = 'listing-results';
         heading.className = 'listing-results__heading';
-        title.textContent = `${listings.length} listing teratas`;
-        note.textContent = 'Diurutkan berdasarkan kecocokan dan perhitungan harga backend.';
+        title.textContent = t(
+            'top_listings',
+            ':count top listings',
+            { count: listings.length },
+        );
+        note.textContent = t('ranking_note', 'Sorted by backend ranking.');
         heading.append(title, note);
         grid.className = 'listing-grid';
 
@@ -291,23 +327,23 @@ if (chatbot) {
             platform.className = 'listing-card__platform';
             platform.textContent = typeof listing.platform === 'string'
                 ? listing.platform
-                : 'Platform tidak diketahui';
+                : t('unknown_platform', 'Unknown platform');
             risk.className = `risk-badge risk-badge--${listing.risk?.signal ?? 'none'}`;
             risk.textContent = typeof listing.risk?.label === 'string'
                 ? listing.risk.label
-                : 'Periksa data';
+                : t('check_data', 'Check data');
             top.append(platform, risk);
             name.textContent = typeof listing.title === 'string'
                 ? listing.title
-                : 'Listing tanpa judul';
+                : t('untitled_listing', 'Untitled listing');
 
             const factValues = [
-                ['Harga', formatMoney(listing.item_price, listing.currency)],
-                ['Total biaya', formatMoney(listing.costs?.total, listing.currency)],
-                ['Harga pasar', formatMoney(listing.market?.price, listing.currency)],
-                ['Undervalued', Number.isFinite(Number(listing.undervalued?.percentage))
+                [t('price', 'Price'), formatMoney(listing.item_price, listing.currency)],
+                [t('total_cost', 'Total cost'), formatMoney(listing.costs?.total, listing.currency)],
+                [t('market_price', 'Market price'), formatMoney(listing.market?.price, listing.currency)],
+                [t('undervalued', 'Undervalued'), Number.isFinite(Number(listing.undervalued?.percentage))
                     ? `${Number(listing.undervalued.percentage).toFixed(1)}%`
-                    : 'Belum cukup data'],
+                    : t('insufficient_data', 'Insufficient data')],
             ];
 
             factValues.forEach(([label, value]) => {
@@ -323,15 +359,17 @@ if (chatbot) {
 
             seller.className = 'listing-card__seller';
             seller.textContent = [
-                listing.seller_name || 'Seller tidak diketahui',
+                listing.seller_name || t('unknown_seller', 'Unknown seller'),
                 listing.seller_type || 'unknown',
-                listing.location || 'Lokasi tidak tersedia',
-                conditionLabels[listing.condition] || listing.condition || 'Kondisi unknown',
+                listing.location || t('unknown_location', 'Location unavailable'),
+                conditionLabels[listing.condition]
+                    || listing.condition
+                    || t('unknown_condition', 'Unknown condition'),
             ].join(' · ');
             warning.className = 'listing-card__warning';
             warning.textContent = listing.costs?.complete === false
-                ? 'Sebagian komponen biaya tidak tersedia dan sementara dihitung nol.'
-                : 'Kondisi berdasarkan keterangan seller; lakukan pemeriksaan mandiri.';
+                ? t('incomplete_costs', 'Some cost components are unavailable.')
+                : t('condition_warning', 'Verify the seller-described condition independently.');
             actions.className = 'listing-card__actions';
 
             const sourceHref = safeHref(listing.source_url);
@@ -343,7 +381,7 @@ if (chatbot) {
                 source.href = sourceHref;
                 source.target = '_blank';
                 source.rel = 'noopener noreferrer';
-                source.textContent = 'Buka sumber';
+                source.textContent = t('open_source', 'Open source');
                 actions.append(source);
             }
 
@@ -351,7 +389,7 @@ if (chatbot) {
                 const compare = document.createElement('a');
 
                 compare.href = compareHref;
-                compare.textContent = 'Bandingkan';
+                compare.textContent = t('compare', 'Compare');
                 actions.append(compare);
             }
 
@@ -377,7 +415,9 @@ if (chatbot) {
         form.setAttribute('aria-busy', String(busy));
         input.disabled = busy;
         submit.disabled = busy;
-        submit.textContent = busy ? 'Mengirim…' : 'Kirim';
+        submit.textContent = busy
+            ? t('sending', 'Sending…')
+            : t('send', 'Send / Search →');
         filterControls.forEach((control) => { control.disabled = busy; });
         suggestionsList.querySelectorAll('button').forEach((button) => {
             button.disabled = busy;
@@ -386,12 +426,12 @@ if (chatbot) {
 
     const errorMessageFor = (error) => {
         if (!(error instanceof ChatbotRequestError)) {
-            return 'Tidak dapat terhubung ke layanan. Periksa jaringan lalu coba kembali.';
+            return t('network_error', 'Unable to connect to the service.');
         }
 
         if (error.code === 'embedding_unavailable') {
             return error.payload?.error?.message
-                || 'Embedding API belum tersedia. Periksa konfigurasi server.';
+                || t('embedding_error', 'The Embedding API is unavailable.');
         }
 
         if (error.status === 422) {
@@ -400,19 +440,19 @@ if (chatbot) {
                 ? Object.values(errors).flat().find((value) => typeof value === 'string')
                 : null;
 
-            return first || 'Filter atau pertanyaan tidak valid.';
+            return first || t('validation_error', 'The filters or question are invalid.');
         }
 
         if (error.status === 429) {
-            return 'Terlalu banyak permintaan. Silakan coba kembali beberapa saat lagi.';
+            return t('rate_limit', 'Too many requests. Please try again shortly.');
         }
 
         if (error.status >= 500) {
             return error.payload?.error?.message
-                || 'Layanan sedang tidak tersedia. Silakan coba kembali nanti.';
+                || t('service_error', 'The service is currently unavailable.');
         }
 
-        return 'Permintaan tidak dapat diproses.';
+        return t('request_error', 'The request could not be processed.');
     };
 
     const filtersFromForm = () => {
@@ -443,6 +483,7 @@ if (chatbot) {
             filters,
             sessionKey,
             history,
+            locale,
         }),
         onStart: ({ message }) => {
             conversationStarted = true;
@@ -452,7 +493,7 @@ if (chatbot) {
             setBusy(true);
             loadingMessage = appendMessage(
                 'assistant',
-                'Sedang mencari informasi dan menyiapkan jawaban…',
+                t('loading', 'Searching for information and preparing an answer…'),
             );
             loadingMessage.classList.add('message--loading');
         },
@@ -529,7 +570,10 @@ if (chatbot) {
         if (!suggestionsEndpoint || conversationStarted) return;
 
         try {
-            renderSuggestions(await requestSuggestions({ endpoint: suggestionsEndpoint }));
+            renderSuggestions(await requestSuggestions({
+                endpoint: suggestionsEndpoint,
+                locale,
+            }));
         } catch {
             hideSuggestions();
         }

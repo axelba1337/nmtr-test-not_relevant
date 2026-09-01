@@ -85,8 +85,8 @@ final class UnansweredQueryController extends Controller
             ->with(
                 'success',
                 $reviewed
-                    ? 'Query ditandai sudah ditinjau.'
-                    : 'Query dikembalikan ke antrean peninjauan.',
+                    ? __('ui.messages.admin.unanswered.reviewed')
+                    : __('ui.messages.admin.unanswered.reopened'),
             );
     }
 

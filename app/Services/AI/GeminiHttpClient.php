@@ -37,7 +37,7 @@ final class GeminiHttpClient
                 'gemini',
                 $operation,
                 'configuration',
-                'Konfigurasi layanan AI belum lengkap atau tidak sesuai.',
+                __('ui.messages.ai.configuration'),
                 $model !== '' ? $model : null,
             ));
         }
@@ -52,7 +52,7 @@ final class GeminiHttpClient
                 'gemini',
                 $operation,
                 'connection',
-                'Layanan AI tidak dapat dihubungi.',
+                __('ui.messages.ai.connection'),
                 $model,
             ));
         } catch (Throwable) {
@@ -60,7 +60,7 @@ final class GeminiHttpClient
                 'gemini',
                 $operation,
                 'client_error',
-                'Permintaan ke layanan AI tidak dapat diproses.',
+                __('ui.messages.ai.request_failed'),
                 $model,
             ));
         }
@@ -157,11 +157,11 @@ final class GeminiHttpClient
     private function safeFailureMessage(Response $response): string
     {
         return match (true) {
-            $response->status() === 429 => 'Batas penggunaan layanan AI sedang tercapai.',
-            in_array($response->status(), [401, 403], true) => 'Autentikasi layanan AI ditolak.',
-            $response->status() === 408 => 'Layanan AI melewati batas waktu.',
-            $response->serverError() => 'Layanan AI sedang tidak tersedia.',
-            default => 'Layanan AI menolak permintaan.',
+            $response->status() === 429 => __('ui.messages.ai.quota'),
+            in_array($response->status(), [401, 403], true) => __('ui.messages.ai.authentication'),
+            $response->status() === 408 => __('ui.messages.ai.timeout'),
+            $response->serverError() => __('ui.messages.ai.unavailable'),
+            default => __('ui.messages.ai.rejected'),
         };
     }
 }
