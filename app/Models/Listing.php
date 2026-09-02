@@ -137,19 +137,6 @@ final class Listing extends Model
             ->where('price', '>', 0);
     }
 
-    public function scopeComparable(
-        Builder $query,
-        int $productId,
-        string $condition,
-        string $currency = 'IDR',
-    ): Builder {
-        return $query
-            ->available()
-            ->where('product_id', $productId)
-            ->where('condition', $condition)
-            ->where('currency', strtoupper($currency));
-    }
-
     /** @return list<string> */
     public static function conditions(): array
     {

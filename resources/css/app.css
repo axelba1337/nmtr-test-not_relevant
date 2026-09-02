@@ -11,17 +11,19 @@ body {
 a { color: inherit; }
 
 .page-shell {
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    display: grid;
+    overflow: hidden;
     padding: clamp(0.75rem, 2vw, 1.5rem);
 }
 
 .chat-card {
     width: min(100%, 96rem);
-    min-height: calc(100vh - 3rem);
-    min-height: calc(100dvh - 3rem);
+    height: 100%;
+    min-height: 0;
     display: grid;
-    grid-template-rows: auto auto minmax(32rem, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     margin: 0 auto;
     overflow: hidden;
     border: 1px solid var(--border);
@@ -47,6 +49,22 @@ a { color: inherit; }
     justify-content: space-between;
     gap: 1rem;
 }
+
+.chat-brand {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.chat-brand__logo {
+    width: clamp(2.6rem, 4vw, 3.25rem);
+    height: clamp(2.6rem, 4vw, 3.25rem);
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+
+.chat-brand__copy { min-width: 0; }
 
 .chat-header__actions {
     display: flex;
@@ -84,13 +102,6 @@ a { color: inherit; }
     cursor: default;
 }
 
-.comparison-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-}
-
 .eyebrow {
     margin: 0 0 0.25rem;
     color: var(--orange);
@@ -108,8 +119,7 @@ a { color: inherit; }
     letter-spacing: -0.02em;
 }
 
-.admin-link,
-.comparison-back {
+.admin-link {
     min-height: 2.25rem;
     display: inline-flex;
     align-items: center;
@@ -125,8 +135,7 @@ a { color: inherit; }
     text-transform: uppercase;
 }
 
-.admin-link:hover,
-.comparison-back:hover {
+.admin-link:hover {
     border-color: var(--orange);
     color: var(--orange-bright);
 }
@@ -200,10 +209,11 @@ a { color: inherit; }
 .system-matrix dt { color: var(--text-muted); font-size: 0.62rem; }
 .system-matrix dd { margin: 0; color: var(--text); font-size: 0.68rem; overflow-wrap: anywhere; }
 
-.composer { min-height: 0; }
+.composer { min-height: 0; overflow: hidden; }
 
 .workspace-grid {
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
     display: grid;
     grid-template-columns: 17rem minmax(0, 1fr);
 }
@@ -279,14 +289,32 @@ a { color: inherit; }
 .rail-status strong { color: var(--text-secondary); font-weight: 500; }
 
 .console-panel {
+    position: relative;
     min-width: 0;
     min-height: 0;
     display: grid;
-    grid-template-rows: minmax(22rem, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: hidden;
     background: var(--surface);
+    isolation: isolate;
+}
+
+.console-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image: url('/images/branding/neomatra-wordmark-bg.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: min(72%, 42rem) auto;
+    opacity: 0.055;
+    pointer-events: none;
 }
 
 .transcript {
+    position: relative;
+    z-index: 1;
     min-width: 0;
     min-height: 0;
     display: flex;
@@ -412,8 +440,7 @@ a { color: inherit; }
 .source-heading { display: flex; align-items: baseline; gap: 0.45rem; min-width: 0; }
 
 .source-badge,
-.listing-card__platform,
-.risk-badge {
+.listing-card__platform {
     display: inline-flex;
     padding: 0.22rem 0.4rem;
     border: 1px solid currentColor;
@@ -432,6 +459,8 @@ a { color: inherit; }
 .answer-sources small { display: block; margin-top: 0.2rem; color: var(--text-muted); }
 
 .composer-dock {
+    position: relative;
+    z-index: 1;
     padding: 0.8rem clamp(0.9rem, 2vw, 1.5rem) 1rem;
     border-top: 1px solid var(--border);
     background: var(--bg);
@@ -523,10 +552,6 @@ a { color: inherit; }
 
 .listing-card__top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .listing-card__platform { color: var(--orange); }
-.risk-badge { color: var(--text-secondary); }
-.risk-badge--needs_review { color: var(--warning); }
-.risk-badge--price_anomaly,
-.risk-badge--insufficient_market_data { color: var(--danger); }
 
 .listing-card h3 { margin: 0.8rem 0; font-size: 0.9rem; line-height: 1.4; overflow-wrap: anywhere; }
 .listing-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--border); }
@@ -534,66 +559,30 @@ a { color: inherit; }
 .listing-card dt { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.56rem; text-transform: uppercase; }
 .listing-card dd { margin: 0.25rem 0 0; color: var(--text); font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; overflow-wrap: anywhere; }
 .listing-card dl div:first-child dd { color: var(--orange-bright); }
-.listing-card__seller,
-.listing-card__warning { margin: 0.65rem 0 0; color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.6rem; line-height: 1.5; }
-.listing-card__warning { color: var(--warning); }
+.listing-card__seller { margin: 0.65rem 0 0; color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.6rem; line-height: 1.5; }
 .listing-card__actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.75rem; }
 .listing-card__actions a { padding: 0.48rem 0.65rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600; text-decoration: none; text-transform: uppercase; }
 .listing-card__actions a:first-child { border-color: var(--orange); color: var(--bg); background: var(--orange); }
 .listing-card__actions a:hover { border-color: var(--orange-bright); color: var(--orange-bright); background: transparent; }
 
-.comparison-page { min-height: 100vh; padding: clamp(1rem, 3vw, 2.5rem); }
-.comparison-shell { width: min(100%, 90rem); margin: 0 auto; }
-
-.comparison-header,
-.comparison-notice,
-.comparison-empty,
-.comparison-table-wrap {
-    margin-top: 1rem;
-    padding: clamp(1rem, 2vw, 1.5rem);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    box-shadow: none;
-}
-
-.comparison-header { border-left: 3px solid var(--orange); background: var(--surface-alt); }
-.comparison-header h1,
-.comparison-header p,
-.comparison-empty h2,
-.comparison-empty p { margin: 0; }
-.comparison-header h1 { font-size: clamp(1.6rem, 4vw, 3rem); letter-spacing: -0.04em; }
-.comparison-header p:last-child,
-.comparison-empty p { margin-top: 0.45rem; color: var(--text-secondary); }
-.comparison-notice { border-left: 2px solid var(--warning); color: var(--warning); background: rgba(255, 176, 32, 0.04); font-family: var(--font-mono); font-size: 0.7rem; }
-.comparison-table-wrap { padding: 0; overflow-x: auto; }
-.comparison-table { width: 100%; min-width: 68rem; border-collapse: collapse; background: var(--surface); font-size: 0.75rem; }
-.comparison-table th,
-.comparison-table td { padding: 0.8rem; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
-.comparison-table th { color: var(--orange); background: var(--bg); font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; }
-.comparison-table tbody tr:hover { background: var(--surface-alt); }
-.comparison-table td:nth-child(3),
-.comparison-table td:nth-child(4),
-.comparison-table td:nth-child(5),
-.comparison-table td:nth-child(6) { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.comparison-table td:nth-child(4) { color: var(--orange-bright); }
-.comparison-table small { display: block; margin-top: 0.3rem; color: var(--text-muted); }
-.comparison-table a { color: var(--orange); font-weight: 700; }
-
 @media (max-width: 64rem) {
     .page-shell { padding: 0; }
-    .chat-card { min-height: 100vh; min-height: 100dvh; border-right: 0; border-left: 0; }
+    .chat-card { border-right: 0; border-left: 0; }
     .workspace-overview { grid-template-columns: minmax(0, 1fr) 18rem; }
     .workspace-grid { grid-template-columns: 14rem minmax(0, 1fr); }
 }
 
 @media (max-width: 48rem) {
+    .chat-header__main,
+    .chat-header__actions { flex-wrap: wrap; }
+    .chat-header__actions { margin-left: auto; }
+    .console-panel::before { background-size: min(82%, 24rem) auto; opacity: 0.04; }
     .workspace-overview { grid-template-columns: 1fr; }
     .workspace-overview__lead { border-right: 0; border-bottom: 1px solid var(--border); }
     .system-matrix { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .system-matrix div { grid-template-columns: 1fr; align-content: start; border-right: 1px solid var(--border); border-bottom: 0; }
     .system-matrix div:last-child { border-right: 0; }
-    .workspace-grid { grid-template-columns: 1fr; }
+    .workspace-grid { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
     .workspace-rail { border-right: 0; border-bottom: 1px solid var(--border); }
     .quick-filters:not([open]) + .rail-status { display: none; }
     .quick-filters__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -604,6 +593,7 @@ a { color: inherit; }
 @media (max-width: 34rem) {
     .chat-header { align-items: flex-start; }
     .chat-header__main { align-items: flex-start; }
+    .chat-brand__logo { width: 2.5rem; height: 2.5rem; }
     .chat-status { display: none; }
     .workspace-overview__lead { padding: 1.1rem; }
     .workspace-overview__lead h2 { font-size: 1.65rem; }
@@ -616,5 +606,4 @@ a { color: inherit; }
     .composer__controls button { width: 100%; }
     .listing-results__heading { align-items: flex-start; flex-direction: column; }
     .listing-results__heading p { text-align: left; }
-    .comparison-page { padding: 0.75rem; }
 }

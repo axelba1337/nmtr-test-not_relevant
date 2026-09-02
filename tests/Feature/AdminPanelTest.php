@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\ChatbotQueryLog;
 use App\Models\KnowledgeItem;
 use App\Models\Listing;
+use App\Models\MarketplaceSyncRun;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\User;
@@ -85,6 +86,31 @@ final class AdminPanelTest extends TestCase
 
         $this->assertDatabaseCount('knowledge_items', 0);
         Http::assertNothingSent();
+    }
+
+    public function test_admin_login_and_layout_render_branding_and_favicons(): void
+    {
+        $this->withoutVite();
+        $logo = asset('images/branding/neomatra-logo.png');
+
+        $this->get(route('admin.login'))
+            ->assertOk()
+            ->assertSee('class="auth-brand__logo"', false)
+            ->assertSee($logo)
+            ->assertSee('rel="icon"', false)
+            ->assertSee('rel="apple-touch-icon"', false)
+            ->assertSee(route('locale.update', 'id'))
+            ->assertSee(route('locale.update', 'en'));
+
+        $this->actingAs($this->createUser())
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('class="admin-sidebar__logo"', false)
+            ->assertSee($logo)
+            ->assertSee('rel="icon"', false)
+            ->assertSee('rel="apple-touch-icon"', false)
+            ->assertSee(route('admin.knowledge.index'))
+            ->assertSee(route('admin.listings.index'));
     }
 
     public function test_only_admin_credentials_create_an_admin_session(): void
@@ -172,6 +198,11 @@ final class AdminPanelTest extends TestCase
             'name' => 'Produk Aktif Dashboard',
             'is_active' => true,
         ]);
+        $productWithoutListings = Product::query()->create([
+            'category_id' => $category->id,
+            'name' => 'Produk Tanpa Listing Dashboard',
+            'is_active' => true,
+        ]);
         Product::query()->create([
             'category_id' => $category->id,
             'name' => 'Produk Nonaktif Dashboard',
@@ -203,6 +234,20 @@ final class AdminPanelTest extends TestCase
         ]);
         Listing::query()->create([
             'platform_id' => $platform->id,
+            'product_id' => null,
+            'source_fingerprint' => str_repeat('d', 64),
+            'title' => 'Listing Belum Dipetakan Dashboard',
+            'price' => 2250000,
+            'currency' => 'IDR',
+            'condition' => Listing::CONDITION_USED,
+            'condition_source' => Listing::CONDITION_SOURCE_SELLER,
+            'product_url' => 'https://example.test/dashboard/unmatched',
+            'stock_status' => Listing::STOCK_IN_STOCK,
+            'price_type' => Listing::PRICE_FULL,
+            'is_active' => true,
+        ]);
+        Listing::query()->create([
+            'platform_id' => $platform->id,
             'product_id' => $product->id,
             'source_fingerprint' => str_repeat('c', 64),
             'title' => 'Listing Nonaktif Dashboard',
@@ -215,6 +260,13 @@ final class AdminPanelTest extends TestCase
             'price_type' => Listing::PRICE_FULL,
             'is_active' => false,
         ]);
+        MarketplaceSyncRun::query()->create([
+            'platform_id' => $platform->id,
+            'status' => MarketplaceSyncRun::STATUS_FAILED,
+            'records_failed' => 1,
+            'error_code' => 'connection_failure',
+            'finished_at' => now(),
+        ]);
 
         $this->createCurrentItem(['title' => 'Ready']);
         KnowledgeItem::query()->create([
@@ -223,7 +275,7 @@ final class AdminPanelTest extends TestCase
             'is_active' => true,
         ]);
         KnowledgeItem::query()->create([
-            'title' => 'Failed',
+            'title' => 'Failed Dashboard Embedding',
             'content' => 'Failed answer',
             'embedding_error' => 'Embedding baru gagal dibuat.',
             'is_active' => true,
@@ -239,9 +291,17 @@ final class AdminPanelTest extends TestCase
         $response
             ->assertOk()
             ->assertViewHas('todayQuestions', 3)
-            ->assertViewHas('activeListingsCount', 1)
-            ->assertViewHas('activeProductsCount', 1)
+            ->assertViewHas('activeListingsCount', 2)
+            ->assertViewHas('activeProductsCount', 2)
             ->assertViewHas('pendingUnansweredCount', 1)
+            ->assertViewHas('unmatchedListingsCount', 1)
+            ->assertViewHas('failedSyncCount', 1)
+            ->assertViewHas('productsWithoutListingsCount', 1)
+            ->assertViewHas(
+                'productsWithoutListings',
+                static fn (mixed $products): bool => $products->pluck('id')
+                    ->all() === [$productWithoutListings->id],
+            )
             ->assertViewHas('activeKnowledgeCount', 3)
             ->assertViewHas(
                 'averageTop1Similarity',
@@ -265,7 +325,56 @@ final class AdminPanelTest extends TestCase
                         && $byDate['2026-07-27']['total'] === 1
                         && $byDate['2026-07-28']['total'] === 3;
                 },
-            );
+            )
+            ->assertSee(e(route('admin.knowledge.index', [
+                'status' => 'active',
+                'embedding_status' => 'failed',
+            ])), false)
+            ->assertSee(e(route('admin.listings.index', [
+                'status' => 'active',
+                'mapping_status' => 'unmatched',
+            ])), false)
+            ->assertSee(e(route('admin.platforms.index', [
+                'sync_status' => 'failed',
+            ])), false)
+            ->assertSee(e(route('admin.unanswered.index', [
+                'review' => 'pending',
+            ])), false);
+
+        $this->actingAs($admin)
+            ->get(route('admin.products.index', [
+                'status' => 'active',
+                'listing_status' => 'without_active',
+            ]))
+            ->assertOk()
+            ->assertSeeText('Produk Tanpa Listing Dashboard')
+            ->assertDontSeeText('Produk Aktif Dashboard');
+
+        $this->actingAs($admin)
+            ->get(route('admin.knowledge.index', [
+                'status' => 'active',
+                'embedding_status' => 'failed',
+            ]))
+            ->assertOk()
+            ->assertSeeText('Failed Dashboard Embedding')
+            ->assertDontSeeText('Ready');
+
+        $this->actingAs($admin)
+            ->get(route('admin.listings.index', [
+                'status' => 'active',
+                'mapping_status' => 'unmatched',
+            ]))
+            ->assertOk()
+            ->assertSeeText('Listing Belum Dipetakan Dashboard')
+            ->assertDontSeeText('Listing Aktif Dashboard');
+
+        $this->actingAs($admin)
+            ->get(route('admin.platforms.index', [
+                'sync_status' => 'failed',
+            ]))
+            ->assertOk()
+            ->assertSeeText('Platform Dashboard')
+            ->assertSeeText('1 sync gagal');
     }
 
     public function test_admin_can_create_a_faq_and_its_embedding(): void

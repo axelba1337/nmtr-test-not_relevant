@@ -17,7 +17,7 @@ CREATE TEMPORARY TABLE `_neomatra_knowledge_seed` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `_neomatra_knowledge_seed` (`title`,`content`,`keywords`,`is_featured`,`sort_order`) VALUES
-('Tentang Neomatra / About Neomatra', 'ID: Neomatra adalah aplikasi pencarian dan perbandingan produk teknologi yang membantu pengguna menemukan listing baru atau bekas yang berpotensi berada di bawah harga pasar. Sistem menggabungkan semantic search, dataset marketplace, kondisi, seller type, biaya total, risk signal, dan ranking. EN: Neomatra is a technology product search and comparison application that helps users find new or used listings that may be priced below the estimated market level. It combines semantic search, marketplace datasets, condition, seller type, total cost, risk signals, and ranking.', '["neomatra","intro","about","tentang"]', 1, 10),
+('Tentang Neomatra / About Neomatra', 'ID: Neomatra adalah aplikasi pencarian dan perbandingan produk teknologi yang membantu pengguna menemukan listing baru atau bekas yang berpotensi berada di bawah harga pasar. Sistem menggabungkan semantic search, dataset marketplace, kondisi, seller type, biaya total, risk signal, dan ranking. EN: Neomatra is a technology product search and comparison application that helps users find new or used listings that may be priced below the estimated market level. It combines semantic search, marketplace datasets, condition, seller type, total cost, risk signals, and ranking.', '["neomatra","apa itu neomatra","what is neomatra","intro","about","tentang"]', 1, 10),
 ('Kategori yang didukung / Supported categories', 'ID: Neomatra Lite memprioritaskan PC Components, Handphone, Laptop, PC Accessories, serta Networking seperti router, access point, switch, modem, dan network adapter. Permintaan di luar kategori ini diarahkan ke pilihan kategori yang tersedia atau pencarian eksternal. EN: Neomatra Lite prioritizes PC Components, Phones, Laptops, PC Accessories, and Networking such as routers, access points, switches, modems, and network adapters. Requests outside these categories are guided to supported categories or external search.', '["category","kategori","pc","phone","laptop","networking"]', 1, 20),
 ('Platform yang didukung / Supported platforms', 'ID: Registry platform dapat memuat Tokopedia, Shopee, OLX, Facebook Marketplace, Carousell, Blibli, Lazada, TikTok Shop, Jagofon, Laku6, dan sumber teknologi lain. Hanya connector yang benar-benar tersedia yang boleh disebut sebagai sumber sinkronisasi otomatis. EN: The platform registry can contain Tokopedia, Shopee, OLX, Facebook Marketplace, Carousell, Blibli, Lazada, TikTok Shop, Jagofon, Laku6, and other technology sources. Only connectors that are actually implemented may be described as automatically synchronized sources.', '["platform","marketplace","tokopedia","shopee","olx"]', 1, 30),
 ('Data demo dan data live / Demo data and live data', 'ID: Listing demo adalah data buatan yang diberi label jelas untuk pengujian dan portofolio. Listing demo tidak boleh disebut harga atau stok real-time. EN: Demo listings are clearly labeled synthetic records for testing and portfolio use. Demo listings must never be presented as real-time prices or stock.', '["demo","live","real time","dataset"]', 1, 40),
@@ -108,6 +108,29 @@ SELECT
 FROM `_neomatra_knowledge_seed` s
 LEFT JOIN `knowledge_items` k ON k.title = s.title
 WHERE k.id IS NULL;
+
+-- Current MVP keeps these historical topics dormant for compatibility.
+UPDATE `knowledge_items`
+SET `is_active` = 0, `is_featured` = 0, `updated_at` = CURRENT_TIMESTAMP
+WHERE `title` IN (
+  'Seller type Neomatra / Neomatra seller types',
+  'Arti official seller / Meaning of official seller',
+  'Harga pasar / Market price',
+  'Comparable listings',
+  'Persentase undervalued / Undervalued percentage',
+  'Total cost',
+  'Estimasi margin reseller / Reseller margin estimate',
+  'Risk signal',
+  'Perbandingan dua produk / Comparing two products',
+  'Kualitas sample market price / Market sample quality'
+);
+
+UPDATE `knowledge_items`
+SET `content` = 'ID: Neomatra adalah aplikasi pencarian produk teknologi yang menggabungkan semantic search, canonical product, alias, dan listing marketplace. Hasil menampilkan harga listing aktual, kondisi, lokasi, sumber, dan freshness tanpa menghitung harga pasar atau keuntungan. EN: Neomatra is a technology-product search application combining semantic search, canonical products, aliases, and marketplace listings. Results show actual listing price, condition, location, source, and freshness without calculating market price or profit.',
+    `embedding_hash` = NULL,
+    `updated_at` = CURRENT_TIMESTAMP
+WHERE `title` = 'Tentang Neomatra / About Neomatra';
+
 DROP TEMPORARY TABLE `_neomatra_knowledge_seed`;
 COMMIT;
 

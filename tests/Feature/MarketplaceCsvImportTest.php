@@ -80,6 +80,26 @@ final class MarketplaceCsvImportTest extends TestCase
         ]);
     }
 
+    public function test_gpu_xt_variant_does_not_match_the_non_xt_product(): void
+    {
+        $row = $this->rowForPlatform(
+            'facebook',
+            'REAL-FB-RX6600-XT-001',
+            'https://www.facebook.com/marketplace/item/998877665544332',
+        );
+        $row[2] = 'Radeon RX 6600 XT MECH 2X 8G OC';
+        $row[3] = 'Kartu grafis standalone dengan varian XT.';
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv([$row]),
+        ]));
+
+        $this->assertDatabaseHas('listings', [
+            'external_listing_id' => 'REAL-FB-RX6600-XT-001',
+            'product_id' => null,
+        ]);
+    }
+
     /** @return iterable<string, array{string, string}> */
     public static function rtx3060MarketplaceWordings(): iterable
     {
@@ -274,6 +294,24 @@ final class MarketplaceCsvImportTest extends TestCase
         ]);
     }
 
+    public function test_mobile_cpu_identity_prevents_a_stale_standalone_gpu_match(): void
+    {
+        $row = $this->row();
+        $row[1] = 'REAL-FACEBOOK-MOBILE-CPU-001';
+        $row[2] = 'Acer Nitro 5 | RTX 3060 | Ryzen 7-5800H';
+        $row[3] = 'Gaming device in good condition.';
+        $row[10] = 'https://www.olx.co.id/item/acer-nitro-rtx3060-real-iid-900004';
+
+        $this->assertSame(0, $this->artisan('marketplace:import', [
+            'path' => $this->csv([$row]),
+        ]));
+
+        $this->assertDatabaseHas('listings', [
+            'external_listing_id' => 'REAL-FACEBOOK-MOBILE-CPU-001',
+            'product_id' => null,
+        ]);
+    }
+
     public function test_accessories_services_wanted_ads_and_bundles_remain_unmatched(): void
     {
         $titles = [
@@ -329,9 +367,7 @@ final class MarketplaceCsvImportTest extends TestCase
             'variant' => '12 GB',
             'conditions' => ['used'],
             'platforms' => ['olx'],
-            'seller_types' => [],
             'locations' => [],
-            'mode' => 'buyer',
             'needs_clarification' => false,
             'clarification_question' => null,
             'intent_type' => 'product_search',
@@ -379,9 +415,7 @@ final class MarketplaceCsvImportTest extends TestCase
                 'variant' => '12 GB',
                 'conditions' => ['used'],
                 'platforms' => [$slug],
-                'seller_types' => [],
                 'locations' => [],
-                'mode' => 'buyer',
                 'needs_clarification' => false,
                 'clarification_question' => null,
                 'intent_type' => 'product_search',

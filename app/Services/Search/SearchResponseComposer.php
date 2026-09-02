@@ -26,7 +26,7 @@ final class SearchResponseComposer
             return __('ui.search_response.alternative', [
                 'count' => count($outcome->results),
                 'product' => (string) $first['product']['name'],
-                'cost' => number_format((int) $first['costs']['total'], 0, ',', '.'),
+                'price' => number_format((int) $first['item_price'], 0, ',', '.'),
                 'detail' => $difference,
             ]);
         }
@@ -36,7 +36,6 @@ final class SearchResponseComposer
             $first = $outcome->results[0];
             $relaxed = implode(', ', array_map(
                 static fn (string $filter): string => match ($filter) {
-                    'seller_type' => __('ui.search_response.filters.seller_type'),
                     'location' => __('ui.search_response.filters.location'),
                     'platforms' => __('ui.search_response.filters.platforms'),
                     'budget' => __('ui.search_response.filters.budget'),
@@ -55,7 +54,7 @@ final class SearchResponseComposer
                 'count' => count($outcome->results),
                 'filters' => $relaxed === '' ? __('ui.search_response.optional_filters') : $relaxed,
                 'title' => (string) $first['title'],
-                'cost' => number_format((int) $first['costs']['total'], 0, ',', '.'),
+                'price' => number_format((int) $first['item_price'], 0, ',', '.'),
                 'note' => $budgetNote,
             ]);
         }

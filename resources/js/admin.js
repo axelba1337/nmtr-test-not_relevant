@@ -103,36 +103,6 @@ document.querySelectorAll('[data-auto-submit]').forEach((control) => {
     });
 });
 
-const rankingTotal = document.querySelector('[data-ranking-total]');
-
-if (rankingTotal) {
-    const rankingForm = rankingTotal.closest('form');
-    const weightInputs = rankingForm?.querySelectorAll(
-        'input[name$="_weight"]',
-    ) ?? [];
-    const updateRankingTotal = () => {
-        const total = Array.from(weightInputs).reduce(
-            (sum, input) => sum + (Number.parseFloat(input.value) || 0),
-            0,
-        );
-        const isValid = Math.abs(total - 1) <= 0.0001;
-
-        rankingTotal.textContent = adminText(
-            'total_weight',
-            'Total weight: :total',
-            { total: total.toFixed(4) },
-        ) + (isValid
-            ? ''
-            : adminText('weight_required', ' (must equal 1.0000)'));
-        rankingTotal.classList.toggle('is-invalid', !isValid);
-    };
-
-    weightInputs.forEach((input) => {
-        input.addEventListener('input', updateRankingTotal);
-    });
-    updateRankingTotal();
-}
-
 document.addEventListener('submit', (event) => {
     const form = event.target;
 

@@ -23,13 +23,23 @@ final class PlatformController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'source_type' => ['nullable', 'in:'.implode(',', Platform::sourceTypes())],
             'status' => ['nullable', 'in:all,active,inactive,syncable'],
+            'sync_status' => ['nullable', 'in:all,failed'],
         ]);
         $search = trim((string) ($filters['search'] ?? ''));
         $sourceType = (string) ($filters['source_type'] ?? '');
         $status = (string) ($filters['status'] ?? 'all');
+        $syncStatus = (string) ($filters['sync_status'] ?? 'all');
 
         $platforms = Platform::query()
-            ->withCount('listings')
+            ->withCount([
+                'listings',
+                'syncRuns as failed_sync_runs_count' => static fn (Builder $query): Builder => $query
+                    ->where('status', 'failed'),
+            ])
+            ->withMax([
+                'syncRuns as latest_failed_sync_at' => static fn (Builder $query): Builder => $query
+                    ->where('status', 'failed'),
+            ], 'finished_at')
             ->when($search !== '', fn (Builder $query): Builder => $query
                 ->where(fn (Builder $nested): Builder => $nested
                     ->where('name', 'like', "%{$search}%")
@@ -43,6 +53,9 @@ final class PlatformController extends Controller
                 ->where('is_active', false))
             ->when($status === 'syncable', fn (Builder $query): Builder => $query
                 ->syncable())
+            ->when($syncStatus === 'failed', fn (Builder $query): Builder => $query
+                ->whereHas('syncRuns', static fn (Builder $syncRuns): Builder => $syncRuns
+                    ->where('status', 'failed')))
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
@@ -52,6 +65,7 @@ final class PlatformController extends Controller
             'search',
             'sourceType',
             'status',
+            'syncStatus',
         ));
     }
 

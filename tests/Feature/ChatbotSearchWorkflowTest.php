@@ -97,7 +97,7 @@ final class ChatbotSearchWorkflowTest extends TestCase
         $this->fakeProviderFailure();
 
         $response = $this->postJson('/api/chatbot/query', [
-            'message' => 'Bandingkan harga iPhone 13 128GB bekas di marketplace dan kasih tahu mana yang paling undervalued.',
+            'message' => 'Cari iPhone 13 128GB bekas di marketplace.',
         ]);
 
         $response
@@ -108,11 +108,12 @@ final class ChatbotSearchWorkflowTest extends TestCase
             ->assertJsonPath('resolved_product.variant', '128 GB')
             ->assertJsonPath('listings.0.product.name', 'Apple iPhone 13 128GB')
             ->assertJsonPath('listings.0.condition', 'used')
-            ->assertJsonPath('meta.calculations_authority', 'backend');
+            ->assertJsonPath('meta.ranking_authority', 'backend');
 
         foreach ($response->json('listings') as $listing) {
             $this->assertSame('Apple iPhone 13 128GB', $listing['product']['name']);
-            $this->assertNotNull($listing['market']['price']);
+            $this->assertIsInt($listing['item_price']);
+            $this->assertArrayNotHasKey('market', $listing);
         }
     }
 
@@ -144,7 +145,7 @@ final class ChatbotSearchWorkflowTest extends TestCase
         );
     }
 
-    public function test_sc11_seller_and_location_relax_in_a_bounded_order(): void
+    public function test_sc11_location_relaxes_in_a_bounded_order(): void
     {
         $this->fakeProviderFailure();
 
@@ -153,9 +154,8 @@ final class ChatbotSearchWorkflowTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('state', SearchState::FILTER_TOO_STRICT)
-            ->assertJsonPath('relaxed_filters.0', 'seller_type')
-            ->assertJsonPath('relaxed_filters.1', 'location')
-            ->assertJsonPath('attempt_count', 3)
+            ->assertJsonPath('relaxed_filters.0', 'location')
+            ->assertJsonPath('attempt_count', 2)
             ->assertJsonPath('requested_filters.conditions.0', 'used')
             ->assertJsonPath('applied_filters.conditions.0', 'used');
     }
@@ -244,8 +244,6 @@ final class ChatbotSearchWorkflowTest extends TestCase
             'budget_max' => 1_000_000,
             'conditions' => ['used'],
             'locations' => ['Medan'],
-            'seller_types' => ['official'],
-            'mode' => 'buyer',
             'needs_clarification' => false,
             'clarification_question' => null,
             'intent_type' => 'product_search',
@@ -261,9 +259,9 @@ final class ChatbotSearchWorkflowTest extends TestCase
         ], $intent);
 
         $this->assertSame(SearchState::NO_ACTIVE_LISTING, $outcome->state);
-        $this->assertSame(4, $outcome->attemptCount);
+        $this->assertSame(3, $outcome->attemptCount);
         $this->assertSame(
-            ['seller_type', 'location', 'budget'],
+            ['location', 'budget'],
             $outcome->relaxedFilters,
         );
     }

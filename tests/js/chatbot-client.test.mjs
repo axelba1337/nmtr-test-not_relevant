@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -10,7 +11,39 @@ import {
     normalizeSuggestions,
     requestChat,
     requestSuggestions,
+    scrollTranscriptToLatest,
 } from '../../resources/js/chatbot-client.js';
+
+test('transcript remains the scroll target after twenty sequential messages', () => {
+    const calls = [];
+    const transcript = {
+        scrollHeight: 0,
+        scrollTo: (options) => calls.push(options),
+    };
+
+    for (let index = 1; index <= 20; index += 1) {
+        transcript.scrollHeight = index * 240;
+        assert.equal(scrollTranscriptToLatest(transcript), true);
+    }
+
+    assert.equal(calls.length, 20);
+    assert.deepEqual(calls.at(-1), {
+        top: 4800,
+        behavior: 'smooth',
+    });
+});
+
+test('chat layout constrains the viewport and only the transcript scrolls', () => {
+    const css = readFileSync(
+        new URL('../../resources/css/app.css', import.meta.url),
+        'utf8',
+    );
+
+    assert.match(css, /\.page-shell\s*\{[^}]*height:\s*100dvh;[^}]*overflow:\s*hidden;/s);
+    assert.match(css, /\.chat-card\s*\{[^}]*height:\s*100%;[^}]*min-height:\s*0;[^}]*minmax\(0,\s*1fr\)/s);
+    assert.match(css, /\.console-panel\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*hidden;/s);
+    assert.match(css, /\.transcript\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
+});
 
 test('request coordinator allows only one fetch for concurrent sends', async () => {
     let releaseRequest;

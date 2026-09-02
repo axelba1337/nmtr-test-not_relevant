@@ -50,10 +50,6 @@ return [
         ],
     ],
 
-    'pricing' => [
-        'minimum_comparables' => env('NEOMATRA_MINIMUM_COMPARABLES', 2),
-    ],
-
     'freshness' => [
         'stale_after_hours' => env('NEOMATRA_LISTING_STALE_AFTER_HOURS', 168),
     ],

@@ -29,12 +29,14 @@ final class ProductController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'status' => ['nullable', 'in:all,active,inactive'],
+            'listing_status' => ['nullable', 'in:all,without_active'],
         ]);
         $search = trim((string) ($filters['search'] ?? ''));
         $categoryId = isset($filters['category_id'])
             ? (int) $filters['category_id']
             : null;
         $status = (string) ($filters['status'] ?? 'all');
+        $listingStatus = (string) ($filters['listing_status'] ?? 'all');
 
         $products = Product::query()
             ->with('category:id,name')
@@ -52,6 +54,15 @@ final class ProductController extends Controller
                 ->where('is_active', true))
             ->when($status === 'inactive', fn (Builder $query): Builder => $query
                 ->where('is_active', false))
+            ->when(
+                $listingStatus === 'without_active',
+                fn (Builder $query): Builder => $query
+                    ->whereDoesntHave(
+                        'listings',
+                        static fn (Builder $listingQuery): Builder => $listingQuery
+                            ->available(),
+                    ),
+            )
             ->orderBy('name')
             ->orderBy('id')
             ->paginate(15)
@@ -63,6 +74,7 @@ final class ProductController extends Controller
             'search' => $search,
             'categoryId' => $categoryId,
             'status' => $status,
+            'listingStatus' => $listingStatus,
         ]);
     }
 

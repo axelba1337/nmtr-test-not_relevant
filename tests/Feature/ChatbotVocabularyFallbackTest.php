@@ -103,7 +103,7 @@ final class ChatbotVocabularyFallbackTest extends TestCase
 
         foreach ($response->json('results') as $result) {
             $this->assertSame('GPU', $result['product']['category']);
-            $this->assertLessThanOrEqual(3_000_000, $result['costs']['total']);
+            $this->assertLessThanOrEqual(3_000_000, $result['item_price']);
         }
     }
 
@@ -333,7 +333,8 @@ final class ChatbotVocabularyFallbackTest extends TestCase
             ->assertOk()
             ->assertJsonPath('state', SearchState::MATCHED)
             ->assertJsonPath('intent.platforms.0', 'olx')
-            ->assertJsonPath('intent.seller_types', [])
+            ->assertJsonMissingPath('intent.seller_types')
+            ->assertJsonMissingPath('intent.mode')
             ->assertJsonPath('results.0.platform', 'OLX');
     }
 

@@ -8,7 +8,6 @@ use App\Models\Listing;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\ProductAlias;
-use App\Models\RankingProfile;
 use App\Services\Neomatra\ListingFingerprintService;
 use Illuminate\Database\Seeder;
 
@@ -211,18 +210,6 @@ final class NeomatraCatalogSeeder extends Seeder
             }
         }
 
-        RankingProfile::query()->updateOrCreate(
-            ['name' => 'SRS Neomatra v2.0'],
-            [
-                'relevance_weight' => 0.40,
-                'price_weight' => 0.30,
-                'condition_weight' => 0.15,
-                'seller_weight' => 0.10,
-                'freshness_weight' => 0.05,
-                'is_active' => true,
-                'updated_by' => null,
-            ],
-        );
     }
 
     /** @param array<string, scalar|null> $attributes */

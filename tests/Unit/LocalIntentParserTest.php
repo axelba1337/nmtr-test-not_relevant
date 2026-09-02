@@ -31,7 +31,7 @@ final class LocalIntentParserTest extends TestCase
         );
     }
 
-    public function test_sc03_iphone_identity_location_and_seller_are_parsed(): void
+    public function test_sc03_iphone_identity_and_location_are_parsed_without_seller_classification(): void
     {
         $parsed = app(LocalIntentParser::class)->parse(
             'Cari iPhone 13 Pro 128GB bekas di Jakarta dari toko resmi',
@@ -41,7 +41,8 @@ final class LocalIntentParserTest extends TestCase
         $this->assertSame('iphone 13 pro', $parsed['model']);
         $this->assertSame('128GB PRO', $parsed['variant']);
         $this->assertSame('used', $parsed['condition']);
-        $this->assertSame('official', $parsed['seller_type']);
+        $this->assertArrayNotHasKey('seller_type', $parsed);
+        $this->assertArrayNotHasKey('mode', $parsed);
         $this->assertSame('Jakarta', $parsed['location']);
     }
 
@@ -70,7 +71,8 @@ final class LocalIntentParserTest extends TestCase
         );
 
         $this->assertSame('olx', $parsed['platform']);
-        $this->assertNull($parsed['seller_type']);
+        $this->assertArrayNotHasKey('seller_type', $parsed);
+        $this->assertArrayNotHasKey('mode', $parsed);
     }
 
     /** @return iterable<string, array{string, string}> */

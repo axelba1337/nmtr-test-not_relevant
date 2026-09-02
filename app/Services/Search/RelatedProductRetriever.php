@@ -171,7 +171,6 @@ final class RelatedProductRetriever
             $availabilityIntent = $this->withAppliedFilters($intent, [
                 'conditions' => $intent->conditions,
                 'platforms' => [],
-                'seller_types' => [],
                 'locations' => [],
                 'budget_min' => null,
                 'budget_max' => null,
@@ -271,7 +270,7 @@ final class RelatedProductRetriever
 
         if (in_array('budget', $effectiveOutcome->relaxedFilters, true)
             && $intent->budgetMax !== null) {
-            $closestPrice = (int) $results[0]['costs']['total'];
+            $closestPrice = (int) $results[0]['item_price'];
             $difference = max(0, $closestPrice - $intent->budgetMax);
         }
 
@@ -381,7 +380,6 @@ final class RelatedProductRetriever
             ...$intent->toArray(),
             'conditions' => $filters['conditions'] ?? $intent->conditions,
             'platforms' => $filters['platforms'] ?? $intent->platforms,
-            'seller_types' => $filters['seller_types'] ?? $intent->sellerTypes,
             'locations' => $filters['locations'] ?? $intent->locations,
             'budget_min' => $filters['budget_min'] ?? null,
             'budget_max' => $filters['budget_max'] ?? null,
@@ -398,7 +396,6 @@ final class RelatedProductRetriever
         return [
             'conditions' => $intent->conditions,
             'platforms' => $intent->platforms,
-            'seller_types' => $intent->sellerTypes,
             'locations' => $intent->locations,
             'budget_min' => $intent->budgetMin,
             'budget_max' => $intent->budgetMax,

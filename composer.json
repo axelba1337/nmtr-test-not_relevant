@@ -2,11 +2,11 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "neomatra/app",
     "type": "project",
-    "description": "Neomatra marketplace comparison and semantic product discovery prototype.",
+    "description": "Neomatra semantic product discovery and marketplace listing prototype.",
     "keywords": [
         "laravel",
         "semantic-search",
-        "marketplace-comparison"
+        "marketplace-listings"
     ],
     "license": "MIT",
     "require": {

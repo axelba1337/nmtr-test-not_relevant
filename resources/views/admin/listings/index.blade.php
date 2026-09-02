@@ -5,7 +5,7 @@
 @section('content')
     <section class="admin-card" aria-labelledby="listings-title">
         <div class="admin-card__heading admin-card__heading--actions">
-            <div><p class="admin-card__eyebrow">Marketplace</p><h2 id="listings-title">{{ __('ui.admin_pages.listings.heading') }}</h2><p>{{ __('ui.admin_pages.listings.description') }}</p></div>
+            <div><p class="admin-card__eyebrow">{{ __('ui.admin_pages.listings.source_integration') }}</p><h2 id="listings-title">{{ __('ui.admin_pages.listings.heading') }}</h2><p>{{ __('ui.admin_pages.listings.description') }}</p></div>
             <a class="button button--primary" href="{{ route('admin.listings.create') }}">{{ __('ui.admin_pages.listings.add') }}</a>
         </div>
         <form class="filter-bar" method="GET" action="{{ route('admin.listings.index') }}">
@@ -14,6 +14,7 @@
             <div class="form-field"><label for="listing-condition-filter">{{ __('ui.admin_pages.listings.condition') }}</label><select id="listing-condition-filter" name="condition"><option value="">{{ __('ui.common.all') }}</option>@foreach(\App\Models\Listing::conditions() as $value)<option value="{{ $value }}" @selected($condition === $value)>{{ __('ui.labels.'.$value) }}</option>@endforeach</select></div>
             <div class="form-field"><label for="listing-stock-filter">{{ __('ui.admin_pages.listings.stock') }}</label><select id="listing-stock-filter" name="stock_status"><option value="">{{ __('ui.common.all') }}</option>@foreach(\App\Models\Listing::stockStatuses() as $value)<option value="{{ $value }}" @selected($stockStatus === $value)>{{ __('ui.labels.'.$value) }}</option>@endforeach</select></div>
             <div class="form-field"><label for="listing-status-filter">{{ __('ui.common.status') }}</label><select id="listing-status-filter" name="status"><option value="all" @selected($status === 'all')>{{ __('ui.common.all') }}</option><option value="active" @selected($status === 'active')>{{ __('ui.common.active') }}</option><option value="inactive" @selected($status === 'inactive')>{{ __('ui.common.inactive') }}</option></select></div>
+            <div class="form-field"><label for="listing-mapping-filter">{{ __('ui.admin_pages.listings.mapping_status') }}</label><select id="listing-mapping-filter" name="mapping_status"><option value="all" @selected($mappingStatus === 'all')>{{ __('ui.common.all') }}</option><option value="matched" @selected($mappingStatus === 'matched')>{{ __('ui.admin_pages.listings.matched') }}</option><option value="unmatched" @selected($mappingStatus === 'unmatched')>{{ __('ui.admin_pages.listings.unmatched') }}</option></select></div>
             <div class="filter-bar__actions"><button class="button button--secondary" type="submit">{{ __('ui.common.apply') }}</button><a class="button button--text" href="{{ route('admin.listings.index') }}">{{ __('ui.common.reset') }}</a></div>
         </form>
 
@@ -27,7 +28,7 @@
                         <td>{{ $listing->platform?->name ?? '—' }}<span class="table-meta">{{ $listing->product?->name ?? __('ui.common.unmapped') }}</span></td>
                         <td><strong>{{ $listing->currency === 'IDR' ? 'Rp' : $listing->currency.' ' }}{{ number_format($listing->price, 0, ',', '.') }}</strong><span class="table-meta">{{ $listing->currency }} · {{ __('ui.labels.'.$listing->price_type) }}</span></td>
                         <td><span class="badge badge--info">{{ __('ui.labels.'.$listing->condition) }}</span><span class="table-meta">{{ __('ui.messages.search.condition_seller') }}</span></td>
-                        <td>{{ $listing->seller_name ?: '—' }}<span class="table-meta">{{ __('ui.labels.'.$listing->seller_type) }} · {{ $listing->location ?: __('ui.admin_pages.listings.unknown_location') }}</span></td>
+                        <td>{{ $listing->seller_name ?: '—' }}<span class="table-meta">{{ $listing->location ?: __('ui.admin_pages.listings.unknown_location') }}</span></td>
                         <td><span class="badge badge--{{ $listing->stock_status === 'in_stock' ? 'success' : ($listing->stock_status === 'out_of_stock' ? 'danger' : 'neutral') }}">{{ __('ui.labels.'.$listing->stock_status) }}</span><span class="table-meta">{{ $listing->is_active ? __('ui.common.active') : __('ui.common.inactive') }}</span></td>
                         <td>{{ $listing->last_synced_at?->translatedFormat('d M Y H:i') ?? $listing->updated_at->translatedFormat('d M Y H:i') }}</td>
                         <td><div class="table-actions"><a class="button button--small button--secondary" href="{{ route('admin.listings.edit', $listing) }}">{{ __('ui.common.edit') }}</a><form method="POST" action="{{ route('admin.listings.destroy', $listing) }}" data-confirm="{{ __('ui.admin_pages.listings.delete_confirm') }}">@csrf @method('DELETE')<button class="button button--small button--danger" type="submit" data-busy-label="{{ __('ui.common.deleting') }}">{{ __('ui.common.delete') }}</button></form></div></td>

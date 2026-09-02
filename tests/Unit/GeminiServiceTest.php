@@ -230,8 +230,6 @@ final class GeminiServiceTest extends TestCase
                 'budget_max' => 2800000,
                 'conditions' => ['used'],
                 'locations' => ['Surabaya'],
-                'seller_types' => ['store'],
-                'mode' => 'buyer',
                 'needs_clarification' => false,
                 'clarification_question' => null,
             ], JSON_THROW_ON_ERROR))),
@@ -246,6 +244,8 @@ final class GeminiServiceTest extends TestCase
         $this->assertSame('12 GB', $result->intent?->variant);
         $this->assertSame(2800000, $result->intent?->budgetMax);
         $this->assertSame(['used'], $result->intent?->conditions);
+        $this->assertArrayNotHasKey('seller_types', $result->intent?->toArray() ?? []);
+        $this->assertArrayNotHasKey('mode', $result->intent?->toArray() ?? []);
 
         Http::assertSent(function (Request $request): bool {
             $payload = $request->data();
@@ -269,6 +269,14 @@ final class GeminiServiceTest extends TestCase
                     'temperature',
                     data_get($payload, 'generationConfig'),
                 )
+                && ! array_key_exists(
+                    'seller_types',
+                    data_get($payload, 'generationConfig.responseSchema.properties'),
+                )
+                && ! array_key_exists(
+                    'mode',
+                    data_get($payload, 'generationConfig.responseSchema.properties'),
+                )
                 && ! array_key_exists('tools', $payload)
                 && str_contains($system, 'mengekstrak intent')
                 && str_contains($system, 'Jangan mencari listing');
@@ -288,8 +296,6 @@ final class GeminiServiceTest extends TestCase
             'budget_max' => null,
             'conditions' => ['definitely_new'],
             'locations' => [],
-            'seller_types' => [],
-            'mode' => 'buyer',
             'needs_clarification' => false,
             'clarification_question' => null,
         ];
@@ -334,8 +340,6 @@ final class GeminiServiceTest extends TestCase
                 'budget_max' => null,
                 'conditions' => [],
                 'locations' => [],
-                'seller_types' => [],
-                'mode' => 'buyer',
                 'needs_clarification' => false,
                 'clarification_question' => null,
             ], JSON_THROW_ON_ERROR))),
@@ -365,8 +369,6 @@ final class GeminiServiceTest extends TestCase
                 'budget_max' => null,
                 'conditions' => [],
                 'locations' => [],
-                'seller_types' => [],
-                'mode' => 'buyer',
                 'needs_clarification' => false,
                 'clarification_question' => null,
             ], JSON_THROW_ON_ERROR))),
@@ -762,8 +764,6 @@ final class GeminiServiceTest extends TestCase
             'budget_max' => 2800000,
             'conditions' => ['used'],
             'locations' => ['Surabaya'],
-            'seller_types' => ['store'],
-            'mode' => 'buyer',
             'needs_clarification' => false,
             'clarification_question' => null,
         ]);

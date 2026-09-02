@@ -28,10 +28,8 @@ final class LocalIntentParser
      *     sku_or_part_number: string|null,
      *     budget_max: int|null,
      *     condition: string|null,
-     *     seller_type: string|null,
      *     location: string|null,
      *     platform: string|null,
-     *     mode: string
      *     intent_type: string
      * }
      */
@@ -47,8 +45,6 @@ final class LocalIntentParser
             ?? $this->extractBudget($normalized);
         $condition = $this->explicitString($explicit, 'condition')
             ?? $this->extractCondition($normalized);
-        $sellerType = $this->explicitString($explicit, 'seller_type')
-            ?? $this->extractSellerType($normalized);
         $location = $this->explicitString($explicit, 'location')
             ?? $this->extractLocation($normalized);
         $platform = $this->explicitString($explicit, 'platform')
@@ -61,7 +57,6 @@ final class LocalIntentParser
             || $brand !== null
             || $budget !== null
             || $condition !== null
-            || $sellerType !== null
             || $location !== null
             || $platform !== null;
         $genericCategoryOnly = preg_match(
@@ -88,14 +83,8 @@ final class LocalIntentParser
             'sku_or_part_number' => null,
             'budget_max' => $budget,
             'condition' => $condition,
-            'seller_type' => $sellerType,
             'location' => $location,
             'platform' => $platform,
-            'mode' => $this->explicitString($explicit, 'mode')
-                ?? ($this->containsAny(
-                    $normalized,
-                    ['reseller', 'jual lagi', 'dijual lagi', 'margin'],
-                ) ? 'reseller' : 'buyer'),
             'intent_type' => $this->explicitString(
                 $explicit,
                 'intent_type',
@@ -177,36 +166,6 @@ final class LocalIntentParser
         foreach ($map as $condition => $keywords) {
             if ($this->containsAny($text, $keywords)) {
                 return $condition;
-            }
-        }
-
-        return null;
-    }
-
-    private function extractSellerType(string $text): ?string
-    {
-        if ($this->containsAny($text, ['non official', 'non-official'])) {
-            return Listing::SELLER_STORE;
-        }
-
-        $map = [
-            Listing::SELLER_OFFICIAL => [
-                'official store', 'seller official', 'toko resmi', 'official',
-            ],
-            Listing::SELLER_STORE => [
-                'seller toko', 'toko biasa', 'toko',
-            ],
-            Listing::SELLER_RESELLER => [
-                'seller reseller', 'pedagang', 'reseller',
-            ],
-            Listing::SELLER_INDIVIDUAL => [
-                'perorangan', 'individual', 'seller pribadi', 'penjual pribadi',
-            ],
-        ];
-
-        foreach ($map as $sellerType => $keywords) {
-            if ($this->containsAny($text, $keywords)) {
-                return $sellerType;
             }
         }
 
@@ -322,8 +281,6 @@ final class LocalIntentParser
             'bagaimana neomatra',
             'cara menggunakan neomatra',
             'apakah kondisi dan keamanan',
-            'bagaimana menentukan harga pasar',
-            'bagaimana menghitung harga pasar',
         ]);
     }
 
@@ -336,8 +293,6 @@ final class LocalIntentParser
         if ($this->containsAny($text, [
             'cari',
             'harga',
-            'bandingkan',
-            'compare',
             'listing',
             'produk',
             'barang',

@@ -307,14 +307,32 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
 
         $this->assertCount(47, $items);
 
+        $legacyMvpTitles = [
+            'Seller type Neomatra / Neomatra seller types',
+            'Arti official seller / Meaning of official seller',
+            'Harga pasar / Market price',
+            'Comparable listings',
+            'Persentase undervalued / Undervalued percentage',
+            'Total cost',
+            'Estimasi margin reseller / Reseller margin estimate',
+            'Risk signal',
+            'Perbandingan dua produk / Comparing two products',
+            'Kualitas sample market price / Market sample quality',
+        ];
+
         foreach ($items as $item) {
-            $this->assertTrue($item->is_active);
+            $this->assertSame(
+                ! in_array($item->title, $legacyMvpTitles, true),
+                $item->is_active,
+            );
             $this->assertStringContainsString('ID:', $item->content);
             $this->assertStringContainsString('EN:', $item->content);
             $this->assertSame('panduan-neomatra', $item->category?->slug);
             $this->assertIsArray($item->keywords);
             $this->assertNotEmpty($item->keywords);
         }
+
+        $this->assertSame(37, $items->where('is_active', true)->count());
 
         $this->assertSame(
             0,

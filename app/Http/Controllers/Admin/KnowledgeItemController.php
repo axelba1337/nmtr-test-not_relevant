@@ -26,9 +26,11 @@ final class KnowledgeItemController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:all,active,inactive'],
+            'embedding_status' => ['nullable', 'in:all,failed'],
         ]);
         $search = trim((string) ($filters['search'] ?? ''));
         $status = (string) ($filters['status'] ?? 'all');
+        $embeddingStatus = (string) ($filters['embedding_status'] ?? 'all');
 
         $items = KnowledgeItem::query()
             ->with('category:id,name')
@@ -60,6 +62,12 @@ final class KnowledgeItemController extends Controller
                     false,
                 ),
             )
+            ->when(
+                $embeddingStatus === 'failed',
+                static fn (Builder $query): Builder => $query
+                    ->where('is_active', true)
+                    ->whereNotNull('embedding_error'),
+            )
             ->orderByDesc('is_featured')
             ->orderBy('sort_order')
             ->orderByDesc('updated_at')
@@ -71,6 +79,7 @@ final class KnowledgeItemController extends Controller
             'items' => $items,
             'search' => $search,
             'status' => $status,
+            'embeddingStatus' => $embeddingStatus,
             'categories' => $this->categoryOptions(),
         ]);
     }

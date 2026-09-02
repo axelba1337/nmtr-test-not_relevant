@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/branding/neomatra-logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/branding/neomatra-logo.png') }}">
     <title>@yield('title', __('ui.admin.title')) · {{ config('app.name') }}</title>
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
 </head>
@@ -22,8 +24,16 @@
             data-admin-sidebar
         >
             <div class="admin-sidebar__brand">
-                <span class="admin-sidebar__eyebrow">NMTR / CONTROL</span>
-                <span class="admin-sidebar__name">{{ config('app.name') }}</span>
+                <img
+                    class="admin-sidebar__logo"
+                    src="{{ asset('images/branding/neomatra-logo.png') }}"
+                    alt=""
+                    aria-hidden="true"
+                >
+                <span class="admin-sidebar__brand-copy">
+                    <span class="admin-sidebar__eyebrow">NMTR / CONTROL</span>
+                    <span class="admin-sidebar__name">{{ config('app.name') }}</span>
+                </span>
             </div>
 
             <nav class="admin-nav" aria-label="{{ __('ui.admin.main_menu') }}">
@@ -78,13 +88,6 @@
                     @if (request()->routeIs('admin.unanswered.*')) aria-current="page" @endif
                 >
                     {{ __('ui.admin.unanswered') }}
-                </a>
-                <a
-                    class="admin-nav__link {{ request()->routeIs('admin.ranking.*') ? 'is-active' : '' }}"
-                    href="{{ route('admin.ranking.edit') }}"
-                    @if (request()->routeIs('admin.ranking.*')) aria-current="page" @endif
-                >
-                    {{ __('ui.admin.ranking') }}
                 </a>
             </nav>
 

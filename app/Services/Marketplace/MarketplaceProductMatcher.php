@@ -207,7 +207,7 @@ final class MarketplaceProductMatcher
             (string) $product->variant,
         ]));
 
-        foreach (['ti', 'super', 'pro', 'max', 'mini', 'plus', 'ultra'] as $modifier) {
+        foreach (['ti', 'super', 'xt', 'pro', 'max', 'mini', 'plus', 'ultra'] as $modifier) {
             $listingHas = preg_match('/\b'.preg_quote($modifier, '/').'\b/u', $title) === 1;
 
             if ($modifier === 'ti'
@@ -252,6 +252,11 @@ final class MarketplaceProductMatcher
 
         if (in_array($categorySlug, $standaloneComponents, true)
             && $this->looksLikeCompleteComputer($listingText)) {
+            return true;
+        }
+
+        if (in_array($categorySlug, $standaloneComponents, true)
+            && $this->hasMobileProcessorIdentity($listingText)) {
             return true;
         }
 
@@ -313,6 +318,14 @@ final class MarketplaceProductMatcher
             && preg_match('/\b(ram|memory|memori)\b/u', $text) === 1
             && preg_match('/\b(ssd|hdd|storage|penyimpanan)\b/u', $text) === 1
             && preg_match('/\b(layar|screen|display)\b/u', $text) === 1;
+    }
+
+    private function hasMobileProcessorIdentity(string $text): bool
+    {
+        return preg_match(
+            '/\b(?:ryzen\s+[3579]\s*[- ]?\s*\d{4}[uhs]|core\s+i[3579]\s*[- ]?\s*\d{4,5}(?:u|h|p|g\d)|i[3579]\s*[- ]\s*\d{4,5}(?:u|h|p|g\d))\b/u',
+            $text,
+        ) === 1;
     }
 
     private function isUnsafeAdvertisement(string $title): bool

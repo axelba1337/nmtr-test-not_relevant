@@ -56,9 +56,17 @@
                 </select>
             </div>
 
+            <div class="form-field">
+                <label for="embedding-status">{{ __('ui.admin_pages.knowledge.index.embedding_filter') }}</label>
+                <select id="embedding-status" name="embedding_status">
+                    <option value="all" @selected($embeddingStatus === 'all')>{{ __('ui.admin_pages.knowledge.common.all') }}</option>
+                    <option value="failed" @selected($embeddingStatus === 'failed')>{{ __('ui.admin_pages.knowledge.index.failed_embeddings') }}</option>
+                </select>
+            </div>
+
             <div class="filter-bar__actions">
                 <button class="button button--secondary" type="submit">{{ __('ui.admin_pages.knowledge.index.apply') }}</button>
-                @if ($search !== '' || $status !== 'all')
+                @if ($search !== '' || $status !== 'all' || $embeddingStatus !== 'all')
                     <a class="button button--text" href="{{ route('admin.knowledge.index') }}">
                         {{ __('ui.admin_pages.knowledge.index.reset') }}
                     </a>

@@ -31,13 +31,18 @@ final class ChatbotPageTest extends TestCase
             )
             ->assertSee('role="log"', false)
             ->assertSee('aria-live="polite"', false)
+            ->assertSee('class="chat-brand__logo"', false)
+            ->assertSee(asset('images/branding/neomatra-logo.png'))
+            ->assertSee('rel="icon"', false)
+            ->assertSee('rel="apple-touch-icon"', false)
             ->assertSee('name="message"', false)
             ->assertSee('required', false)
             ->assertSee('maxlength="2000"', false)
             ->assertSee('Pertanyaan yang disarankan')
             ->assertSee('Tanyakan apa saja')
-            ->assertSee('<option value="">Otomatis</option>', false)
-            ->assertSee('Transaksi tetap dilakukan di platform sumber')
+            ->assertSee('<option value="">Semua kondisi</option>', false)
+            ->assertDontSee('<option value="">Otomatis</option>', false)
+            ->assertSee('Harga dan kondisi berasal dari listing sumber')
             ->assertSee('Kirim');
     }
 
@@ -52,6 +57,32 @@ final class ChatbotPageTest extends TestCase
             "@vite(['resources/css/app.css', 'resources/js/app.js'])",
             $blade,
         );
+    }
+
+    public function test_chatbot_branding_assets_are_referenced_without_embedding_them(): void
+    {
+        $stylesheet = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertFileExists(public_path(
+            'images/branding/neomatra-logo.png',
+        ));
+        $this->assertFileExists(public_path(
+            'images/branding/neomatra-wordmark-bg.png',
+        ));
+        $this->assertIsString($stylesheet);
+        $this->assertStringContainsString(
+            '.console-panel::before',
+            $stylesheet,
+        );
+        $this->assertStringContainsString(
+            "url('/images/branding/neomatra-wordmark-bg.png')",
+            $stylesheet,
+        );
+        $this->assertStringContainsString(
+            'pointer-events: none',
+            $stylesheet,
+        );
+        $this->assertStringNotContainsString('data:image/', $stylesheet);
     }
 
     public function test_browser_code_uses_safe_text_rendering_and_safe_links(): void

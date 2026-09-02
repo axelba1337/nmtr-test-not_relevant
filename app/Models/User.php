@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable
@@ -35,10 +34,5 @@ class User extends Authenticatable
     public function reviewedChatbotQueries(): HasMany
     {
         return $this->hasMany(ChatbotQueryLog::class, 'reviewed_by');
-    }
-
-    public function updatedRankingProfiles(): HasMany
-    {
-        return $this->hasMany(RankingProfile::class, 'updated_by');
     }
 }

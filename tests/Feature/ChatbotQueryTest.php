@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ChatbotQueryLog;
 use App\Models\KnowledgeItem;
 use App\Models\Product;
+use App\Services\Search\SearchExecutionBudget;
 use Database\Seeders\NeomatraCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -37,7 +38,6 @@ final class ChatbotQueryTest extends TestCase
             'neomatra.search.product_candidate_k' => 20,
             'neomatra.search.result_top_k' => 5,
             'neomatra.search.knowledge_top_k' => 3,
-            'neomatra.pricing.minimum_comparables' => 2,
             'marketplace.provider' => 'demo',
         ]);
 
@@ -88,17 +88,16 @@ final class ChatbotQueryTest extends TestCase
         $this->assertDatabaseCount('chatbot_query_logs', 0);
     }
 
-    public function test_marketplace_query_returns_structured_backend_calculations(): void
+    public function test_marketplace_query_returns_only_current_mvp_listing_fields(): void
     {
         $this->seedCatalogWithEmbeddings([1, 0]);
         $this->fakeFlow(
             $this->rtxIntent([
                 'budget_max' => 2800000,
                 'locations' => ['Surabaya'],
-                'seller_types' => ['store'],
             ]),
             [1, 0],
-            'Listing pertama sekitar 13,5% di bawah harga pasar.',
+            'Listing pertama sesuai dengan pencarian Anda.',
         );
 
         $response = $this->postJson('/api/chatbot/query', [
@@ -110,7 +109,7 @@ final class ChatbotQueryTest extends TestCase
             ->assertOk()
             ->assertJsonPath(
                 'answer',
-                'Listing pertama sekitar 13,5% di bawah harga pasar.',
+                'Listing pertama sesuai dengan pencarian Anda.',
             )
             ->assertJsonCount(1, 'listings')
             ->assertJsonPath(
@@ -120,11 +119,6 @@ final class ChatbotQueryTest extends TestCase
             ->assertJsonPath('listings.0.product.variant', '12 GB')
             ->assertJsonPath('listings.0.platform', 'Tokopedia')
             ->assertJsonPath('listings.0.item_price', 2500000)
-            ->assertJsonPath('listings.0.costs.total', 2595000)
-            ->assertJsonPath('listings.0.market.price', 3000000)
-            ->assertJsonPath('listings.0.market.comparable_count', 3)
-            ->assertJsonPath('listings.0.undervalued.percentage', 13.5)
-            ->assertJsonPath('listings.0.undervalued.label', 'Undervalued')
             ->assertJsonPath('listings.0.condition', 'used')
             ->assertJsonPath(
                 'listings.0.condition_label',
@@ -135,18 +129,31 @@ final class ChatbotQueryTest extends TestCase
             ->assertJsonPath('meta.chat.explanation_api_used', true)
             ->assertJsonPath('meta.embedding.dimensions', 2)
             ->assertJsonPath('meta.similarity_threshold', null)
-            ->assertJsonPath('meta.calculations_authority', 'backend')
+            ->assertJsonPath('meta.ranking_authority', 'backend')
+            ->assertJsonPath('meta.timed_out', false)
+            ->assertJsonPath('meta.search_budget.soft_timeout_seconds', 20)
+            ->assertJsonPath('meta.search_budget.hard_timeout_seconds', 30)
             ->assertJsonPath('meta.usage.total_tokens', 16)
+            ->assertJson(
+                static fn ($json) => $json
+                    ->whereType('meta.duration_ms', 'integer')
+                    ->etc(),
+            )
             ->assertJsonMissingPath('listings.0.product_url')
-            ->assertJsonMissingPath('listings.0.raw_payload');
+            ->assertJsonMissingPath('listings.0.raw_payload')
+            ->assertJsonMissingPath('listings.0.comparison_url')
+            ->assertJsonMissingPath('listings.0.seller_type')
+            ->assertJsonMissingPath('listings.0.costs')
+            ->assertJsonMissingPath('listings.0.market')
+            ->assertJsonMissingPath('listings.0.undervalued')
+            ->assertJsonMissingPath('listings.0.reseller')
+            ->assertJsonMissingPath('listings.0.risk')
+            ->assertJsonMissingPath('intent.seller_types')
+            ->assertJsonMissingPath('intent.mode');
 
         $sourceUrl = (string) $response->json('listings.0.source_url');
         $this->assertStringContainsString('/listings/', $sourceUrl);
         $this->assertStringEndsWith('/open', $sourceUrl);
-        $this->assertStringContainsString(
-            '/products/',
-            (string) $response->json('listings.0.comparison_url'),
-        );
 
         Http::assertSentCount(3);
         Http::assertSent(static function (Request $request): bool {
@@ -183,8 +190,9 @@ final class ChatbotQueryTest extends TestCase
             );
 
             return str_contains($prompt, 'DATA_BACKEND_TERPERCAYA')
-                && str_contains($prompt, '2595000')
-                && str_contains($prompt, '13.5')
+                && str_contains($prompt, '2500000')
+                && ! str_contains($prompt, 'undervalued')
+                && ! str_contains($prompt, 'market_price')
                 && data_get(
                     $request->data(),
                     'generationConfig.responseMimeType',
@@ -303,6 +311,42 @@ final class ChatbotQueryTest extends TestCase
         ]);
     }
 
+    public function test_overall_budget_stops_before_the_next_provider_stage(): void
+    {
+        config([
+            'chatbot.search.soft_timeout_seconds' => 20,
+            'chatbot.search.hard_timeout_seconds' => 30,
+        ]);
+        $now = 100.0;
+        $budget = new SearchExecutionBudget(
+            static function () use (&$now): float {
+                return $now;
+            },
+        );
+        $this->app->instance(SearchExecutionBudget::class, $budget);
+
+        Http::fake(function () use (&$now) {
+            $now = 131.0;
+
+            return Http::response($this->intentResponse([
+                ...$this->genericIntent('ZetaBook'),
+                'category' => 'Laptop',
+            ]));
+        });
+
+        $this->postJson('/api/chatbot/query', [
+            'message' => 'Cari laptop ZetaBook',
+        ])
+            ->assertStatus(503)
+            ->assertJsonPath('state', 'SEARCH_TIMEOUT')
+            ->assertJsonPath('error.code', 'embedding_unavailable')
+            ->assertJsonPath('meta.timed_out', true)
+            ->assertJsonPath('meta.duration_ms', 31000)
+            ->assertJsonPath('meta.search_budget.soft_exceeded', true);
+
+        Http::assertSentCount(1);
+    }
+
     public function test_web_answer_remains_available_when_semantic_embedding_fails(): void
     {
         config(['ai.chat.web_grounding.enabled' => true]);
@@ -347,6 +391,51 @@ final class ChatbotQueryTest extends TestCase
             'response_mode' => ChatbotQueryLog::MODE_WEB_GROUNDED,
             'failure_code' => 'quota_or_rate_limit',
             'is_unanswered' => false,
+        ]);
+    }
+
+    public function test_exact_knowledge_answer_works_when_embedding_provider_fails(): void
+    {
+        $knowledge = $this->createKnowledge(
+            'Tentang Neomatra / About Neomatra',
+            [1, 0],
+        );
+        $knowledge->forceFill(['keywords' => ['neomatra']])->save();
+        Http::fake([
+            '*' => Http::sequence()
+                ->push($this->intentResponse([
+                    ...$this->genericIntent(''),
+                    'intent_type' => 'knowledge_question',
+                ]))
+                ->push([
+                    'error' => [
+                        'status' => 'RESOURCE_EXHAUSTED',
+                        'message' => 'private embedding quota detail',
+                    ],
+                ], 429),
+        ]);
+
+        $this->postJson('/api/chatbot/query', [
+            'message' => 'Apa itu Neomatra?',
+        ])
+            ->assertOk()
+            ->assertJsonPath(
+                'answer',
+                'Konten panduan yang sudah divalidasi admin.',
+            )
+            ->assertJsonPath('matches.0.id', $knowledge->id)
+            ->assertJsonPath('matches.0.similarity', null)
+            ->assertJsonPath('meta.embedding.query_succeeded', false)
+            ->assertJsonPath('meta.chat.explanation_api_used', false)
+            ->assertDontSee('private embedding quota detail');
+
+        Http::assertSentCount(2);
+        $this->assertDatabaseHas('chatbot_query_logs', [
+            'status' => ChatbotQueryLog::STATUS_ANSWERED,
+            'response_mode' => ChatbotQueryLog::MODE_DETERMINISTIC_FALLBACK,
+            'failure_code' => 'quota_or_rate_limit',
+            'is_unanswered' => false,
+            'unanswered_reason' => null,
         ]);
     }
 
@@ -1073,8 +1162,6 @@ final class ChatbotQueryTest extends TestCase
             'budget_max' => null,
             'conditions' => [],
             'locations' => [],
-            'seller_types' => [],
-            'mode' => 'buyer',
             'needs_clarification' => false,
             'clarification_question' => null,
         ];

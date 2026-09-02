@@ -34,14 +34,48 @@
             <ul class="summary-card__details">
                 <li>{{ __('ui.admin.dashboard_page.active_knowledge_count', ['count' => number_format($activeKnowledgeCount, 0, ',', '.')]) }}</li>
                 <li>{{ __('ui.admin.dashboard_page.ready_embedding_count', ['count' => number_format($knowledgeStats['ready'], 0, ',', '.')]) }}</li>
-                <li>{{ __('ui.admin.dashboard_page.attention_count', ['count' => number_format($knowledgeStats['failed'] + $knowledgeStats['pending'], 0, ',', '.')]) }}</li>
-                <li>{{ __('ui.admin.dashboard_page.pending_query_count', ['count' => number_format($pendingUnansweredCount, 0, ',', '.')]) }}</li>
+                <li><a href="{{ route('admin.knowledge.index', ['status' => 'active', 'embedding_status' => 'failed']) }}">{{ __('ui.admin.dashboard_page.failed_embedding_count', ['count' => number_format($knowledgeStats['failed'], 0, ',', '.')]) }}</a></li>
+                <li>{{ __('ui.admin.dashboard_page.pending_embedding_count', ['count' => number_format($knowledgeStats['pending'], 0, ',', '.')]) }}</li>
+                <li><a href="{{ route('admin.unanswered.index', ['review' => 'pending']) }}">{{ __('ui.admin.dashboard_page.pending_query_count', ['count' => number_format($pendingUnansweredCount, 0, ',', '.')]) }}</a></li>
+                <li><a href="{{ route('admin.listings.index', ['status' => 'active', 'mapping_status' => 'unmatched']) }}">{{ __('ui.admin.dashboard_page.unmatched_listing_count', ['count' => number_format($unmatchedListingsCount, 0, ',', '.')]) }}</a></li>
+                <li><a href="{{ route('admin.platforms.index', ['sync_status' => 'failed']) }}">{{ __('ui.admin.dashboard_page.failed_sync_count', ['count' => number_format($failedSyncCount, 0, ',', '.')]) }}</a></li>
                 @if ($knowledgeStats['warnings'] > 0)
                     <li>{{ __('ui.admin.dashboard_page.warning_count', ['count' => number_format($knowledgeStats['warnings'], 0, ',', '.')]) }}</li>
                 @endif
             </ul>
         </article>
     </div>
+
+    <section class="admin-card" aria-labelledby="products-without-listings-title">
+        <div class="admin-card__heading admin-card__heading--actions">
+            <div>
+                <p class="admin-card__eyebrow">{{ __('ui.admin.dashboard_page.operational_warning') }}</p>
+                <h2 id="products-without-listings-title">{{ __('ui.admin.dashboard_page.products_without_listings') }}</h2>
+                <p>{{ __('ui.admin.dashboard_page.products_without_listings_description', ['count' => number_format($productsWithoutListingsCount, 0, ',', '.')]) }}</p>
+            </div>
+            <a class="button button--secondary" href="{{ route('admin.products.index', ['status' => 'active', 'listing_status' => 'without_active']) }}">{{ __('ui.admin.dashboard_page.review_products') }}</a>
+        </div>
+
+        @if ($productsWithoutListings->isEmpty())
+            <div class="empty-state"><p>{{ __('ui.admin.dashboard_page.all_products_have_listings') }}</p></div>
+        @else
+            <div class="table-scroll">
+                <table class="admin-table">
+                    <thead><tr><th>{{ __('ui.admin_pages.products.product') }}</th><th>{{ __('ui.admin.categories') }}</th><th>{{ __('ui.common.status') }}</th><th>{{ __('ui.admin.dashboard_page.latest_listing_sync') }}</th></tr></thead>
+                    <tbody>
+                        @foreach ($productsWithoutListings as $product)
+                            <tr>
+                                <td class="admin-table__question"><strong>{{ $product->name }}</strong><span>{{ $product->brand ?: __('ui.admin_pages.products.brand_missing') }}</span></td>
+                                <td>{{ $product->category?->name ?? '—' }}</td>
+                                <td><span class="badge badge--success">{{ __('ui.common.active') }}</span></td>
+                                <td>{{ trans_choice('ui.admin_pages.products.listing_count', $product->listings_count, ['count' => $product->listings_count]) }}<span class="table-meta">{{ $product->listings_max_last_synced_at ?: __('ui.admin.dashboard_page.never_synced') }}</span></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
 
     <section class="admin-card" aria-labelledby="activity-title">
         <div class="admin-card__heading">

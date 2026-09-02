@@ -8,11 +8,9 @@ use App\Http\Controllers\Admin\KnowledgeItemController;
 use App\Http\Controllers\Admin\ListingController;
 use App\Http\Controllers\Admin\PlatformController;
 use App\Http\Controllers\Admin\ProductController;
-use App\Http\Controllers\Admin\RankingProfileController;
 use App\Http\Controllers\Admin\UnansweredQueryController;
 use App\Http\Controllers\ListingRedirectController;
 use App\Http\Controllers\LocaleController;
-use App\Http\Controllers\ProductComparisonController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('chatbot.widget'))
@@ -22,8 +20,6 @@ Route::post('/locale/{locale}', LocaleController::class)
     ->where('locale', '[A-Za-z_-]+')
     ->name('locale.update');
 
-Route::get('/products/{product}/compare', ProductComparisonController::class)
-    ->name('products.compare');
 Route::get('/listings/{listing}/open', ListingRedirectController::class)
     ->name('listings.open');
 
@@ -74,15 +70,6 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
                 '/unanswered-queries/{queryLog}',
                 [UnansweredQueryController::class, 'update'],
             )->name('unanswered.update');
-            Route::get(
-                '/ranking',
-                [RankingProfileController::class, 'edit'],
-            )->name('ranking.edit');
-            Route::patch(
-                '/ranking',
-                [RankingProfileController::class, 'update'],
-            )->name('ranking.update');
-
             Route::patch(
                 '/knowledge/{knowledgeItem}/active',
                 [KnowledgeItemController::class, 'toggleActive'],

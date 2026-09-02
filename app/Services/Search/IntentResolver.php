@@ -96,19 +96,10 @@ final class IntentResolver
                 $remote['locations'] ?? [],
                 $local['location'],
             ),
-            'seller_types' => $this->listValue(
-                $explicit['seller_type'] ?? null,
-                $remote['seller_types'] ?? [],
-                $local['seller_type'],
-            ),
             'platforms' => $this->listValue(
                 $explicit['platform'] ?? null,
                 $remote['platforms'] ?? [],
                 $local['platform'],
-            ),
-            'mode' => $this->stringValue(
-                $explicit['mode'] ?? null,
-                $this->stringValue($remote['mode'] ?? null, $local['mode']),
             ),
             'intent_type' => $this->stringValue(
                 $explicit['intent_type'] ?? null,

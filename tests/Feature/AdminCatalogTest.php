@@ -9,7 +9,6 @@ use App\Models\Listing;
 use App\Models\MarketplaceSyncRun;
 use App\Models\Platform;
 use App\Models\Product;
-use App\Models\RankingProfile;
 use App\Models\User;
 use App\Services\Neomatra\ListingFingerprintService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,7 +63,6 @@ final class AdminCatalogTest extends TestCase
             route('admin.listings.edit', $listing),
             route('admin.unanswered.index'),
             route('admin.unanswered.show', $queryLog),
-            route('admin.ranking.edit'),
         ];
         $mutations = [
             ['post', route('admin.categories.store')],
@@ -81,7 +79,6 @@ final class AdminCatalogTest extends TestCase
             ['delete', route('admin.listings.destroy', $listing)],
             ['post', route('admin.platforms.sync', $platform)],
             ['patch', route('admin.unanswered.update', $queryLog)],
-            ['patch', route('admin.ranking.update')],
         ];
 
         foreach ($getRoutes as $route) {
@@ -530,45 +527,6 @@ final class AdminCatalogTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_ranking_profile_requires_weights_to_total_one(): void
-    {
-        $admin = $this->createUser();
-
-        $this->actingAs($admin)
-            ->patch(route('admin.ranking.update'), [
-                ...$this->rankingPayload(),
-                'freshness_weight' => '0.20',
-            ])
-            ->assertSessionHasErrors('relevance_weight');
-        $this->assertDatabaseCount('ranking_profiles', 0);
-
-        $this->actingAs($admin)
-            ->patch(route('admin.ranking.update'), $this->rankingPayload())
-            ->assertRedirect(route('admin.ranking.edit'))
-            ->assertSessionHas('success');
-
-        $first = RankingProfile::query()->sole();
-        $this->assertTrue($first->is_active);
-        $this->assertSame($admin->id, $first->updated_by);
-        $this->assertEqualsWithDelta(1.0, array_sum($first->weights()), 0.0001);
-
-        $this->actingAs($admin)
-            ->patch(route('admin.ranking.update'), [
-                ...$this->rankingPayload(),
-                'name' => 'Eksperimen Portofolio',
-            ])
-            ->assertSessionHas('success');
-
-        $this->assertDatabaseCount('ranking_profiles', 2);
-        $this->assertSame(1, RankingProfile::query()->active()->count());
-        $this->assertFalse($first->fresh()?->is_active);
-        $this->actingAs($admin)
-            ->get(route('admin.ranking.edit'))
-            ->assertOk()
-            ->assertSee('Eksperimen Portofolio');
-        Http::assertNothingSent();
-    }
-
     private function createUser(bool $isAdmin = true): User
     {
         return User::query()->create([
@@ -644,7 +602,6 @@ final class AdminCatalogTest extends TestCase
             'condition' => Listing::CONDITION_USED,
             'condition_source' => Listing::CONDITION_SOURCE_SELLER,
             'seller_name' => 'Fixture Seller',
-            'seller_type' => Listing::SELLER_STORE,
             'product_url' => 'https://example.test/listings/fixture',
             'stock_status' => Listing::STOCK_IN_STOCK,
             'price_type' => Listing::PRICE_FULL,
@@ -671,34 +628,16 @@ final class AdminCatalogTest extends TestCase
             'currency' => 'idr',
             'condition' => Listing::CONDITION_USED,
             'seller_name' => 'Toko Demo',
-            'seller_type' => Listing::SELLER_STORE,
             'location' => 'Surabaya',
             'product_url' => 'https://example.test/items/one',
             'image_url' => 'https://example.test/images/one.jpg',
             'stock_status' => Listing::STOCK_IN_STOCK,
             'price_type' => Listing::PRICE_FULL,
-            'shipping_cost' => '25000',
-            'service_fee' => '20000',
-            'inspection_cost' => '0',
-            'repair_estimate' => '50000',
             'warranty' => 'Garansi toko 30 hari',
             'raw_payload' => '{"source":"manual-test"}',
             'source_published_at' => '2026-08-01 10:00:00',
             'last_synced_at' => '2026-08-03 10:00:00',
             'is_active' => '1',
         ], $overrides);
-    }
-
-    /** @return array<string, string> */
-    private function rankingPayload(): array
-    {
-        return [
-            'name' => 'Default Neomatra',
-            'relevance_weight' => '0.40',
-            'price_weight' => '0.30',
-            'condition_weight' => '0.15',
-            'seller_weight' => '0.10',
-            'freshness_weight' => '0.05',
-        ];
     }
 }

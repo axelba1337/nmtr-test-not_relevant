@@ -27,22 +27,9 @@ final readonly class ParsedIntent
         'unknown',
     ];
 
-    /** @var list<string> */
-    public const SELLER_TYPES = [
-        'official',
-        'store',
-        'reseller',
-        'individual',
-        'unknown',
-    ];
-
-    /** @var list<string> */
-    public const MODES = ['buyer', 'reseller'];
-
     /**
      * @param  list<string>  $conditions
      * @param  list<string>  $locations
-     * @param  list<string>  $sellerTypes
      * @param  list<string>  $platforms
      */
     public function __construct(
@@ -56,8 +43,6 @@ final readonly class ParsedIntent
         public ?int $budgetMax,
         public array $conditions,
         public array $locations,
-        public array $sellerTypes,
-        public string $mode,
         public bool $needsClarification,
         public ?string $clarificationQuestion,
         public string $intentType = self::TYPE_PRODUCT_SEARCH,
@@ -130,23 +115,15 @@ final readonly class ParsedIntent
             $value['conditions'] ?? [],
             self::CONDITIONS,
         );
-        $sellerTypes = self::enumList(
-            $value['seller_types'] ?? [],
-            self::SELLER_TYPES,
-        );
         $locations = self::stringList($value['locations'] ?? [], 120);
         $platforms = self::stringList($value['platforms'] ?? [], 120);
-        $mode = $value['mode'] ?? null;
         $modelNumber = self::nullableNonNegativeInteger(
             $value['model_number'] ?? null,
         );
 
         if ($conditions === null
-            || $sellerTypes === null
             || $locations === null
             || $platforms === null
-            || ! is_string($mode)
-            || ! in_array($mode, self::MODES, true)
             || (($value['model_number'] ?? null) !== null
                 && $modelNumber === null)) {
             return null;
@@ -163,8 +140,6 @@ final readonly class ParsedIntent
             $budgetMax,
             $conditions,
             $locations,
-            $sellerTypes,
-            $mode,
             $needsClarification,
             $clarification,
             $intentType,
@@ -197,7 +172,6 @@ final readonly class ParsedIntent
             'budget_max' => $this->budgetMax,
             'conditions' => $this->conditions,
             'locations' => $this->locations,
-            'seller_types' => $this->sellerTypes,
             'platforms' => $this->platforms,
             'category_slug' => $this->categorySlug,
             'family' => $this->family,
@@ -205,7 +179,6 @@ final readonly class ParsedIntent
             'model_number' => $this->modelNumber,
             'category_match_strategy' => $this->categoryMatchStrategy,
             'category_matched_alias' => $this->categoryMatchedAlias,
-            'mode' => $this->mode,
             'needs_clarification' => $this->needsClarification,
             'clarification_question' => $this->clarificationQuestion,
             'intent_type' => $this->intentType,

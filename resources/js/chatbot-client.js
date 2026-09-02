@@ -140,6 +140,19 @@ export const normalizeSearchEntryPointHtml = (value) => {
     return html;
 };
 
+export const scrollTranscriptToLatest = (transcript, reducedMotion = false) => {
+    if (!transcript || typeof transcript.scrollTo !== 'function') {
+        return false;
+    }
+
+    transcript.scrollTo({
+        top: transcript.scrollHeight,
+        behavior: reducedMotion ? 'auto' : 'smooth',
+    });
+
+    return true;
+};
+
 export const requestChat = async ({
     fetchImpl = fetch,
     endpoint,

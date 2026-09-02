@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
+    <link rel="icon" type="image/png" href="{{ asset('images/branding/neomatra-logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/branding/neomatra-logo.png') }}">
     <title>{{ __('ui.admin.login.title') }} · {{ config('app.name') }}</title>
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
 </head>
@@ -15,8 +17,18 @@
         <section class="auth-card" aria-labelledby="login-title">
             <x-locale-switch />
             <div class="auth-card__heading">
-                <p class="auth-card__eyebrow">NMTR / RESTRICTED ACCESS</p>
-                <h1 id="login-title">{{ config('app.name') }}</h1>
+                <div class="auth-brand">
+                    <img
+                        class="auth-brand__logo"
+                        src="{{ asset('images/branding/neomatra-logo.png') }}"
+                        alt=""
+                        aria-hidden="true"
+                    >
+                    <div class="auth-brand__copy">
+                        <p class="auth-card__eyebrow">NMTR / RESTRICTED ACCESS</p>
+                        <h1 id="login-title">{{ config('app.name') }}</h1>
+                    </div>
+                </div>
                 <p>{{ __('ui.admin.login.description') }}</p>
             </div>
 

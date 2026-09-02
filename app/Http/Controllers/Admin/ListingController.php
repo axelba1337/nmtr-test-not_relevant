@@ -30,6 +30,7 @@ final class ListingController extends Controller
             'condition' => ['nullable', 'in:'.implode(',', Listing::conditions())],
             'stock_status' => ['nullable', 'in:'.implode(',', Listing::stockStatuses())],
             'status' => ['nullable', 'in:all,active,inactive'],
+            'mapping_status' => ['nullable', 'in:all,matched,unmatched'],
         ]);
         $search = trim((string) ($filters['search'] ?? ''));
         $platformId = isset($filters['platform_id'])
@@ -38,6 +39,7 @@ final class ListingController extends Controller
         $condition = (string) ($filters['condition'] ?? '');
         $stockStatus = (string) ($filters['stock_status'] ?? '');
         $status = (string) ($filters['status'] ?? 'all');
+        $mappingStatus = (string) ($filters['mapping_status'] ?? 'all');
 
         $listings = Listing::query()
             ->with(['platform:id,name', 'product:id,name'])
@@ -57,6 +59,10 @@ final class ListingController extends Controller
                 ->where('is_active', true))
             ->when($status === 'inactive', fn (Builder $query): Builder => $query
                 ->where('is_active', false))
+            ->when($mappingStatus === 'matched', fn (Builder $query): Builder => $query
+                ->whereNotNull('product_id'))
+            ->when($mappingStatus === 'unmatched', fn (Builder $query): Builder => $query
+                ->whereNull('product_id'))
             ->latest('updated_at')
             ->latest('id')
             ->paginate(20)
@@ -70,6 +76,7 @@ final class ListingController extends Controller
             'condition' => $condition,
             'stockStatus' => $stockStatus,
             'status' => $status,
+            'mappingStatus' => $mappingStatus,
         ]);
     }
 

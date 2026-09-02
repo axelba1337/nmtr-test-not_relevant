@@ -8,23 +8,12 @@ use App\Data\Search\SearchState;
 use App\Models\Listing;
 use App\Models\Platform;
 use App\Models\Product;
-use App\Services\Neomatra\MarketPriceCalculator;
-use App\Services\Neomatra\ResellerMarginCalculator;
-use App\Services\Neomatra\RiskSignalService;
-use App\Services\Neomatra\TotalCostCalculator;
-use App\Services\Neomatra\UndervaluedCalculator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 final class ListingSearchService
 {
     public function __construct(
-        private readonly MarketPriceCalculator $marketPrice,
-        private readonly TotalCostCalculator $totalCost,
-        private readonly UndervaluedCalculator $undervalued,
-        private readonly ResellerMarginCalculator $resellerMargin,
-        private readonly RiskSignalService $risk,
         private readonly ListingRankingService $ranking,
     ) {}
 
@@ -79,7 +68,6 @@ final class ListingSearchService
 
         $present = array_values(array_filter([
             $values['platforms'] !== [] ? 'platforms' : null,
-            $values['seller_types'] !== [] ? 'seller_type' : null,
             $values['locations'] !== [] ? 'location' : null,
             $values['budget_min'] !== null || $values['budget_max'] !== null
                 ? 'budget'
@@ -93,7 +81,6 @@ final class ListingSearchService
             foreach ($group as $filter) {
                 match ($filter) {
                     'platforms' => $values['platforms'] = [],
-                    'seller_type' => $values['seller_types'] = [],
                     'location' => $values['locations'] = [],
                     'budget' => [
                         $values['budget_min'] = null,
@@ -116,7 +103,11 @@ final class ListingSearchService
 
         foreach ($attempts as $index => $attempt) {
             $attemptCount++;
-            $results = $this->search($candidates, $attempt);
+            $results = $this->search(
+                $candidates,
+                $attempt,
+                $intent->locations,
+            );
 
             if ($results === []) {
                 continue;
@@ -133,19 +124,19 @@ final class ListingSearchService
                 usort($results, static function (array $left, array $right) use ($intent): int {
                     $leftDifference = max(
                         0,
-                        (int) $left['costs']['total'] - $intent->budgetMax,
+                        (int) $left['item_price'] - $intent->budgetMax,
                     );
                     $rightDifference = max(
                         0,
-                        (int) $right['costs']['total'] - $intent->budgetMax,
+                        (int) $right['item_price'] - $intent->budgetMax,
                     );
                     $difference = $leftDifference <=> $rightDifference;
 
                     return $difference !== 0
                         ? $difference
-                        : (int) $left['costs']['total'] <=> (int) $right['costs']['total'];
+                        : (int) $left['item_price'] <=> (int) $right['item_price'];
                 });
-                $closestPrice = (int) $results[0]['costs']['total'];
+                $closestPrice = (int) $results[0]['item_price'];
                 $budgetDifference = max(0, $closestPrice - $intent->budgetMax);
             }
 
@@ -189,19 +180,23 @@ final class ListingSearchService
      * @param  list<array{product: Product, similarity: float|null, matched_via: string}>  $candidates
      * @return list<array<string, mixed>>
      */
-    public function search(array $candidates, ParsedIntent $intent): array
-    {
+    public function search(
+        array $candidates,
+        ParsedIntent $intent,
+        ?array $rankingLocations = null,
+    ): array {
         if ($candidates === []) {
             return [];
         }
 
         $scores = collect($candidates)->mapWithKeys(
-            static fn (array $candidate): array => [
+            static fn (array $candidate, int $index): array => [
                 (int) $candidate['product']->getKey() => [
                     'similarity' => is_numeric($candidate['similarity'])
                         ? (float) $candidate['similarity']
                         : null,
                     'matched_via' => (string) $candidate['matched_via'],
+                    'candidate_order' => $index,
                 ],
             ],
         );
@@ -230,10 +225,6 @@ final class ListingSearchService
             $query->whereIn('condition', $intent->conditions);
         }
 
-        if ($intent->sellerTypes !== []) {
-            $query->whereIn('seller_type', $intent->sellerTypes);
-        }
-
         if ($intent->locations !== []) {
             $query->where(function (Builder $locationQuery) use ($intent): void {
                 foreach ($intent->locations as $location) {
@@ -253,20 +244,8 @@ final class ListingSearchService
         }
 
         $listings = $query->get();
-        $comparablesQuery = Listing::query()
-            ->available()
-            ->whereIn('product_id', $productIds)
-            ->where('currency', $currency)
-            ->whereHas('platform', static fn (Builder $query): Builder => $query
-                ->publiclyAvailable());
-        $this->whereSourceAvailable($comparablesQuery);
-        $comparables = $comparablesQuery
-            ->get()
-            ->groupBy(static fn (Listing $listing): string => implode('|', [
-                $listing->product_id,
-                $listing->condition,
-                strtoupper((string) $listing->currency),
-            ]));
+        $minimumPrice = $listings->min('price');
+        $maximumPrice = $listings->max('price');
         $results = [];
 
         foreach ($listings as $listing) {
@@ -276,58 +255,13 @@ final class ListingSearchService
                 continue;
             }
 
-            $totalCost = $this->totalCost->calculate(
-                (int) $listing->price,
-                $listing->shipping_cost,
-                $listing->service_fee,
-                $listing->inspection_cost,
-                $listing->repair_estimate,
-            );
-
-            if ($intent->budgetMax !== null && $totalCost > $intent->budgetMax) {
-                continue;
-            }
-
-            $comparisonKey = implode('|', [
-                $listing->product_id,
-                $listing->condition,
-                strtoupper((string) $listing->currency),
-            ]);
-            $comparisonRows = $this->uniqueComparables(
-                $comparables->get($comparisonKey, collect()),
-            );
-            $minimumComparables = max(
-                1,
-                (int) config('neomatra.pricing.minimum_comparables', 2),
-            );
-            $marketPrice = $comparisonRows->count() >= $minimumComparables
-                ? $this->marketPrice->calculate($comparisonRows)
-                : null;
-            $undervalued = $marketPrice === null
-                ? null
-                : $this->undervalued->calculate($marketPrice, $totalCost);
-            $risk = $undervalued === null
-                ? [
-                    'signal' => 'insufficient_market_data',
-                    'label' => __('ui.messages.search.insufficient_market_data'),
-                    'requires_review' => true,
-                    'disclaimer' => __('ui.messages.search.disclaimer'),
-                ]
-                : $this->risk->fromUndervaluedPercentage(
-                    $undervalued['percentage'],
-                );
             $ranking = $this->ranking->calculate(
                 $listing,
                 (float) ($candidate['similarity'] ?? 0.0),
-                $undervalued['percentage'] ?? null,
+                $rankingLocations ?? $intent->locations,
+                is_numeric($minimumPrice) ? (int) $minimumPrice : null,
+                is_numeric($maximumPrice) ? (int) $maximumPrice : null,
             );
-            $margin = $intent->mode === 'reseller' && $marketPrice !== null
-                ? $this->resellerMargin->calculate(
-                    $marketPrice,
-                    $totalCost,
-                )
-                : null;
-            $missingCosts = $this->missingCostFields($listing);
 
             $results[] = [
                 'id' => (int) $listing->id,
@@ -346,42 +280,31 @@ final class ListingSearchService
                 'condition' => (string) $listing->condition,
                 'condition_label' => __('ui.messages.search.condition_seller'),
                 'seller_name' => $listing->seller_name,
-                'seller_type' => (string) $listing->seller_type,
                 'location' => $listing->location,
                 'currency' => (string) $listing->currency,
                 'item_price' => (int) $listing->price,
-                'costs' => [
-                    'shipping' => $listing->shipping_cost,
-                    'service_fee' => $listing->service_fee,
-                    'inspection' => $listing->inspection_cost,
-                    'repair_estimate' => $listing->repair_estimate,
-                    'total' => $totalCost,
-                    'complete' => $missingCosts === [],
-                    'missing_fields' => $missingCosts,
-                ],
-                'market' => [
-                    'price' => $marketPrice,
-                    'comparable_count' => $comparisonRows->count(),
-                    'minimum_comparables' => $minimumComparables,
-                ],
-                'undervalued' => $undervalued,
-                'reseller' => $margin === null ? null : [
-                    'estimated_resale_price' => $marketPrice,
-                    'selling_fee' => 0,
-                    'storage_cost' => 0,
-                    ...$margin,
-                ],
-                'risk' => $risk,
                 'ranking' => $ranking,
                 'similarity' => is_float($candidate['similarity'])
                     ? $candidate['similarity']
                     : null,
                 'matched_via' => (string) $candidate['matched_via'],
+                '_candidate_order' => (int) $candidate['candidate_order'],
+                'source_published_at' => $listing->source_published_at?->toIso8601String(),
                 'last_synced_at' => $listing->last_synced_at?->toIso8601String(),
             ];
         }
 
         usort($results, static function (array $left, array $right): int {
+            if (str_starts_with($left['matched_via'], 'related_tier_')
+                && str_starts_with($right['matched_via'], 'related_tier_')) {
+                $candidateOrder = $left['_candidate_order']
+                    <=> $right['_candidate_order'];
+
+                if ($candidateOrder !== 0) {
+                    return $candidateOrder;
+                }
+            }
+
             $rank = $right['ranking']['rank_score']
                 <=> $left['ranking']['rank_score'];
 
@@ -389,7 +312,7 @@ final class ListingSearchService
                 return $rank;
             }
 
-            $cost = $left['costs']['total'] <=> $right['costs']['total'];
+            $cost = $left['item_price'] <=> $right['item_price'];
 
             return $cost !== 0 ? $cost : $left['id'] <=> $right['id'];
         });
@@ -399,35 +322,11 @@ final class ListingSearchService
             max(1, (int) config('neomatra.search.result_top_k', 5)),
         );
 
-        return array_slice($results, 0, $topK);
-    }
+        return array_map(static function (array $result): array {
+            unset($result['_candidate_order']);
 
-    private function uniqueComparables(Collection $rows): Collection
-    {
-        return $rows->unique(static function (Listing $listing): string {
-            return filled($listing->source_fingerprint)
-                ? (string) $listing->source_fingerprint
-                : 'listing:'.$listing->getKey();
-        })->values();
-    }
-
-    /** @return list<string> */
-    private function missingCostFields(Listing $listing): array
-    {
-        $missing = [];
-
-        foreach ([
-            'shipping_cost',
-            'service_fee',
-            'inspection_cost',
-            'repair_estimate',
-        ] as $field) {
-            if ($listing->getAttribute($field) === null) {
-                $missing[] = $field;
-            }
-        }
-
-        return $missing;
+            return $result;
+        }, array_slice($results, 0, $topK));
     }
 
     private function safeUrl(?string $url): ?string
@@ -470,7 +369,6 @@ final class ListingSearchService
         return [
             'conditions' => $intent->conditions,
             'platforms' => $intent->platforms,
-            'seller_types' => $intent->sellerTypes,
             'locations' => $intent->locations,
             'budget_min' => $intent->budgetMin,
             'budget_max' => $intent->budgetMax,

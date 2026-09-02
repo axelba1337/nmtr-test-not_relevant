@@ -5,6 +5,7 @@ import {
     normalizeSources,
     requestChat,
     requestSuggestions,
+    scrollTranscriptToLatest,
 } from './chatbot-client';
 
 const chatbot = document.querySelector('[data-chatbot]');
@@ -72,10 +73,7 @@ if (chatbot) {
     const scrollTranscript = () => {
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        transcript.scrollTo({
-            top: transcript.scrollHeight,
-            behavior: reducedMotion ? 'auto' : 'smooth',
-        });
+        scrollTranscriptToLatest(transcript, reducedMotion);
     };
 
     const appendPlainText = (container, text) => {
@@ -315,11 +313,9 @@ if (chatbot) {
             const card = document.createElement('article');
             const top = document.createElement('div');
             const platform = document.createElement('span');
-            const risk = document.createElement('span');
             const name = document.createElement('h3');
             const facts = document.createElement('dl');
             const seller = document.createElement('p');
-            const warning = document.createElement('p');
             const actions = document.createElement('div');
 
             card.className = 'listing-card';
@@ -328,22 +324,16 @@ if (chatbot) {
             platform.textContent = typeof listing.platform === 'string'
                 ? listing.platform
                 : t('unknown_platform', 'Unknown platform');
-            risk.className = `risk-badge risk-badge--${listing.risk?.signal ?? 'none'}`;
-            risk.textContent = typeof listing.risk?.label === 'string'
-                ? listing.risk.label
-                : t('check_data', 'Check data');
-            top.append(platform, risk);
+            top.append(platform);
             name.textContent = typeof listing.title === 'string'
                 ? listing.title
                 : t('untitled_listing', 'Untitled listing');
 
             const factValues = [
                 [t('price', 'Price'), formatMoney(listing.item_price, listing.currency)],
-                [t('total_cost', 'Total cost'), formatMoney(listing.costs?.total, listing.currency)],
-                [t('market_price', 'Market price'), formatMoney(listing.market?.price, listing.currency)],
-                [t('undervalued', 'Undervalued'), Number.isFinite(Number(listing.undervalued?.percentage))
-                    ? `${Number(listing.undervalued.percentage).toFixed(1)}%`
-                    : t('insufficient_data', 'Insufficient data')],
+                [t('freshness', 'Freshness'), listing.source_published_at
+                    || listing.last_synced_at
+                    || t('freshness_unknown', 'Unavailable')],
             ];
 
             factValues.forEach(([label, value]) => {
@@ -360,20 +350,14 @@ if (chatbot) {
             seller.className = 'listing-card__seller';
             seller.textContent = [
                 listing.seller_name || t('unknown_seller', 'Unknown seller'),
-                listing.seller_type || 'unknown',
                 listing.location || t('unknown_location', 'Location unavailable'),
                 conditionLabels[listing.condition]
                     || listing.condition
                     || t('unknown_condition', 'Unknown condition'),
             ].join(' · ');
-            warning.className = 'listing-card__warning';
-            warning.textContent = listing.costs?.complete === false
-                ? t('incomplete_costs', 'Some cost components are unavailable.')
-                : t('condition_warning', 'Verify the seller-described condition independently.');
             actions.className = 'listing-card__actions';
 
             const sourceHref = safeHref(listing.source_url);
-            const compareHref = safeHref(listing.comparison_url);
 
             if (sourceHref) {
                 const source = document.createElement('a');
@@ -385,15 +369,7 @@ if (chatbot) {
                 actions.append(source);
             }
 
-            if (compareHref) {
-                const compare = document.createElement('a');
-
-                compare.href = compareHref;
-                compare.textContent = t('compare', 'Compare');
-                actions.append(compare);
-            }
-
-            card.append(top, name, facts, seller, warning, actions);
+            card.append(top, name, facts, seller, actions);
             grid.append(card);
         });
 
@@ -459,7 +435,7 @@ if (chatbot) {
         const data = new FormData(form);
         const filters = {};
 
-        ['mode', 'condition', 'seller_type', 'location'].forEach((key) => {
+        ['condition', 'location'].forEach((key) => {
             const value = data.get(key);
 
             if (typeof value === 'string' && value.trim() !== '') {

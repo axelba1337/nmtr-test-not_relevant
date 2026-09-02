@@ -5,9 +5,7 @@ namespace Tests\Feature;
 use App\Contracts\AI\ChatClient;
 use App\Data\AI\ChatExplanationRequest;
 use App\Data\AI\ParsedIntent;
-use App\Models\Category;
 use App\Models\KnowledgeItem;
-use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -191,7 +189,6 @@ final class LocalizationTest extends TestCase
             'admin.platforms.index',
             'admin.listings.index',
             'admin.knowledge.index',
-            'admin.ranking.edit',
             'admin.unanswered.index',
         ] as $routeName) {
             $this->actingAs($admin)
@@ -208,6 +205,26 @@ final class LocalizationTest extends TestCase
         $english = $this->flattenTranslations(require lang_path('en/ui.php'));
 
         $this->assertSame(array_keys($indonesian), array_keys($english));
+    }
+
+    public function test_public_chatbot_omits_removed_mvp_controls_and_labels(): void
+    {
+        foreach (['id', 'en'] as $locale) {
+            $response = $this->withSession(['locale' => $locale])->get('/');
+
+            $response->assertOk()
+                ->assertDontSee('name="mode"', false)
+                ->assertDontSee('name="seller_type"', false)
+                ->assertDontSee('comparison_url', false)
+                ->assertDontSee('Cross-platform comparison', false)
+                ->assertDontSee('Total Cost', false)
+                ->assertDontSee('Market Price', false)
+                ->assertDontSee('Undervalued', false)
+                ->assertDontSee('Price anomaly', false)
+                ->assertDontSee('Seller type classification', false);
+        }
+
+        $this->get('/products/1/compare')->assertNotFound();
     }
 
     #[DataProvider('languageInstructions')]
@@ -243,9 +260,7 @@ final class LocalizationTest extends TestCase
             'budget_max' => null,
             'conditions' => [],
             'locations' => [],
-            'seller_types' => [],
             'platforms' => [],
-            'mode' => 'buyer',
             'needs_clarification' => false,
             'clarification_question' => null,
         ]);
@@ -274,36 +289,6 @@ final class LocalizationTest extends TestCase
                 && ! str_contains($system, $forbiddenInstruction)
                 && str_contains($prompt, 'RTX 3060');
         });
-    }
-
-    public function test_product_brand_and_model_names_are_not_translated(): void
-    {
-        $category = Category::query()->create([
-            'name' => 'GPU',
-            'slug' => 'gpu',
-            'is_active' => true,
-            'sort_order' => 1,
-        ]);
-        $product = Product::query()->create([
-            'category_id' => $category->id,
-            'name' => 'NVIDIA GeForce RTX 3060',
-            'brand' => 'NVIDIA',
-            'model' => 'RTX 3060',
-            'variant' => '12 GB GDDR6',
-            'normalized_key' => Product::makeNormalizedKey(
-                'NVIDIA GeForce RTX 3060',
-                'NVIDIA',
-                'RTX 3060',
-                '12 GB GDDR6',
-            ),
-            'is_active' => true,
-        ]);
-
-        $this->withSession(['locale' => 'en'])
-            ->get(route('products.compare', $product))
-            ->assertOk()
-            ->assertSee('NVIDIA GeForce RTX 3060')
-            ->assertSee('NVIDIA · RTX 3060 · 12 GB GDDR6');
     }
 
     /** @return iterable<string, array{string, string, string}> */

@@ -22,6 +22,20 @@ final class NeomatraDatasetV3Seeder extends Seeder
         'Tentang Semantic Chatbot Lite',
         'Cara chatbot menggunakan knowledge',
         'Ketika informasi tidak tersedia',
+        'Bagaimana Neomatra menentukan harga pasar?',
+    ];
+
+    private const LEGACY_MVP_KNOWLEDGE = [
+        'Seller type Neomatra / Neomatra seller types',
+        'Arti official seller / Meaning of official seller',
+        'Harga pasar / Market price',
+        'Comparable listings',
+        'Persentase undervalued / Undervalued percentage',
+        'Total cost',
+        'Estimasi margin reseller / Reseller margin estimate',
+        'Risk signal',
+        'Perbandingan dua produk / Comparing two products',
+        'Kualitas sample market price / Market sample quality',
     ];
 
     private const LEGACY_V2_PRODUCT_KEYS = [
@@ -267,13 +281,24 @@ final class NeomatraDatasetV3Seeder extends Seeder
                 ->where('title', $title)
                 ->first();
             $payload = [
-                'content' => (string) $row[1],
+                'content' => $this->currentMvpKnowledgeContent(
+                    $title,
+                    (string) $row[1],
+                ),
                 'category_id' => $categoryId,
                 'keywords' => array_values($keywords),
                 'source_name' => self::SOURCE_NAME,
                 'source_url' => null,
-                'is_active' => true,
-                'is_featured' => (bool) $row[3],
+                'is_active' => ! in_array(
+                    $title,
+                    self::LEGACY_MVP_KNOWLEDGE,
+                    true,
+                ),
+                'is_featured' => ! in_array(
+                    $title,
+                    self::LEGACY_MVP_KNOWLEDGE,
+                    true,
+                ) && (bool) $row[3],
                 'sort_order' => (int) $row[4],
             ];
             $semanticChanged = $existing !== null
@@ -290,6 +315,23 @@ final class NeomatraDatasetV3Seeder extends Seeder
                 ])->save();
             }
         }
+    }
+
+    private function currentMvpKnowledgeContent(
+        string $title,
+        string $fallback,
+    ): string {
+        return match ($title) {
+            'Tentang Neomatra / About Neomatra' => 'ID: Neomatra adalah aplikasi pencarian produk teknologi yang menggabungkan semantic search, canonical product, alias, dan listing marketplace. Hasil menampilkan harga listing aktual, kondisi, lokasi, sumber, dan freshness tanpa menghitung harga pasar atau keuntungan. EN: Neomatra is a technology-product search application combining semantic search, canonical products, aliases, and marketplace listings. Results show actual listing price, condition, location, source, and freshness without calculating market price or profit.',
+            'Barang baru dan bekas / New and used items' => 'ID: Neomatra mempertahankan kondisi listing seperti new, used, open_box, refurbished, ex_display, dan unknown agar pengguna dapat memfilter hasil secara transparan. EN: Neomatra preserves listing conditions such as new, used, open_box, refurbished, ex_display, and unknown so users can filter results transparently.',
+            'Filter terlalu ketat / Filters too strict' => 'ID: Jika produk valid tetapi kombinasi budget, lokasi, kondisi, atau platform menghasilkan nol listing, sistem menandai FILTER_TOO_STRICT dan dapat melonggarkan filter opsional secara bertahap. EN: If a product is valid but a combination of budget, location, condition, or platform returns zero listings, the system marks FILTER_TOO_STRICT and may progressively relax optional filters.',
+            'Mengapa ranking berbeda / Why rankings differ' => 'ID: Ranking dapat berbeda karena semantic relevance, harga listing aktual, kondisi, kecocokan lokasi yang diminta, dan freshness diperhitungkan oleh backend. EN: Rankings can differ because the backend considers semantic relevance, actual listing price, condition, requested-location match, and freshness.',
+            'Intent non-shopping / Non-shopping intent' => 'ID: Untuk permintaan yang tidak berkaitan dengan fungsi Neomatra, sistem mengarahkan pengguna kembali ke pencarian produk, kondisi, budget, lokasi, platform, atau knowledge yang didukung. EN: For requests unrelated to Neomatra, the system guides users back to supported product search, condition, budget, location, platform, or knowledge tasks.',
+            'PC component critical attributes' => 'ID: Untuk komponen PC, atribut kritis seperti model GPU, VRAM, socket CPU, chipset motherboard, kapasitas RAM/SSD, dan wattage PSU harus cocok sebelum listing dipetakan ke canonical product. EN: For PC components, critical attributes such as GPU model, VRAM, CPU socket, motherboard chipset, RAM/SSD capacity, and PSU wattage must match before a listing maps to a canonical product.',
+            'Laptop critical attributes' => 'ID: Laptop dengan nama family yang sama dapat memiliki CPU, RAM, storage, GPU, atau SKU berbeda. Canonical product harus memakai konfigurasi yang cukup spesifik agar mapping listing tetap aman. EN: Laptops with the same family name can have different CPU, RAM, storage, GPU, or SKU values. Canonical products should be specific enough to keep listing mapping safe.',
+            'Smartphone critical attributes' => 'ID: Smartphone harus dibedakan berdasarkan model dan storage, serta RAM jika varian tersebut memengaruhi identitas produk. Varian 128 GB dan 256 GB tidak boleh otomatis dipetakan sebagai produk yang sama. EN: Smartphones should be distinguished by model and storage, and by RAM when it affects product identity. A 128 GB and 256 GB variant must not automatically map as the same product.',
+            default => $fallback,
+        };
     }
 
     private function canonicalProduct(

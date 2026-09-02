@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
     <title>{{ config('app.name') }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/branding/neomatra-logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/branding/neomatra-logo.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
@@ -20,9 +22,17 @@
         >
             <header class="chat-header">
                 <div class="chat-header__main">
-                    <div>
-                        <p class="eyebrow">NMTR / SEMANTIC MARKET SEARCH</p>
-                        <h1 id="chatbot-title">{{ config('app.name') }}</h1>
+                    <div class="chat-brand">
+                        <img
+                            class="chat-brand__logo"
+                            src="{{ asset('images/branding/neomatra-logo.png') }}"
+                            alt=""
+                            aria-hidden="true"
+                        >
+                        <div class="chat-brand__copy">
+                            <p class="eyebrow">NMTR / SEMANTIC MARKET SEARCH</p>
+                            <h1 id="chatbot-title">{{ config('app.name') }}</h1>
+                        </div>
                     </div>
                     <div class="chat-header__actions">
                         <x-locale-switch />
@@ -55,14 +65,6 @@
                             <summary>{{ __('ui.chat.filters') }}</summary>
                             <div class="quick-filters__grid">
                         <label>
-                            <span>{{ __('ui.chat.mode') }}</span>
-                            <select name="mode" data-filter>
-                                <option value="">{{ __('ui.chat.automatic') }}</option>
-                                <option value="buyer">{{ __('ui.chat.buyer') }}</option>
-                                <option value="reseller">{{ __('ui.chat.reseller') }}</option>
-                            </select>
-                        </label>
-                        <label>
                             <span>{{ __('ui.chat.max_budget') }}</span>
                             <input name="budget_max" type="number" min="0" step="1000" placeholder="{{ __('ui.chat.budget_example') }}" data-filter>
                         </label>
@@ -72,15 +74,6 @@
                                 <option value="">{{ __('ui.chat.all_conditions') }}</option>
                                 @foreach (\App\Models\Listing::conditions() as $condition)
                                     <option value="{{ $condition }}">{{ __('ui.labels.'.$condition) }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <label>
-                            <span>{{ __('ui.chat.seller_type') }}</span>
-                            <select name="seller_type" data-filter>
-                                <option value="">{{ __('ui.chat.all_sellers') }}</option>
-                                @foreach (\App\Models\Listing::sellerTypes() as $sellerType)
-                                    <option value="{{ $sellerType }}">{{ __('ui.labels.'.$sellerType) }}</option>
                                 @endforeach
                             </select>
                         </label>

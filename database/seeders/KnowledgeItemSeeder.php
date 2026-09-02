@@ -13,19 +13,20 @@ class KnowledgeItemSeeder extends Seeder
         $items = [
             [
                 'title' => 'Apa yang dapat dilakukan Neomatra?',
-                'content' => 'Neomatra membantu membandingkan listing barang lintas platform, menghitung estimasi harga pasar, total biaya, persentase undervalued, dan margin reseller. Hasil bersifat informasional dan transaksi tetap dilakukan di platform sumber.',
-                'keywords' => ['fitur Neomatra', 'pencarian barang', 'perbandingan harga'],
+                'content' => 'Neomatra membantu mencari produk teknologi secara semantik dan menampilkan listing relevan dengan harga aktual, kondisi, lokasi, sumber, dan freshness. Transaksi tetap dilakukan di platform sumber.',
+                'keywords' => ['fitur Neomatra', 'pencarian barang', 'semantic search'],
                 'sort_order' => 10,
             ],
             [
                 'title' => 'Bagaimana Neomatra menentukan harga pasar?',
-                'content' => 'Harga pasar adalah median harga listing pembanding yang valid untuk produk, varian, dan kondisi yang sama. Listing tanpa stok, harga nol, cicilan, uang muka, harga tidak penuh, dan duplikat dikeluarkan.',
-                'keywords' => ['median', 'harga pasar', 'listing pembanding'],
+                'content' => 'Fitur estimasi harga pasar tidak termasuk dalam scope MVP Neomatra saat ini.',
+                'keywords' => ['scope lama'],
                 'sort_order' => 20,
+                'is_active' => false,
             ],
             [
                 'title' => 'Apakah kondisi dan keamanan barang dijamin?',
-                'content' => 'Tidak. Kondisi mengikuti deskripsi seller dan tidak diverifikasi secara fisik oleh Neomatra. Harga, kondisi, seller, sinyal risiko, dan margin adalah informasi atau estimasi, bukan jaminan keamanan maupun keuntungan.',
+                'content' => 'Tidak. Kondisi mengikuti deskripsi listing dan tidak diverifikasi secara fisik oleh Neomatra. Harga dan informasi seller berasal dari sumber listing dan bukan jaminan keamanan transaksi.',
                 'keywords' => ['kondisi seller', 'risiko', 'disclaimer'],
                 'sort_order' => 30,
             ],
@@ -44,8 +45,8 @@ class KnowledgeItemSeeder extends Seeder
                     'keywords' => $item['keywords'],
                     'source_name' => 'SRS Neomatra v2.0',
                     'source_url' => null,
-                    'is_active' => true,
-                    'is_featured' => true,
+                    'is_active' => $item['is_active'] ?? true,
+                    'is_featured' => $item['is_active'] ?? true,
                     'sort_order' => $item['sort_order'],
                 ],
             );

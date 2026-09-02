@@ -7,6 +7,7 @@ use App\Contracts\AI\EmbeddingClient;
 use App\Models\User;
 use App\Services\AI\GeminiChatAdapter;
 use App\Services\AI\GeminiEmbeddingAdapter;
+use App\Services\Search\SearchExecutionBudget;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -19,6 +20,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         config(['filesystems.disks.local.serve' => false]);
+
+        $this->app->scoped(
+            SearchExecutionBudget::class,
+            static fn (): SearchExecutionBudget => new SearchExecutionBudget,
+        );
 
         $this->app->bind(ChatClient::class, function ($app): ChatClient {
             $provider = strtolower((string) config('ai.chat.provider'));

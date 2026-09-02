@@ -41,7 +41,11 @@ a { color: inherit; }
 }
 
 .admin-sidebar__brand {
-    display: block;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
     margin: 0;
     padding: 1.25rem 1.1rem;
     border-top: 3px solid var(--orange);
@@ -50,6 +54,16 @@ a { color: inherit; }
     line-height: 1.25;
     overflow-wrap: anywhere;
 }
+
+.admin-sidebar__logo {
+    width: 3rem;
+    height: 3rem;
+    object-fit: contain;
+    border: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.admin-sidebar__brand-copy { min-width: 0; }
 
 .admin-sidebar__eyebrow,
 .admin-sidebar__name { display: block; }
@@ -317,6 +331,8 @@ a { color: inherit; }
 .summary-card__note { margin: 0.65rem 0 0; color: var(--text-muted); font-size: 0.7rem; line-height: 1.45; }
 .summary-card__unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; }
 .summary-card__details { display: grid; gap: 0.2rem; margin: 0.65rem 0 0; padding-left: 1rem; color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.58rem; line-height: 1.45; }
+.summary-card__details a { color: inherit; text-decoration-color: var(--border-strong); text-underline-offset: 0.18rem; }
+.summary-card__details a:hover { color: var(--orange-bright); text-decoration-color: currentColor; }
 
 .filter-bar,
 .toolbar,
@@ -568,8 +584,6 @@ code,
 .code-block { max-height: 22rem; margin: 0; overflow: auto; padding: 0.8rem; border: 1px solid var(--border); color: var(--info); background: var(--bg); font-size: 0.68rem; line-height: 1.55; white-space: pre-wrap; }
 .review-notes { margin-top: 1rem; }
 
-.ranking-total { margin-top: 1rem; padding: 0.72rem 0.85rem; border: 1px solid var(--info); color: var(--info); background: rgba(56, 189, 248, 0.04); font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; }
-.ranking-total.is-invalid { border-color: var(--danger); color: var(--danger); background: rgba(255, 64, 87, 0.04); }
 
 .activity-chart { min-height: 17rem; }
 .activity-chart__body { display: grid; grid-template-columns: auto minmax(34rem, 1fr); gap: 0.65rem; overflow-x: auto; }
@@ -611,6 +625,9 @@ code,
 }
 
 .auth-card__heading { margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.auth-brand { min-width: 0; display: flex; align-items: center; gap: 0.9rem; }
+.auth-brand__logo { width: 4rem; height: 4rem; flex: 0 0 auto; object-fit: contain; border: 1px solid var(--border); background: var(--surface-alt); }
+.auth-brand__copy { min-width: 0; }
 .auth-card__heading h1 { margin: 0; font-size: 1.65rem; letter-spacing: -0.03em; }
 .auth-card__heading p { margin: 0.45rem 0 0; color: var(--text-secondary); font-size: 0.78rem; line-height: 1.5; }
 .auth-card__eyebrow { color: var(--orange) !important; font-family: var(--font-mono); font-size: 0.58rem; font-weight: 600; letter-spacing: 0.08em; }
@@ -650,6 +667,7 @@ code,
     .activity-chart { overflow-x: auto; }
     .pagination { align-items: stretch; flex-direction: column; }
     .pagination__links { justify-content: space-between; }
+    .auth-brand__logo { width: 3.5rem; height: 3.5rem; }
 }
 
 @media (max-width: 23.5rem) {

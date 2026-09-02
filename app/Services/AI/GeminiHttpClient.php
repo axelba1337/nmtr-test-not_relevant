@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use App\Data\AI\ProviderHttpResult;
 use App\Data\IntegrationFailure;
+use App\Services\Search\SearchExecutionBudget;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -13,6 +14,10 @@ use Throwable;
 
 final class GeminiHttpClient
 {
+    public function __construct(
+        private readonly SearchExecutionBudget $searchBudget,
+    ) {}
+
     public function post(
         string $configuration,
         string $operation,
@@ -39,6 +44,16 @@ final class GeminiHttpClient
                 'configuration',
                 __('ui.messages.ai.configuration'),
                 $model !== '' ? $model : null,
+            ));
+        }
+
+        if ($this->searchBudget->hardExceeded()) {
+            return ProviderHttpResult::failed(new IntegrationFailure(
+                'gemini',
+                $operation,
+                'timeout',
+                __('ui.messages.ai.timeout'),
+                $model,
             ));
         }
 
@@ -86,11 +101,17 @@ final class GeminiHttpClient
 
     private function request(string $apiKey): PendingRequest
     {
-        $timeout = max(1, (int) config('ai.http.timeout', 25));
+        $timeout = $this->searchBudget->remainingTimeoutSeconds(
+            max(1, (int) config('ai.http.timeout', 25)),
+        );
         $retries = min(5, max(
             0,
             (int) config('ai.http.retries', 2),
         ));
+
+        if ($this->searchBudget->active()) {
+            $retries = 0;
+        }
         $retryDelay = min(5000, max(
             0,
             (int) config('ai.http.retry_delay_ms', 1000),

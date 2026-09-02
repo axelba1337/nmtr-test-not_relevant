@@ -25,11 +25,6 @@ final class ChatbotQueryRequest extends FormRequest
                 'nullable',
                 Rule::in(Listing::conditions()),
             ],
-            'seller_type' => [
-                'nullable',
-                Rule::in(Listing::sellerTypes()),
-            ],
-            'mode' => ['nullable', Rule::in(['buyer', 'reseller'])],
             'session_key' => ['nullable', 'uuid'],
             'history' => ['nullable', 'array', 'max:6'],
             'history.*' => ['required', 'array:role,content'],
@@ -65,8 +60,6 @@ final class ChatbotQueryRequest extends FormRequest
                 : null,
             'platform' => $this->nullableString('platform'),
             'condition' => $this->nullableString('condition'),
-            'seller_type' => $this->nullableString('seller_type'),
-            'mode' => $this->nullableString('mode'),
             'budget_max' => is_numeric($budget)
                 ? (int) $budget
                 : $budget,

@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Contracts\AI\ChatClient;
 use App\Contracts\AI\EmbeddingClient;
 use App\Data\AI\ChatExplanationRequest;
+use App\Data\AI\ChatResult;
 use App\Data\AI\EmbeddingPurpose;
 use App\Data\AI\ParsedIntent;
+use App\Data\IntegrationFailure;
 use App\Data\Search\ListingSearchOutcome;
 use App\Data\Search\SearchState;
 use App\Helpers\Normalizer;
@@ -21,6 +23,7 @@ use App\Services\Search\ListingSearchService;
 use App\Services\Search\ProductRetriever;
 use App\Services\Search\RelatedProductRetriever;
 use App\Services\Search\ScopeValidationService;
+use App\Services\Search\SearchExecutionBudget;
 use App\Services\Search\SearchResponseComposer;
 use Illuminate\Http\JsonResponse;
 
@@ -37,6 +40,7 @@ final class ChatbotController extends Controller
         private readonly ScopeValidationService $scopeValidation,
         private readonly SearchResponseComposer $responseComposer,
         private readonly RelatedProductRetriever $relatedProducts,
+        private readonly SearchExecutionBudget $searchBudget,
     ) {}
 
     public function suggestions(): JsonResponse
@@ -64,6 +68,8 @@ final class ChatbotController extends Controller
 
     public function query(ChatbotQueryRequest $request): JsonResponse
     {
+        $this->searchBudget->start();
+
         $validated = $request->validated();
         $message = (string) $validated['message'];
         $normalized = Normalizer::text($message);
@@ -108,7 +114,8 @@ final class ChatbotController extends Controller
             );
         }
 
-        $matchesKnowledgeTitle = $this->matchesKnowledgeTitle($normalized);
+        $exactKnowledgeTitleMatch = $this->exactKnowledgeTitleMatch($normalized);
+        $matchesKnowledgeTitle = $exactKnowledgeTitleMatch !== null;
 
         if ($matchesKnowledgeTitle) {
             $filters['intent_type'] = ParsedIntent::TYPE_KNOWLEDGE_QUESTION;
@@ -120,6 +127,13 @@ final class ChatbotController extends Controller
             $history,
         );
         $intent = $resolved->intent;
+        $keywordKnowledgeMatch = $intent->intentType
+            === ParsedIntent::TYPE_KNOWLEDGE_QUESTION
+                ? $this->knowledgeKeywordMatch($normalized)
+                : null;
+        $localKnowledgeMatch = $exactKnowledgeTitleMatch
+            ?? $keywordKnowledgeMatch;
+        $matchesKnowledgeTitle = $localKnowledgeMatch !== null;
 
         if ($intent->needsClarification
             && $intent->intentType === ParsedIntent::TYPE_PRODUCT_SEARCH) {
@@ -212,7 +226,8 @@ final class ChatbotController extends Controller
         if (! $embedding->succeeded()
             && ! $webGroundingRequested
             && $deterministicCandidates === []
-            && $intentAlternative === null) {
+            && $intentAlternative === null
+            && $localKnowledgeMatch === null) {
             $providerState = $embedding->failure?->category === 'timeout'
                 ? SearchState::SEARCH_TIMEOUT
                 : SearchState::PROVIDER_ERROR;
@@ -267,12 +282,24 @@ final class ChatbotController extends Controller
                 'closest_price' => null,
                 'difference' => null,
                 'budget_difference' => null,
+                'meta' => $this->meta(
+                    false,
+                    $resolved->usedChatApi,
+                    false,
+                    false,
+                    null,
+                    false,
+                    $embedding->failure?->category,
+                ),
             ], 503);
         }
 
         $productCandidates = $deterministicCandidates;
         $listings = [];
-        $knowledge = [];
+        $knowledge = $embedding->succeeded()
+            || $localKnowledgeMatch === null
+            ? []
+            : [$localKnowledgeMatch];
         $searchOutcome = null;
 
         if ($embedding->succeeded()) {
@@ -289,8 +316,11 @@ final class ChatbotController extends Controller
                 $deterministicCandidates,
                 $semanticCandidates,
             );
-            $knowledge = $this->knowledgeRetriever->retrieve(
-                $embedding->vector,
+            $knowledge = $this->mergeKnowledgeMatches(
+                $exactKnowledgeTitleMatch === null
+                    ? []
+                    : [$exactKnowledgeTitleMatch],
+                $this->knowledgeRetriever->retrieve($embedding->vector),
             );
         }
 
@@ -347,22 +377,52 @@ final class ChatbotController extends Controller
             $history,
         );
         $webResult = $webGroundingRequested
+            && ! $this->searchBudget->softExceeded()
             ? $this->chat->explainWithWebGrounding($explanationRequest)
             : null;
         $usedWebGrounding = $webResult?->succeeded() === true;
-        $webFailure = $usedWebGrounding ? null : $webResult?->failure;
+        $budgetFailure = $this->budgetFailure();
+        $webFailure = match (true) {
+            $usedWebGrounding => null,
+            $webResult?->failure !== null => $webResult->failure,
+            $webGroundingRequested
+                && $this->searchBudget->softExceeded() => $budgetFailure,
+            default => null,
+        };
+        $skipForLocalKnowledge = ! $embedding->succeeded()
+            && $localKnowledgeMatch !== null;
+        $skipExplanation = $skipForLocalKnowledge
+            || $this->searchBudget->hardExceeded()
+            || ($this->searchBudget->softExceeded() && $contextAvailable);
+        $skippedExplanationFailure = $skipForLocalKnowledge
+            ? $this->localKnowledgeFailure()
+            : $budgetFailure;
         $chatResult = $usedWebGrounding
             ? $webResult
-            : $this->chat->explain($explanationRequest);
+            : ($skipExplanation
+                ? ChatResult::failed($skippedExplanationFailure)
+                : $this->chat->explain($explanationRequest));
         $usedChatExplanation = $chatResult->succeeded();
         $usedStructuredExplanation = ! $usedWebGrounding
             && $usedChatExplanation;
         $usage = $usedWebGrounding
             ? $chatResult->usage
             : $this->combinedUsage($webResult?->usage, $chatResult->usage);
-        $exactKnowledgeAnswer = $usedChatExplanation
-            ? null
-            : $this->exactKnowledgeAnswer($normalized, $knowledge);
+        $exactKnowledgeAnswer = match (true) {
+            $usedChatExplanation => null,
+            $skipForLocalKnowledge => $this->localizedKnowledgeContent(
+                (string) ($localKnowledgeMatch['content'] ?? ''),
+            ),
+            default => $this->exactKnowledgeAnswer($normalized, $knowledge),
+        };
+        $timedOut = $this->searchBudget->hardExceeded();
+
+        if ($timedOut) {
+            $searchState = $contextAvailable
+                ? SearchState::PARTIAL_RESULT
+                : SearchState::SEARCH_TIMEOUT;
+        }
+
         $supportedByContext = match (true) {
             $usedWebGrounding => true,
             ! $contextAvailable => false,
@@ -400,6 +460,7 @@ final class ChatbotController extends Controller
         };
         $unansweredReason = match (true) {
             ! $unanswered => null,
+            $timedOut => 'search_timeout',
             $webGroundingRequested && $webFailure !== null
                 && ! $contextAvailable => 'web_grounding_unavailable',
             $usedChatExplanation && $contextAvailable => 'context_insufficient',
@@ -415,6 +476,11 @@ final class ChatbotController extends Controller
             $productCandidates,
             $listings,
         );
+        $failureCategory = $skipForLocalKnowledge
+            ? $embedding->failure?->category
+            : ($chatResult->failure?->category
+                ?? $webFailure?->category
+                ?? $embedding->failure?->category);
 
         $this->record(
             $validated,
@@ -427,9 +493,7 @@ final class ChatbotController extends Controller
             count($listings),
             $unanswered,
             $unansweredReason,
-            $chatResult->failure?->category
-                ?? $webFailure?->category
-                ?? $embedding->failure?->category,
+            $failureCategory,
             $usage,
         );
 
@@ -453,7 +517,9 @@ final class ChatbotController extends Controller
                     'title' => $this->localizedKnowledgeTitle(
                         (string) $match['title'],
                     ),
-                    'similarity' => round((float) $match['similarity'], 6),
+                    'similarity' => is_numeric($match['similarity'] ?? null)
+                        ? round((float) $match['similarity'], 6)
+                        : null,
                 ],
                 $knowledgeForResponse,
             ),
@@ -471,8 +537,10 @@ final class ChatbotController extends Controller
             'resolved_family' => $intent->family,
             'alternative_strategy' => $searchOutcome?->alternativeStrategy,
             'alternative_details' => $searchOutcome?->alternativeDetails ?? [],
-            'fallback_stage' => $searchOutcome?->fallbackStage
-                ?? $this->fallbackStage($searchState, $searchOutcome),
+            'fallback_stage' => $timedOut
+                ? 'search_budget'
+                : ($searchOutcome?->fallbackStage
+                    ?? $this->fallbackStage($searchState, $searchOutcome)),
             'result_product_ids' => $searchOutcome?->resultProductIds
                 ?: array_values(array_unique(array_map(
                     static fn (array $listing): int => (int) $listing['product_id'],
@@ -612,7 +680,6 @@ final class ChatbotController extends Controller
         return [
             'conditions' => $intent->conditions,
             'platforms' => $intent->platforms,
-            'seller_types' => $intent->sellerTypes,
             'locations' => $intent->locations,
             'budget_min' => $intent->budgetMin,
             'budget_max' => $intent->budgetMax,
@@ -806,28 +873,135 @@ final class ChatbotController extends Controller
         return implode("\n", $parts);
     }
 
-    private function matchesKnowledgeTitle(string $normalized): bool
+    /** @return array<string, mixed>|null */
+    private function exactKnowledgeTitleMatch(string $normalized): ?array
     {
         if ($normalized === '') {
-            return false;
+            return null;
         }
 
-        return KnowledgeItem::query()
+        $item = KnowledgeItem::query()
             ->active()
             ->where(function ($query): void {
                 $query->whereNull('category_id')
                     ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery
                         ->where('is_active', true));
             })
-            ->select(['id', 'title'])
+            ->select(['id', 'title', 'content'])
             ->lazyById(100)
-            ->contains(
+            ->first(
                 fn (KnowledgeItem $item): bool => in_array(
                     $normalized,
                     $this->knowledgeTitleVariants((string) $item->title),
                     true,
                 ),
             );
+
+        return $item instanceof KnowledgeItem
+            ? [
+                'id' => (int) $item->id,
+                'title' => (string) $item->title,
+                'content' => (string) $item->content,
+                'similarity' => null,
+                'matched_via' => 'exact_title',
+            ]
+            : null;
+    }
+
+    /** @return array<string, mixed>|null */
+    private function knowledgeKeywordMatch(string $normalized): ?array
+    {
+        $normalized = $this->lexicalText($normalized);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $matches = KnowledgeItem::query()
+            ->active()
+            ->where(function ($query): void {
+                $query->whereNull('category_id')
+                    ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery
+                        ->where('is_active', true));
+            })
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['id', 'title', 'content', 'keywords'])
+            ->map(function (KnowledgeItem $item) use ($normalized): array {
+                $keywords = is_array($item->keywords) ? $item->keywords : [];
+                $matchedLength = 0;
+
+                foreach ($keywords as $keyword) {
+                    $keyword = $this->lexicalText((string) $keyword);
+
+                    if ($keyword !== ''
+                        && str_contains(' '.$normalized.' ', ' '.$keyword.' ')) {
+                        $matchedLength = max(
+                            $matchedLength,
+                            mb_strlen($keyword, 'UTF-8'),
+                        );
+                    }
+                }
+
+                return [
+                    'item' => $item,
+                    'matched_length' => $matchedLength,
+                ];
+            })
+            ->filter(
+                static fn (array $match): bool => $match['matched_length'] > 0,
+            )
+            ->sortByDesc('matched_length')
+            ->values();
+        $best = $matches->first();
+
+        if (! is_array($best)
+            || ! ($best['item'] ?? null) instanceof KnowledgeItem) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $best['item']->id,
+            'title' => (string) $best['item']->title,
+            'content' => (string) $best['item']->content,
+            'similarity' => null,
+            'matched_via' => 'keyword_phrase',
+        ];
+    }
+
+    private function lexicalText(string $value): string
+    {
+        $value = Normalizer::text($value);
+        $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $exact
+     * @param  list<array<string, mixed>>  $semantic
+     * @return list<array<string, mixed>>
+     */
+    private function mergeKnowledgeMatches(array $exact, array $semantic): array
+    {
+        $matches = [];
+
+        foreach ([...$exact, ...$semantic] as $match) {
+            $id = (int) ($match['id'] ?? 0);
+
+            if ($id <= 0) {
+                continue;
+            }
+
+            if (! isset($matches[$id])) {
+                $matches[$id] = $match;
+            } elseif (! is_numeric($matches[$id]['similarity'] ?? null)
+                && is_numeric($match['similarity'] ?? null)) {
+                $matches[$id]['similarity'] = $match['similarity'];
+            }
+        }
+
+        return array_values($matches);
     }
 
     /** @return list<string> */
@@ -854,7 +1028,13 @@ final class ChatbotController extends Controller
             }
         }
 
-        return $knowledge !== [] ? (float) $knowledge[0]['similarity'] : null;
+        foreach ($knowledge as $item) {
+            if (is_numeric($item['similarity'] ?? null)) {
+                return (float) $item['similarity'];
+            }
+        }
+
+        return null;
     }
 
     /** @param list<array<string, mixed>> $listings */
@@ -874,9 +1054,6 @@ final class ChatbotController extends Controller
             $listing['source_url'] = route('listings.open', [
                 'listing' => $listing['id'],
             ]);
-            $listing['comparison_url'] = route('products.compare', [
-                'product' => $listing['product_id'],
-            ]);
 
             return $listing;
         }, $listings);
@@ -895,7 +1072,7 @@ final class ChatbotController extends Controller
             return __('ui.chat.backend.found', [
                 'count' => count($listings),
                 'title' => (string) $first['title'],
-                'cost' => number_format((int) $first['costs']['total'], 0, ',', '.'),
+                'price' => number_format((int) $first['item_price'], 0, ',', '.'),
             ]);
         }
 
@@ -1084,7 +1261,42 @@ final class ChatbotController extends Controller
                 ),
             ],
             'similarity_threshold' => null,
-            'calculations_authority' => 'backend',
+            'ranking_authority' => 'backend',
+            'duration_ms' => $this->searchBudget->elapsedMilliseconds(),
+            'timed_out' => $this->searchBudget->hardExceeded(),
+            'search_budget' => [
+                'soft_timeout_seconds' => (int) config(
+                    'chatbot.search.soft_timeout_seconds',
+                    20,
+                ),
+                'hard_timeout_seconds' => (int) config(
+                    'chatbot.search.hard_timeout_seconds',
+                    30,
+                ),
+                'soft_exceeded' => $this->searchBudget->softExceeded(),
+            ],
         ];
+    }
+
+    private function budgetFailure(): IntegrationFailure
+    {
+        return new IntegrationFailure(
+            $this->chat->provider(),
+            'chatbot_search',
+            'timeout',
+            __('ui.messages.ai.timeout'),
+            $this->chat->model(),
+        );
+    }
+
+    private function localKnowledgeFailure(): IntegrationFailure
+    {
+        return new IntegrationFailure(
+            $this->chat->provider(),
+            'chatbot_search',
+            'not_called',
+            __('ui.messages.ai.embedding_request_failed'),
+            $this->chat->model(),
+        );
     }
 }

@@ -222,7 +222,13 @@ final class NeomatraSearchVocabularySeeder extends Seeder
             [
                 'Fallback produk terkait / Related product fallback',
                 'ID: Jika produk exact tidak tersedia, Neomatra mencari produk aktif dengan urutan same family, same brand, same category, lalu external platform. EN: If the exact product is unavailable, Neomatra searches active products in this order: same family, same brand, same category, then an external platform.',
-                ['fallback', 'alternative', 'related product'],
+                [
+                    'fallback',
+                    'alternative',
+                    'related product',
+                    'produk alternatif',
+                    'mencari produk alternatif',
+                ],
             ],
             [
                 'Transparansi alternatif / Alternative transparency',

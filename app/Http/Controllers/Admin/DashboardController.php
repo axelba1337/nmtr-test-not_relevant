@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\ChatbotQueryLog;
 use App\Models\KnowledgeItem;
 use App\Models\Listing;
+use App\Models\MarketplaceSyncRun;
 use App\Models\Product;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -34,6 +36,29 @@ final class DashboardController extends Controller
         $pendingUnansweredCount = ChatbotQueryLog::query()
             ->pendingReview()
             ->count();
+        $unmatchedListingsCount = Listing::query()
+            ->active()
+            ->whereNull('product_id')
+            ->count();
+        $failedSyncCount = MarketplaceSyncRun::query()
+            ->where('status', MarketplaceSyncRun::STATUS_FAILED)
+            ->count();
+        $productsWithoutListingsQuery = Product::query()
+            ->active()
+            ->whereDoesntHave(
+                'listings',
+                static fn (Builder $query): Builder => $query->available(),
+            );
+        $productsWithoutListingsCount = (clone $productsWithoutListingsQuery)
+            ->count();
+        $productsWithoutListings = $productsWithoutListingsQuery
+            ->with('category:id,name')
+            ->withCount('listings')
+            ->withMax('listings', 'last_synced_at')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->limit(10)
+            ->get();
 
         $activeItems = KnowledgeItem::query()
             ->active()
@@ -116,6 +141,10 @@ final class DashboardController extends Controller
             'activeListingsCount' => $activeListingsCount,
             'activeProductsCount' => $activeProductsCount,
             'pendingUnansweredCount' => $pendingUnansweredCount,
+            'unmatchedListingsCount' => $unmatchedListingsCount,
+            'failedSyncCount' => $failedSyncCount,
+            'productsWithoutListingsCount' => $productsWithoutListingsCount,
+            'productsWithoutListings' => $productsWithoutListings,
             'activeKnowledgeCount' => $knowledgeStats['active'],
             'averageTop1Similarity' => $averageSimilarity === null
                 ? null

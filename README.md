@@ -1,34 +1,32 @@
 # Neomatra
 
-Neomatra adalah prototipe portofolio berbasis Laravel 12 untuk mencari dan
-membandingkan listing produk lintas marketplace. Pengguna dapat menulis
+Neomatra adalah prototipe portofolio berbasis Laravel 12 untuk mencari listing
+produk dari beberapa sumber. Pengguna dapat menulis
 pertanyaan alami, misalnya mencari GPU bekas dengan varian, kondisi, lokasi,
-seller, dan batas anggaran tertentu. Backend melakukan semantic retrieval,
-filter atribut, perhitungan harga, serta ranking; Chat API hanya membantu
-memahami intent, menjelaskan hasil yang telah dihitung, dan menjawab pertanyaan
+dan batas anggaran tertentu. Backend melakukan semantic retrieval, filter
+atribut, serta ranking listing; Chat API hanya membantu memahami intent,
+menjelaskan hasil backend, dan menjawab pertanyaan
 umum melalui Google Search grounding yang terpisah.
 
 Implementasi ini mengikuti kebutuhan Neomatra terbaru. Neomatra tidak melakukan
-transaksi, tidak menjamin kondisi barang atau keuntungan, tidak melakukan
-scraping, dan tidak menjadikan hasil web sebagai data marketplace. Data
-marketplace MVP adalah dataset demo untuk Tokopedia, Shopee, dan OLX, bukan
-listing nyata.
+transaksi, tidak menjamin kondisi barang, dan tidak menjadikan hasil web umum
+sebagai data listing. Listing dapat berasal dari connector, impor CSV, form
+admin, atau dataset; setiap sumber harus dinyatakan sesuai kemampuan aktualnya.
 
 ## Kemampuan utama
 
 - pencarian produk dan alias secara semantik dengan embedding dan cosine
   similarity;
 - filter deterministik berdasarkan identitas produk, varian, kondisi, lokasi,
-  seller, serta budget;
-- perbandingan listing lintas platform;
-- perhitungan harga pasar, total biaya, undervalued, margin reseller, sinyal
-  risiko, freshness, dan ranking oleh backend;
+  platform, serta budget;
+- ranking berdasarkan relevansi, harga listing aktual, kondisi, lokasi, dan
+  freshness;
 - knowledge base untuk panduan Neomatra dan suggested questions;
 - riwayat percakapan bounded maksimal enam pesan dan jawaban pengetahuan umum
   dengan Google Search grounding beserta sumber terverifikasi;
-- halaman perbandingan produk dan redirect sumber yang divalidasi;
+- redirect sumber listing yang divalidasi;
 - panel admin berbasis session untuk katalog, knowledge, sinkronisasi,
-  monitoring query, dan profil ranking;
+  listing, dan monitoring operasional;
 - pencatatan query yang belum terjawab untuk ditinjau admin.
 
 ## Tiga integrasi yang terpisah
@@ -37,11 +35,11 @@ listing nyata.
 | --- | --- | --- |
 | Chat API | Gemini `gemini-3.1-flash-lite`; web grounding `gemini-2.5-flash` | Mengekstrak intent terstruktur, menyusun penjelasan dari fakta backend, serta menjawab pertanyaan umum melalui Google Search grounding. Tidak membuat harga, stok, listing marketplace, atau hasil perhitungan. |
 | Embedding API | Gemini `gemini-embedding-2`, 768 dimensi | Membuat vector query, produk, alias, dan knowledge pada ruang vector yang sama. |
-| Marketplace | Adapter demo, sinkronisasi manual | Menormalisasi dataset demo Tokopedia, Shopee, dan OLX. Adapter ini tidak memanggil API atau website eksternal. |
+| Listing Source Integration | Connector marketplace, impor CSV, form admin, dan dataset | Menormalisasi listing ke DTO serta ingestion service yang sama. Tidak mengklaim official marketplace API jika connector tersebut tidak tersedia. |
 
 Chat API bukan sumber data marketplace. Google Search hanya dipakai oleh method
 grounding khusus untuk pengetahuan umum atau informasi web pendukung; sumber web
-tidak boleh mengubah listing maupun perhitungan backend. Ketika Chat API gagal mengekstrak
+tidak boleh mengubah listing maupun ranking backend. Ketika Chat API gagal mengekstrak
 intent, parser lokal deterministik tetap digunakan. Ketika penjelasan Chat API
 gagal, hasil dan angka backend tetap dikembalikan dengan kalimat fallback yang
 aman. Kegagalan Embedding API menghentikan semantic retrieval untuk request
@@ -60,7 +58,8 @@ aman karena ruang vector diperlukan untuk retrieval.
   pesan kegagalan yang tidak membocorkan API key atau raw response.
 - Vector: disimpan sebagai JSON dan dihitung dengan cosine similarity di PHP;
   arsitektur ini ditujukan untuk volume prototipe.
-- Marketplace: kontrak connector, registry, adapter demo, normalisasi DTO,
+- Listing Source Integration: kontrak connector, registry, impor CSV, form
+  admin, adapter dataset, normalisasi DTO,
   deduplication, audit sync, dan cache lock per platform.
 - Proses rebuild dan marketplace sync berjalan synchronous; queue tidak
   diperlukan untuk dataset MVP.
@@ -69,14 +68,14 @@ Alur query publik:
 
 1. Backend memvalidasi dan menormalisasi input.
 2. Chat API mengekstrak produk, kategori, brand, model, varian, SKU, budget,
-   kondisi, lokasi, tipe seller, dan mode buyer/reseller. Parser lokal menjadi
+   kondisi, lokasi, dan platform. Parser lokal menjadi
    fallback bila API intent gagal.
 3. Embedding API membuat query vector.
 4. Backend memvalidasi model, dimensi, hash, dan isi vector produk/alias lalu
    mengurutkan kandidat dengan cosine similarity.
 5. Backend menerapkan pencocokan atribut secara ketat, mengambil Top-K kandidat
    yang lolos, lalu memfilter listing.
-6. Backend menghitung seluruh angka dan ranking, serta mengambil knowledge
+6. Backend meranking listing berdasarkan faktor MVP dan mengambil knowledge
    Top-K secara terpisah.
 7. Chat API menjelaskan data backend tanpa menghitung ulang atau menambah fakta.
 8. Untuk `general_question` atau informasi web pendukung pada `product_search`,
@@ -267,7 +266,6 @@ NEOMATRA_DEFAULT_CURRENCY=IDR
 NEOMATRA_PRODUCT_CANDIDATE_K=20
 NEOMATRA_RESULT_TOP_K=5
 NEOMATRA_KNOWLEDGE_TOP_K=3
-NEOMATRA_MINIMUM_COMPARABLES=2
 NEOMATRA_LISTING_STALE_AFTER_HOURS=168
 NEOMATRA_UNANSWERED_RETENTION_DAYS=30
 
@@ -339,13 +337,13 @@ yang menerima/menolak kandidat. Skor nol dan negatif tetap dapat masuk Top-K.
 Nilai default:
 
 - 20 kandidat produk/alias setelah pengurutan similarity;
-- 5 hasil listing setelah filter, perhitungan, dan ranking;
+- 5 hasil listing setelah filter dan ranking;
 - 3 knowledge item berdasarkan similarity.
 
 Setelah kandidat semantic diambil, backend menerapkan kecocokan identitas dan
 atribut serta filter listing. Kandidat dapat hilang karena data produk/varian
 tidak cocok, listing tidak aktif/tidak tersedia, mata uang, kondisi, lokasi,
-seller, atau budget—bukan karena cutoff similarity. Nilai Top-1 yang disimpan di
+platform, atau budget—bukan karena cutoff similarity. Nilai Top-1 yang disimpan di
 dashboard hanya untuk monitoring.
 
 ## Riwayat percakapan dan Google Search grounding
@@ -372,8 +370,8 @@ Kebijakan runtime bersifat web-first untuk `product_search` dan
 satu knowledge Top-K dikirim sebagai konteks pendukung. Pertanyaan internal yang
 tepat cocok dengan knowledge tetap memakai database. Istilah 75/25 adalah arah
 provenance, bukan bobot numerik, threshold similarity, atau jaminan proporsi
-token. Listing, harga, landed cost, risk, dan ranking selalu berasal dari data
-serta perhitungan backend.
+token. Listing, harga aktual, dan ranking selalu berasal dari data serta
+perhitungan backend.
 
 Jika Search grounding dipakai, respons juga harus membawa Google Search entry
 point. Frontend menampilkannya dalam iframe terisolasi tanpa script, form, atau
@@ -384,15 +382,31 @@ dengan `CHAT_WEB_GROUNDING_ENABLED=false`. Kegagalan provider, respons tanpa
 sumber, URL tidak aman, atau jawaban berlebih menghasilkan failure object aman;
 tidak ada raw response maupun API key yang diteruskan ke pengguna.
 
-## Marketplace demo dan sinkronisasi
+## Listing Source Integration
 
-`DemoMarketplaceAdapter` mengimplementasikan kontrak marketplace yang sama untuk
-Tokopedia, Shopee, dan OLX. Record demo berasal dari konfigurasi lokal yang telah
-dinormalisasi. Seeder juga menyediakan pembanding terstruktur untuk kondisi
-`new`, `used`, `open_box`, `refurbished`, `ex_display`, dan `unknown`. Semua URL
-demo memakai domain `example.test`, judulnya berlabel `Data Demo`, dan payload
-menyimpan flag `demo`. Tidak ada endpoint marketplace fiktif, scraping, atau
-credential marketplace.
+Seluruh sumber listing masuk melalui alur normalisasi yang sama:
+
+```text
+Listing Source Integration
+|-- marketplace connector
+|-- CSV import
+|-- admin manual listing
+|-- dataset/feed
+`-- future external listing API
+```
+
+Connector atau importer menghasilkan `MarketplaceListingData`, lalu
+`MarketplaceProductMatcher` memetakan produk secara konservatif dan
+`MarketplaceListingIngestionService` menyimpan atau memperbarui listing secara
+idempotent. Form Blade admin tetap langsung memakai `ListingController`,
+validasi, fingerprint, dan MySQL; tidak ada internal HTTP API tambahan.
+
+Tokopedia, Shopee, OLX, Facebook Marketplace, dan Carousell dapat menerima
+impor CSV sesuai domain yang didukung. Connector web publik hanya diaktifkan
+untuk platform yang memang memiliki implementasi. Platform manual tidak
+dilabeli sebagai official API. Dataset demo tetap tersedia untuk test dan
+fresh clone, tetapi ditandai `demo` dan tidak boleh disajikan sebagai listing
+nyata.
 
 Sinkronisasi bersifat manual dan idempotent. Data dicocokkan dengan
 `platform_id + external_listing_id` atau fingerprint sumber. Produk kanonik
@@ -418,83 +432,30 @@ Admin juga dapat menjalankan sync dari menu Platform. Implementasi connector
 nyata di masa depan harus ditambahkan melalui `MarketplaceConnector`; jangan
 mengubah Chat API atau Embedding API menjadi sumber listing.
 
-## Perhitungan backend
+## Ranking MVP dan harga listing
 
-Seluruh angka berikut dihitung secara deterministik oleh PHP dan hanya diberikan
-kepada Chat API untuk dijelaskan.
+Neomatra menampilkan harga aktual dari `listings.price`. Jalur pencarian aktif
+tidak menghitung harga pasar, total biaya pembelian, persentase undervalued,
+margin reseller, klasifikasi seller, atau risk berbasis harga.
 
-### Harga pasar
-
-Harga pasar adalah median harga listing pembanding dengan produk kanonik,
-kondisi, dan mata uang yang sama. Fingerprint duplikat dihitung satu kali.
-Listing tidak aktif, stok habis, harga tidak positif, serta harga cicilan/DP atau
-jenis selain `full_price` dikeluarkan. Perhitungan membutuhkan minimal dua
-pembanding secara default.
-
-### Total biaya
+Ranking deterministik memakai faktor MVP berikut:
 
 ```text
-total_cost = item_price
-           + shipping_cost
-           + service_fee
-           + inspection_cost
-           + repair_estimate
-```
-
-Komponen biaya yang belum tersedia dihitung sebagai nol sekaligus ditandai pada
-`missing_fields`, sehingga UI tidak menyamakan estimasi yang belum lengkap
-dengan data lengkap.
-
-### Persentase undervalued dan risk signal
-
-```text
-undervalued_percentage = ((market_price - total_cost) / market_price) * 100
-```
-
-Label yang digunakan:
-
-- `< 5%`: Harga normal;
-- `5%` sampai `< 10%`: Sedikit di bawah pasar;
-- `10%` sampai `< 20%`: Undervalued;
-- `20%` sampai `35%`: Sangat undervalued, perlu pemeriksaan;
-- `> 35%`: Anomali harga atau risiko tinggi.
-
-Risk signal meminta pemeriksaan pada nilai `20%` sampai `35%`, dan menandai
-anomali harga di atas `35%`. Ini adalah sinyal berbasis harga, bukan klaim bahwa
-seller atau produk aman/berbahaya.
-
-### Margin reseller
-
-Untuk mode reseller:
-
-```text
-net_margin = estimated_resale_price
-           - total_cost
-           - selling_fee
-           - storage_cost
-
-margin_percent = (net_margin / total_cost) * 100
-```
-
-Harga pasar menjadi estimasi harga jual pada alur pencarian saat ini; selling
-fee dan storage cost bernilai nol sampai sumber data yang valid tersedia.
-
-### Ranking dan freshness
-
-```text
-rank_score = 0.40 * relevance
-           + 0.30 * price
+rank_score = 0.45 * relevance
+           + 0.20 * normalized listing price
            + 0.15 * condition
-           + 0.10 * seller
-           + 0.05 * freshness
+           + 0.10 * requested location match
+           + 0.10 * freshness
 ```
 
-Semua subscore dinormalisasi ke `0..1`. Relevance memetakan cosine `-1..1` ke
-`0..1`; price membatasi persentase undervalued terhadap 35%; condition dan seller
-memakai mapping deterministik; freshness bernilai 1.00 (maksimal 24 jam), 0.75
-(maksimal 72 jam), 0.50 (maksimal 168 jam), 0.25 (maksimal 720 jam), lalu 0.00.
-Bobot dapat dikelola admin tetapi totalnya wajib tepat `1.00`. Hasil diurutkan
-berdasarkan rank menurun, total biaya menaik, lalu ID menaik.
+Cosine similarity dinormalisasi hanya untuk urutan, bukan sebagai threshold.
+Harga membandingkan listing di dalam kandidat hasil yang sama. Condition berasal
+dari keterangan sumber, location hanya memberi nilai penuh ketika lokasi yang
+diminta cocok, dan freshness memakai waktu publikasi/observasi/sinkronisasi.
+Hasil seri diurutkan berdasarkan harga listing aktual lalu ID.
+
+Kolom database legacy untuk biaya atau seller type dapat tetap tersimpan demi
+kompatibilitas data, tetapi tidak diekspos atau dipakai oleh chatbot MVP.
 
 ## Modul dan schema database
 
@@ -504,11 +465,10 @@ berdasarkan rank menurun, total biaya menaik, lalu ID menaik.
 | `categories` | Hierarki kategori, slug, status aktif, dan urutan. |
 | `products` | Produk kanonik, identitas/atribut, provenance spesifikasi resmi, status, serta metadata embedding. |
 | `product_aliases` | Istilah alternatif unik per produk beserta embedding. |
-| `platforms` | Sumber marketplace, connector, status, dan konfigurasi sync. |
-| `listings` | Harga, kondisi, seller, lokasi, URL, biaya, freshness, payload sumber, dan fingerprint deduplication. |
+| `platforms` | Sumber listing, connector, status, dan konfigurasi sync. |
+| `listings` | Harga aktual, kondisi, nama seller, lokasi, URL, freshness, payload sumber, dan fingerprint deduplication. Kolom legacy tetap dormant. |
 | `marketplace_sync_runs` | Audit jumlah record dan status setiap sinkronisasi. |
 | `knowledge_items` | Judul, isi, kategori, keywords, sumber, featured/sort order, dan embedding knowledge. |
-| `ranking_profiles` | Bobot ranking; hanya satu profil aktif yang digunakan. |
 | `chatbot_query_logs` | Intent/filter, jumlah hasil, Top-1 monitoring, token request, failure code, unanswered review, dan timestamp. |
 
 Relasi penting:
@@ -526,8 +486,7 @@ Relasi penting:
 | --- | --- | --- |
 | `GET` | `/` | UI chatbot Neomatra. |
 | `GET` | `/api/chatbot/suggestions` | Maksimal empat knowledge aktif, featured-first. |
-| `POST` | `/api/chatbot/query` | Intent, semantic search, kalkulasi, ranking, dan jawaban. |
-| `GET` | `/products/{product}/compare` | Perbandingan listing untuk produk aktif. |
+| `POST` | `/api/chatbot/query` | Intent, semantic search, filter, ranking MVP, dan jawaban. |
 | `GET` | `/listings/{listing}/open` | Redirect aman ke URL sumber yang diizinkan. |
 | `GET` | `/up` | Health check Laravel. |
 
@@ -539,8 +498,6 @@ Payload query dapat memuat filter eksplisit:
   "budget_max": 2800000,
   "location": "Surabaya",
   "condition": "used",
-  "seller_type": "store",
-  "mode": "buyer",
   "session_key": "6f4f3f12-80eb-4c75-85c8-ec05a5ccae31"
 }
 ```
@@ -572,7 +529,7 @@ HTTP yang sesuai.
 | resource tanpa `show` | `/admin/products` | CRUD produk dan alias. |
 | resource tanpa `show` | `/admin/platforms` | CRUD konfigurasi platform. |
 | `POST` | `/admin/platforms/{platform}/sync` | Sinkronisasi manual satu platform. |
-| resource tanpa `show` | `/admin/listings` | CRUD listing dan biaya. |
+| resource tanpa `show` | `/admin/listings` | CRUD listing, harga aktual, pemetaan, dan sumber. |
 | resource tanpa `show` | `/admin/knowledge` | CRUD, search, filter, dan pagination knowledge. |
 | `PATCH` | `/admin/knowledge/{knowledgeItem}/active` | Toggle knowledge aktif. |
 | `PATCH` | `/admin/knowledge/{knowledgeItem}/featured` | Toggle featured. |
@@ -580,7 +537,6 @@ HTTP yang sesuai.
 | `POST` | `/admin/knowledge/rebuild` | Rebuild seluruh knowledge aktif. |
 | `GET` | `/admin/unanswered-queries` | Daftar query yang perlu ditinjau. |
 | `GET`, `PATCH` | `/admin/unanswered-queries/{queryLog}` | Detail dan update status review. |
-| `GET`, `PATCH` | `/admin/ranking` | Lihat dan aktifkan profil bobot ranking. |
 
 Untuk resource tanpa `show`, Laravel menyediakan route `index`, `create`,
 `store`, `edit`, `update` (`PUT/PATCH`), dan `destroy` (`DELETE`). Slug platform
@@ -659,8 +615,7 @@ Cakupan otomatis meliputi:
   nol dan negatif;
 - rebuild current/stale, perubahan semantic vs metadata, partial failure, dan
   preservasi vector lama;
-- rumus harga pasar, total biaya, undervalued, margin, risk, freshness, dan bobot
-  ranking;
+- ranking MVP, fallback terstruktur, filter listing, dan freshness;
 - unanswered review, dashboard aggregate, suggested questions, dan pencegahan
   double-submit frontend.
 
@@ -669,7 +624,8 @@ sehingga tidak mengonsumsi API key atau quota nyata.
 
 ## Batasan MVP
 
-- Data marketplace adalah dataset demo dan sinkronisasi manual, bukan data live.
+- Ketersediaan data bergantung pada connector, impor, atau dataset masing-masing
+  platform; konfigurasi tidak boleh mengklaim official API tanpa implementasi.
 - Riwayat percakapan dikirim client secara bounded maksimal enam pesan;
   `session_key` hanya dipakai untuk korelasi log dan bukan memory server-side.
 - Google Search grounding hanya untuk pertanyaan umum/informasi pendukung dan
@@ -680,5 +636,5 @@ sehingga tidak mengonsumsi API key atau quota nyata.
 - Sync dan rebuild synchronous; volume besar memerlukan queue dan vector store
   setelah ada keputusan arsitektur baru.
 - Kondisi berasal dari keterangan seller dan tidak diverifikasi secara fisik.
-- Harga pasar, biaya, undervalued, margin, freshness, ranking, serta risk signal
-  bersifat informasi/estimasi, bukan jaminan transaksi, keamanan, atau profit.
+- Harga dan kondisi berasal dari sumber listing dan tidak menjadi jaminan
+  transaksi, keamanan, atau kondisi fisik barang.
