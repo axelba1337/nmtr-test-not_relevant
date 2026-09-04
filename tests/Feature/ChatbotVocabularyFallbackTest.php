@@ -366,6 +366,20 @@ final class ChatbotVocabularyFallbackTest extends TestCase
         ]);
     }
 
+    public function test_obviously_unsupported_domains_return_out_of_scope_without_clarification(): void
+    {
+        Http::fake();
+
+        foreach (['Honda Civic', 'Toyota Avanza', 'sepatu Nike', 'rumah Surabaya'] as $query) {
+            $this->postJson('/api/chatbot/query', ['message' => $query])
+                ->assertOk()
+                ->assertJsonPath('state', SearchState::OUT_OF_SCOPE)
+                ->assertJsonPath('needs_clarification', false);
+        }
+
+        Http::assertNothingSent();
+    }
+
     private function deactivateGpuListings(callable $predicate): void
     {
         Product::query()

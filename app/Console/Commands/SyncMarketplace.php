@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Data\Marketplace\MarketplaceSyncReport;
+use App\Models\MarketplaceSyncRun;
 use App\Models\Platform;
 use App\Services\Marketplace\MarketplaceSyncService;
 use Illuminate\Console\Command;
@@ -11,7 +12,8 @@ final class SyncMarketplace extends Command
 {
     protected $signature = 'marketplace:sync
                             {platform? : Slug platform yang akan disinkronkan}
-                            {--pages= : Batas halaman per platform}';
+                            {--pages= : Batas halaman per platform}
+                            {--mode= : Mode eksekusi: manual, scheduled, request}';
 
     protected $description = 'Synchronize active marketplace listings';
 
@@ -25,10 +27,18 @@ final class SyncMarketplace extends Command
     {
         $platformSlug = $this->argument('platform');
         $pages = $this->option('pages');
+        $mode = $this->option('mode');
 
         if ($pages !== null
             && (! ctype_digit((string) $pages) || (int) $pages < 1)) {
             $this->error('Option --pages harus berupa bilangan bulat positif.');
+
+            return self::INVALID;
+        }
+
+        if ($mode !== null
+            && ! in_array((string) $mode, MarketplaceSyncRun::modes(), true)) {
+            $this->error('Option --mode tidak valid.');
 
             return self::INVALID;
         }
@@ -53,6 +63,8 @@ final class SyncMarketplace extends Command
             $report = $this->sync->sync(
                 $platform,
                 $pages !== null ? (int) $pages : null,
+                null,
+                is_string($mode) ? $mode : null,
             );
             $this->table(
                 ['Platform', 'Status', 'Seen', 'Created', 'Updated', 'Unchanged', 'Skipped', 'Failed'],

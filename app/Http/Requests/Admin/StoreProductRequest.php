@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Rules\SafeProductAliases;
+use App\Rules\SupportedProductCategory;
+use App\Services\Catalog\CatalogScope;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -16,7 +19,12 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'category_id' => [
+                'required',
+                'integer',
+                'exists:categories,id',
+                new SupportedProductCategory(app(CatalogScope::class)),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
             'model' => ['nullable', 'string', 'max:255'],
@@ -26,7 +34,12 @@ class StoreProductRequest extends FormRequest
             'spec_source_name' => ['nullable', 'string', 'max:120'],
             'spec_source_url' => ['nullable', 'url', 'max:2048'],
             'spec_source_checked_at' => ['nullable', 'date'],
-            'aliases' => ['nullable', 'string', 'max:10000'],
+            'aliases' => [
+                'nullable',
+                'string',
+                'max:10000',
+                new SafeProductAliases,
+            ],
             'is_active' => ['required', 'boolean'],
         ];
     }

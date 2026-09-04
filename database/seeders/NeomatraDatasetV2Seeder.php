@@ -27,7 +27,9 @@ final class NeomatraDatasetV2Seeder extends Seeder
         $this->seedTaxonomy();
         $this->seedPlatforms();
         $products = $this->seedProducts();
-        $this->seedDemoListings($products);
+        if (app()->environment('testing')) {
+            $this->seedDemoListings($products);
+        }
         $this->normalizeLegacyDemoProvenance();
     }
 
@@ -149,10 +151,6 @@ final class NeomatraDatasetV2Seeder extends Seeder
             ['OLX', 'olx', 'https://www.olx.co.id', true],
             ['Facebook Marketplace', 'facebook', 'https://www.facebook.com/marketplace/', false],
             ['Carousell', 'carousell', 'https://id.carousell.com', false],
-            ['Blibli', 'blibli', 'https://www.blibli.com', false],
-            ['Lazada', 'lazada', 'https://www.lazada.co.id', false],
-            ['Jagofon', 'jagofon', 'https://jagofon.com', false],
-            ['Laku6', 'laku6', 'https://www.laku6.com', false],
         ];
 
         foreach ($records as [$name, $slug, $baseUrl, $isDemo]) {
@@ -160,16 +158,20 @@ final class NeomatraDatasetV2Seeder extends Seeder
                 ['slug' => $slug],
                 [
                     'name' => $name,
-                    'source_type' => $isDemo
+                    'source_type' => $isDemo && app()->environment('testing')
                         ? Platform::SOURCE_DEMO
-                        : Platform::SOURCE_MANUAL,
-                    'access_type' => $isDemo
+                        : ($slug === 'olx' ? Platform::SOURCE_SCRAPE : Platform::SOURCE_MANUAL),
+                    'access_type' => $isDemo && app()->environment('testing')
                         ? Platform::ACCESS_DEMO_DATASET
-                        : Platform::ACCESS_MANUAL_URL,
-                    'connector' => $isDemo ? 'demo-dataset' : null,
+                        : ($slug === 'olx' ? Platform::ACCESS_PUBLIC_HTML : Platform::ACCESS_CSV_IMPORT),
+                    'connector' => $isDemo && app()->environment('testing')
+                        ? 'demo-dataset'
+                        : ($slug === 'olx' ? 'olx-public-web' : 'manual-import'),
                     'base_url' => $baseUrl,
                     'is_active' => true,
-                    'sync_enabled' => $isDemo,
+                    'sync_enabled' => app()->environment('testing')
+                        ? $isDemo
+                        : $slug === 'olx',
                     'status' => Platform::STATUS_READY,
                 ],
             );

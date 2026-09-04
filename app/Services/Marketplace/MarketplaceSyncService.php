@@ -24,6 +24,7 @@ final class MarketplaceSyncService
         Platform $platform,
         ?int $maxPages = null,
         ?int $initiatedBy = null,
+        ?string $mode = null,
     ): MarketplaceSyncReport {
         $startedAt = Carbon::now()->toImmutable();
         $provider = trim((string) ($platform->connector
@@ -65,6 +66,7 @@ final class MarketplaceSyncService
                 $startedAt,
                 $maxPages,
                 $initiatedBy,
+                $mode,
             ));
         } catch (LockTimeoutException) {
             $report = false;
@@ -97,8 +99,9 @@ final class MarketplaceSyncService
         DateTimeImmutable $startedAt,
         ?int $maxPages,
         ?int $initiatedBy,
+        ?string $mode,
     ): MarketplaceSyncReport {
-        $mode = (string) config('marketplace.sync_mode', 'manual');
+        $mode = $mode ?? (string) config('marketplace.sync_mode', 'manual');
         $mode = in_array($mode, MarketplaceSyncRun::modes(), true)
             ? $mode
             : MarketplaceSyncRun::MODE_MANUAL;

@@ -255,9 +255,9 @@ AI_HTTP_TIMEOUT=25
 AI_HTTP_RETRIES=2
 AI_HTTP_RETRY_DELAY_MS=1000
 
-MARKETPLACE_PROVIDER=demo
+MARKETPLACE_PROVIDER=manual-import
 MARKETPLACE_SYNC_MODE=manual
-MARKETPLACE_TARGETS=tokopedia,shopee,olx
+MARKETPLACE_TARGETS=tokopedia,shopee,olx,facebook,carousell
 MARKETPLACE_PAGE_SIZE=100
 MARKETPLACE_MAX_PAGES=25
 MARKETPLACE_SYNC_LOCK_SECONDS=300
@@ -276,9 +276,9 @@ CACHE_STORE=file
 ```
 
 `NEOMATRA_LISTING_STALE_AFTER_HOURS` dan
-`NEOMATRA_UNANSWERED_RETENTION_DAYS` menampung kebijakan operasional, tetapi MVP
-saat ini belum memiliki scheduler yang otomatis menonaktifkan listing atau
-menghapus log berdasarkan kedua nilai tersebut.
+`NEOMATRA_UNANSWERED_RETENTION_DAYS` menampung kebijakan operasional. Scheduler
+MVP hanya menjalankan sinkronisasi OLX; ia tidak menghapus log atau
+menonaktifkan listing berdasarkan kedua nilai tersebut.
 
 Simpan secret production melalui secret manager platform. API key tidak boleh
 diletakkan di controller, Blade, JavaScript, log, test, atau Git.
@@ -388,11 +388,12 @@ Seluruh sumber listing masuk melalui alur normalisasi yang sama:
 
 ```text
 Listing Source Integration
-|-- marketplace connector
-|-- CSV import
-|-- admin manual listing
-|-- dataset/feed
-`-- future external listing API
+|-- OLX public-web connector
+|-- Tokopedia CSV/import
+|-- Shopee CSV/import
+|-- Facebook Marketplace CSV/import
+|-- Carousell CSV/import
+`-- admin manual listing
 ```
 
 Connector atau importer menghasilkan `MarketplaceListingData`, lalu
@@ -403,30 +404,33 @@ validasi, fingerprint, dan MySQL; tidak ada internal HTTP API tambahan.
 
 Tokopedia, Shopee, OLX, Facebook Marketplace, dan Carousell dapat menerima
 impor CSV sesuai domain yang didukung. Connector web publik hanya diaktifkan
-untuk platform yang memang memiliki implementasi. Platform manual tidak
-dilabeli sebagai official API. Dataset demo tetap tersedia untuk test dan
-fresh clone, tetapi ditandai `demo` dan tidak boleh disajikan sebagai listing
-nyata.
+untuk OLX. Platform manual tidak dilabeli sebagai official API. Dataset demo
+hanya tersedia sebagai fixture test dan tidak dibuat oleh seeding normal.
 
-Sinkronisasi bersifat manual dan idempotent. Data dicocokkan dengan
+Sinkronisasi bersifat idempotent. Data dicocokkan dengan
 `platform_id + external_listing_id` atau fingerprint sumber. Produk kanonik
 dipetakan menggunakan normalized key atau kombinasi brand/model/varian/SKU yang
 ketat. Setiap eksekusi dicatat pada `marketplace_sync_runs`, dan cache lock
 mencegah dua sync platform yang sama berjalan bersamaan.
 
-Sinkronkan semua platform aktif:
+Sinkronkan OLX secara manual:
 
 ```shell
 php artisan marketplace:sync
+php artisan marketplace:sync olx
 ```
 
-Sinkronkan satu platform dan batasi halaman:
+Batasi jumlah halaman OLX:
 
 ```shell
-php artisan marketplace:sync tokopedia --pages=1
-php artisan marketplace:sync shopee --pages=1
 php artisan marketplace:sync olx --pages=1
 ```
+
+Laravel menjadwalkan `marketplace:sync olx --mode=scheduled` setiap enam jam
+dengan overlap lock. Aktifkan scheduler pada server, misalnya melalui cron atau
+Windows Task Scheduler yang menjalankan `php artisan schedule:run` setiap menit.
+Tokopedia, Shopee, Facebook Marketplace, dan Carousell tidak dijadwalkan karena
+belum memiliki connector live yang andal.
 
 Admin juga dapat menjalankan sync dari menu Platform. Implementasi connector
 nyata di masa depan harus ditambahkan melalui `MarketplaceConnector`; jangan

@@ -1,6 +1,6 @@
 @extends('admin.layout')
-@section('title', __('ui.admin.listings'))
-@section('page-title', __('ui.admin.listings'))
+@section('title', $mappingStatus === 'unmatched' ? __('ui.admin_pages.listings.unmatched_heading') : __('ui.admin.listings'))
+@section('page-title', $mappingStatus === 'unmatched' ? __('ui.admin_pages.listings.unmatched_heading') : __('ui.admin.listings'))
 
 @section('content')
     <section class="admin-card" aria-labelledby="listings-title">
@@ -31,7 +31,7 @@
                         <td>{{ $listing->seller_name ?: '—' }}<span class="table-meta">{{ $listing->location ?: __('ui.admin_pages.listings.unknown_location') }}</span></td>
                         <td><span class="badge badge--{{ $listing->stock_status === 'in_stock' ? 'success' : ($listing->stock_status === 'out_of_stock' ? 'danger' : 'neutral') }}">{{ __('ui.labels.'.$listing->stock_status) }}</span><span class="table-meta">{{ $listing->is_active ? __('ui.common.active') : __('ui.common.inactive') }}</span></td>
                         <td>{{ $listing->last_synced_at?->translatedFormat('d M Y H:i') ?? $listing->updated_at->translatedFormat('d M Y H:i') }}</td>
-                        <td><div class="table-actions"><a class="button button--small button--secondary" href="{{ route('admin.listings.edit', $listing) }}">{{ __('ui.common.edit') }}</a><form method="POST" action="{{ route('admin.listings.destroy', $listing) }}" data-confirm="{{ __('ui.admin_pages.listings.delete_confirm') }}">@csrf @method('DELETE')<button class="button button--small button--danger" type="submit" data-busy-label="{{ __('ui.common.deleting') }}">{{ __('ui.common.delete') }}</button></form></div></td>
+                        <td><div class="table-actions">@if($listing->product_id === null)<a class="button button--small button--primary" href="{{ route('admin.listings.candidate.review', $listing) }}">{{ __('ui.admin_pages.listings.review_candidate') }}</a>@endif<a class="button button--small button--secondary" href="{{ route('admin.listings.edit', $listing) }}">{{ __('ui.common.edit') }}</a><form method="POST" action="{{ route('admin.listings.destroy', $listing) }}" data-confirm="{{ __('ui.admin_pages.listings.delete_confirm') }}">@csrf @method('DELETE')<button class="button button--small button--danger" type="submit" data-busy-label="{{ __('ui.common.deleting') }}">{{ __('ui.common.delete') }}</button></form></div></td>
                     </tr>
                 @endforeach
             </tbody></table></div>

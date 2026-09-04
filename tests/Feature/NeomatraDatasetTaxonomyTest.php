@@ -36,22 +36,6 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
             'olx',
             'facebook',
             'carousell',
-            'blibli',
-            'lazada',
-            'tiktok-shop',
-            'jagofon',
-            'laku6',
-            'bhinneka',
-            'jakmall',
-            'enterkomputer',
-            'pemmz',
-            'erafone',
-            'eraspace',
-            'digimap',
-            'asus-store-indonesia',
-            'acer-estore-indonesia',
-            'samsung-indonesia',
-            'hp-indonesia-store',
         ];
 
         $this->assertEqualsCanonicalizing(
@@ -62,9 +46,9 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
         foreach (['tokopedia', 'shopee'] as $slug) {
             $this->assertDatabaseHas('platforms', [
                 'slug' => $slug,
-                'source_type' => Platform::SOURCE_DEMO,
-                'access_type' => Platform::ACCESS_DEMO_DATASET,
-                'connector' => 'demo-dataset',
+                'source_type' => Platform::SOURCE_MANUAL,
+                'access_type' => Platform::ACCESS_CSV_IMPORT,
+                'connector' => 'manual-import',
                 'sync_enabled' => false,
             ]);
         }
@@ -74,7 +58,7 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
             'source_type' => Platform::SOURCE_SCRAPE,
             'access_type' => Platform::ACCESS_PUBLIC_HTML,
             'connector' => 'olx-public-web',
-            'sync_enabled' => false,
+            'sync_enabled' => true,
         ]);
 
         foreach (['facebook', 'carousell'] as $slug) {
@@ -85,22 +69,6 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
                 'connector' => 'manual-import',
                 'sync_enabled' => false,
                 'status' => Platform::STATUS_READY,
-            ]);
-        }
-
-        foreach (array_diff($expected, [
-            'tokopedia',
-            'shopee',
-            'olx',
-            'facebook',
-            'carousell',
-        ]) as $slug) {
-            $this->assertDatabaseHas('platforms', [
-                'slug' => $slug,
-                'source_type' => Platform::SOURCE_MANUAL,
-                'access_type' => Platform::ACCESS_MANUAL_URL,
-                'connector' => null,
-                'sync_enabled' => false,
             ]);
         }
 
@@ -227,60 +195,63 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_demo_listings_are_retained_for_tests_but_inactive_in_v3(): void
+    public function test_normal_database_seeding_does_not_retain_demo_listings(): void
     {
         $this->seed(DatabaseSeeder::class);
-        $listings = Listing::query()->get();
+        $this->assertDatabaseCount('listings', 0);
+        $this->assertSame(0, Listing::query()->where('raw_payload->demo', true)->count());
+        Http::assertNothingSent();
+    }
 
-        $this->assertGreaterThanOrEqual(100, $listings->count());
+    public function test_v3_cleanup_preserves_real_listings_and_removes_only_proven_demo_and_unused_platforms(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $tokopedia = Platform::query()->where('slug', 'tokopedia')->firstOrFail();
+        $unsupported = Platform::query()->create([
+            'name' => 'Unsupported Empty Source',
+            'slug' => 'unsupported-empty-source',
+            'source_type' => Platform::SOURCE_MANUAL,
+            'access_type' => Platform::ACCESS_MANUAL_URL,
+            'is_active' => true,
+            'sync_enabled' => false,
+            'status' => Platform::STATUS_READY,
+        ]);
+        $real = Listing::query()->create([
+            'platform_id' => $tokopedia->id,
+            'source_fingerprint' => str_repeat('a', 64),
+            'title' => 'Real Marketplace Listing',
+            'price' => 2500000,
+            'currency' => 'IDR',
+            'condition' => Listing::CONDITION_USED,
+            'product_url' => 'https://www.tokopedia.com/store/real-item',
+            'stock_status' => Listing::STOCK_IN_STOCK,
+            'price_type' => Listing::PRICE_FULL,
+            'raw_payload' => ['connector' => 'manual-import', 'demo' => false],
+            'is_active' => true,
+        ]);
+        $demo = Listing::query()->create([
+            'platform_id' => $tokopedia->id,
+            'source_fingerprint' => str_repeat('b', 64),
+            'title' => 'Data Demo Listing',
+            'price' => 1000000,
+            'currency' => 'IDR',
+            'condition' => Listing::CONDITION_USED,
+            'product_url' => 'https://example.test/demo-listing',
+            'stock_status' => Listing::STOCK_IN_STOCK,
+            'price_type' => Listing::PRICE_FULL,
+            'raw_payload' => ['connector' => 'seeded-demo', 'demo' => true],
+            'is_active' => false,
+        ]);
 
-        $productsWithDemoListings = Product::query()
-            ->whereHas('listings')
-            ->get();
-        $this->assertCount(32, $productsWithDemoListings);
+        $this->seed(NeomatraDatasetV3Seeder::class);
 
-        foreach ($productsWithDemoListings as $product) {
-            $this->assertGreaterThanOrEqual(
-                2,
-                $product->listings()->where('condition', Listing::CONDITION_NEW)->count(),
-            );
-            $this->assertGreaterThanOrEqual(
-                2,
-                $product->listings()->where('condition', Listing::CONDITION_USED)->count(),
-            );
-        }
-
-        foreach ($listings as $listing) {
-            $this->assertFalse($listing->is_active);
-            $this->assertContains($listing->condition, Listing::conditions());
-            $this->assertContains($listing->seller_type, Listing::sellerTypes());
-            $this->assertContains($listing->stock_status, Listing::stockStatuses());
-            $this->assertContains($listing->price_type, Listing::priceTypes());
-            $this->assertTrue((bool) ($listing->raw_payload['demo'] ?? false));
-            $this->assertSame(
-                'seeded-demo',
-                $listing->raw_payload['connector'] ?? null,
-            );
-            $this->assertNotNull(
-                $listing->first_seen_at,
-                (string) $listing->external_listing_id,
-            );
-            $this->assertNotNull($listing->last_seen_at);
-            $this->assertNotNull($listing->last_synced_at);
-            $this->assertSame('example.test', parse_url($listing->product_url, PHP_URL_HOST));
-            $this->assertStringContainsString('Data Demo', $listing->title);
-            $this->assertStringContainsString('demonstrasi', (string) $listing->description);
-            $this->assertStringContainsString('bukan penawaran', (string) $listing->description);
-        }
-
-        $this->assertEqualsCanonicalizing(
-            Listing::conditions(),
-            Listing::query()->distinct()->pluck('condition')->all(),
-        );
-        $this->assertEqualsCanonicalizing(
-            Listing::sellerTypes(),
-            Listing::query()->distinct()->pluck('seller_type')->all(),
-        );
+        $this->assertDatabaseHas('listings', [
+            'id' => $real->id,
+            'is_active' => true,
+        ]);
+        $this->assertDatabaseMissing('listings', ['id' => $demo->id]);
+        $this->assertDatabaseMissing('platforms', ['id' => $unsupported->id]);
+        $this->assertSame(5, Platform::query()->count());
         Http::assertNothingSent();
     }
 

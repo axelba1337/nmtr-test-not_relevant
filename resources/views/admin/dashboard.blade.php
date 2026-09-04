@@ -37,7 +37,7 @@
                 <li><a href="{{ route('admin.knowledge.index', ['status' => 'active', 'embedding_status' => 'failed']) }}">{{ __('ui.admin.dashboard_page.failed_embedding_count', ['count' => number_format($knowledgeStats['failed'], 0, ',', '.')]) }}</a></li>
                 <li>{{ __('ui.admin.dashboard_page.pending_embedding_count', ['count' => number_format($knowledgeStats['pending'], 0, ',', '.')]) }}</li>
                 <li><a href="{{ route('admin.unanswered.index', ['review' => 'pending']) }}">{{ __('ui.admin.dashboard_page.pending_query_count', ['count' => number_format($pendingUnansweredCount, 0, ',', '.')]) }}</a></li>
-                <li><a href="{{ route('admin.listings.index', ['status' => 'active', 'mapping_status' => 'unmatched']) }}">{{ __('ui.admin.dashboard_page.unmatched_listing_count', ['count' => number_format($unmatchedListingsCount, 0, ',', '.')]) }}</a></li>
+                <li><a href="{{ route('admin.listings.unmatched') }}">{{ __('ui.admin.dashboard_page.unmatched_listing_count', ['count' => number_format($unmatchedListingsCount, 0, ',', '.')]) }}</a></li>
                 <li><a href="{{ route('admin.platforms.index', ['sync_status' => 'failed']) }}">{{ __('ui.admin.dashboard_page.failed_sync_count', ['count' => number_format($failedSyncCount, 0, ',', '.')]) }}</a></li>
                 @if ($knowledgeStats['warnings'] > 0)
                     <li>{{ __('ui.admin.dashboard_page.warning_count', ['count' => number_format($knowledgeStats['warnings'], 0, ',', '.')]) }}</li>
@@ -45,6 +45,15 @@
             </ul>
         </article>
     </div>
+
+    <section class="admin-card scope-summary" aria-labelledby="mvp-scope-title">
+        <div>
+            <p class="admin-card__eyebrow">{{ __('ui.admin.dashboard_page.scope_eyebrow') }}</p>
+            <h2 id="mvp-scope-title">{{ __('ui.admin.dashboard_page.scope_title') }}</h2>
+        </div>
+        <p><strong>{{ __('ui.admin.dashboard_page.five_domains') }}</strong> {{ __('ui.admin.dashboard_page.domain_list') }}</p>
+        <p><strong>{{ __('ui.admin.dashboard_page.five_sources') }}</strong> {{ __('ui.admin.dashboard_page.source_list') }}</p>
+    </section>
 
     <section class="admin-card" aria-labelledby="products-without-listings-title">
         <div class="admin-card__heading admin-card__heading--actions">

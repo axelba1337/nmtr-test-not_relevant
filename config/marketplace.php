@@ -4,12 +4,12 @@ $targets = array_values(array_filter(array_map(
     static fn (string $target): string => strtolower(trim($target)),
     explode(',', (string) env(
         'MARKETPLACE_TARGETS',
-        'tokopedia,shopee,olx',
+        'tokopedia,shopee,olx,facebook,carousell',
     )),
 )));
 
 return [
-    'provider' => env('MARKETPLACE_PROVIDER', 'demo'),
+    'provider' => env('MARKETPLACE_PROVIDER', 'manual-import'),
     'sync_mode' => env('MARKETPLACE_SYNC_MODE', 'manual'),
     'targets' => $targets,
     'page_size' => max(1, min(
@@ -26,8 +26,8 @@ return [
     ),
 
     /*
-     * The demo adapter intentionally performs no network request. Seeders or
-     * tests may provide normalized records through this config key.
+     * Test-only fixture data. This is never a normal development or
+     * production listing provider.
      */
     'demo' => [
         'listings' => [

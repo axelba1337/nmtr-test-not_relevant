@@ -16,6 +16,14 @@ use RuntimeException;
 
 final class NeomatraDatasetV3Seeder extends Seeder
 {
+    private const MVP_PLATFORM_SLUGS = [
+        'tokopedia',
+        'shopee',
+        'olx',
+        'facebook',
+        'carousell',
+    ];
+
     private const SOURCE_NAME = 'Neomatra Dataset & Taxonomy V3';
 
     private const OBSOLETE_KNOWLEDGE = [
@@ -53,7 +61,8 @@ final class NeomatraDatasetV3Seeder extends Seeder
                 'INSERT INTO `platforms`',
                 'ON DUPLICATE KEY UPDATE',
             ));
-            $this->deactivateLegacyDemoListings();
+            $this->cleanPlatformRegistry();
+            $this->removeProvenDemoListings();
             $this->seedProducts($parser->rows(
                 database_path('data/v3/products_v3_expanded.sql'),
                 'INSERT INTO `products`',
@@ -86,22 +95,44 @@ final class NeomatraDatasetV3Seeder extends Seeder
         }
 
         $legacy->listings()->update(['platform_id' => $facebook->id]);
+        $legacy->syncRuns()->update(['platform_id' => $facebook->id]);
         $legacy->delete();
     }
 
-    private function deactivateLegacyDemoListings(): void
+    private function cleanPlatformRegistry(): void
     {
-        Listing::query()
-            ->where('is_active', true)
-            ->whereHas('platform', fn ($query) => $query->whereIn(
-                'slug',
-                ['tokopedia', 'shopee', 'olx'],
-            ))
-            ->get()
-            ->filter(fn (Listing $listing): bool => (bool) (
-                $listing->raw_payload['demo'] ?? false
-            ))
-            ->each->update(['is_active' => false]);
+        foreach (Platform::query()->whereNotIn('slug', self::MVP_PLATFORM_SLUGS)->get() as $platform) {
+            if ($platform->listings()->exists() || $platform->syncRuns()->exists()) {
+                $platform->forceFill([
+                    'is_active' => false,
+                    'sync_enabled' => false,
+                    'status' => Platform::STATUS_DISABLED,
+                ])->save();
+
+                continue;
+            }
+
+            $platform->delete();
+        }
+    }
+
+    private function removeProvenDemoListings(): void
+    {
+        foreach (Listing::query()->lazyById(100) as $listing) {
+            $payload = is_array($listing->raw_payload)
+                ? $listing->raw_payload
+                : [];
+            $connector = strtolower((string) ($payload['connector'] ?? ''));
+            $isDemo = ($payload['demo'] ?? false) === true
+                || str_contains($connector, 'demo')
+                || str_contains((string) $listing->product_url, 'example.test')
+                || str_contains(strtolower((string) $listing->title), 'data demo')
+                || str_contains(strtolower((string) $listing->description), 'bukan penawaran marketplace nyata');
+
+            if ($isDemo) {
+                $listing->delete();
+            }
+        }
     }
 
     /** @param list<list<mixed>> $rows */

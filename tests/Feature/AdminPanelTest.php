@@ -330,10 +330,7 @@ final class AdminPanelTest extends TestCase
                 'status' => 'active',
                 'embedding_status' => 'failed',
             ])), false)
-            ->assertSee(e(route('admin.listings.index', [
-                'status' => 'active',
-                'mapping_status' => 'unmatched',
-            ])), false)
+            ->assertSee(e(route('admin.listings.unmatched')), false)
             ->assertSee(e(route('admin.platforms.index', [
                 'sync_status' => 'failed',
             ])), false)

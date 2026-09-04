@@ -28,7 +28,7 @@ final class SqlDatasetParserTest extends TestCase
         );
 
         $this->assertCount(170, $products);
-        $this->assertCount(21, $platforms);
+        $this->assertCount(5, $platforms);
         $this->assertCount(47, $knowledge);
         $this->assertContains('@cat_gpu', array_column($products, 0));
         $this->assertSame('Tokopedia', $platforms[0][0]);

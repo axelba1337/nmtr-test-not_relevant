@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\ListingController;
 use App\Http\Controllers\Admin\PlatformController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\UnansweredQueryController;
+use App\Http\Controllers\Admin\UnmatchedListingController;
 use App\Http\Controllers\ListingRedirectController;
 use App\Http\Controllers\LocaleController;
 use Illuminate\Support\Facades\Route;
@@ -55,6 +56,22 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             )->name('platforms.sync');
             Route::resource('platforms', PlatformController::class)
                 ->except('show');
+            Route::get(
+                '/listings/unmatched',
+                [ListingController::class, 'unmatched'],
+            )->name('listings.unmatched');
+            Route::get(
+                '/listings/{listing}/candidate',
+                [UnmatchedListingController::class, 'review'],
+            )->name('listings.candidate.review');
+            Route::post(
+                '/listings/{listing}/candidate',
+                [UnmatchedListingController::class, 'approve'],
+            )->name('listings.candidate.approve');
+            Route::post(
+                '/listings/{listing}/link-product',
+                [UnmatchedListingController::class, 'link'],
+            )->name('listings.link-product');
             Route::resource('listings', ListingController::class)
                 ->except('show');
 

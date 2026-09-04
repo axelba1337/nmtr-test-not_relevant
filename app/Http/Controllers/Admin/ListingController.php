@@ -80,6 +80,16 @@ final class ListingController extends Controller
         ]);
     }
 
+    public function unmatched(Request $request): View
+    {
+        $request->merge([
+            'mapping_status' => 'unmatched',
+            'status' => $request->input('status', 'active'),
+        ]);
+
+        return $this->index($request);
+    }
+
     public function create(Request $request): View
     {
         $this->ensureAdmin($request);

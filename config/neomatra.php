@@ -20,8 +20,6 @@ return [
             'olx' => ['olx', 'tokobagus', 'toko bagus'],
             'facebook' => ['facebook', 'facebook marketplace', 'fb marketplace'],
             'carousell' => ['carousell'],
-            'blibli' => ['blibli'],
-            'lazada' => ['lazada'],
         ],
     ],
 

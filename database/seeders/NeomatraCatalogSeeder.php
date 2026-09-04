@@ -60,12 +60,19 @@ final class NeomatraCatalogSeeder extends Seeder
         $platforms = [];
 
         foreach ([
-            ['Tokopedia', 'tokopedia', Platform::SOURCE_DEMO, Platform::ACCESS_DEMO_DATASET, 'demo-dataset', 'https://www.tokopedia.com', true],
-            ['Shopee', 'shopee', Platform::SOURCE_DEMO, Platform::ACCESS_DEMO_DATASET, 'demo-dataset', 'https://shopee.co.id', true],
-            ['OLX', 'olx', Platform::SOURCE_DEMO, Platform::ACCESS_DEMO_DATASET, 'demo-dataset', 'https://www.olx.co.id', true],
+            ['Tokopedia', 'tokopedia', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://www.tokopedia.com', false],
+            ['Shopee', 'shopee', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://shopee.co.id', false],
+            ['OLX', 'olx', Platform::SOURCE_SCRAPE, Platform::ACCESS_PUBLIC_HTML, 'olx-public-web', 'https://www.olx.co.id', true],
             ['Facebook Marketplace', 'facebook', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://www.facebook.com/marketplace/', false],
             ['Carousell', 'carousell', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://id.carousell.com', false],
         ] as [$name, $slug, $sourceType, $accessType, $connector, $baseUrl, $syncEnabled]) {
+            if (app()->environment('testing') && in_array($slug, ['tokopedia', 'shopee', 'olx'], true)) {
+                $sourceType = Platform::SOURCE_DEMO;
+                $accessType = Platform::ACCESS_DEMO_DATASET;
+                $connector = 'demo-dataset';
+                $syncEnabled = true;
+            }
+
             $platforms[$slug] = Platform::query()->updateOrCreate(
                 ['slug' => $slug],
                 [
@@ -101,6 +108,10 @@ final class NeomatraCatalogSeeder extends Seeder
             ['vram_gb' => 8, 'device_type' => 'desktop_gpu'],
             ['RTX 3060Ti 8GB', 'GeForce 3060 Ti'],
         );
+
+        if (! app()->environment('testing')) {
+            return;
+        }
 
         $fingerprints = app(ListingFingerprintService::class);
         $demoListings = [

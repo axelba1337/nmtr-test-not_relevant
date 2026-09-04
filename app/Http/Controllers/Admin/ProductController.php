@@ -6,8 +6,8 @@ use App\Helpers\Normalizer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProductRequest;
 use App\Http\Requests\Admin\UpdateProductRequest;
-use App\Models\Category;
 use App\Models\Product;
+use App\Services\Catalog\CatalogScope;
 use App\Services\Embedding\EntityEmbeddingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -20,6 +20,7 @@ final class ProductController extends Controller
 {
     public function __construct(
         private readonly EntityEmbeddingService $embeddingService,
+        private readonly CatalogScope $catalogScope,
     ) {}
 
     public function index(Request $request): View
@@ -278,7 +279,7 @@ final class ProductController extends Controller
 
     private function categoryOptions()
     {
-        return Category::query()->ordered()->get(['id', 'name', 'is_active']);
+        return $this->catalogScope->categoryOptions();
     }
 
     private function ensureAdmin(Request $request): void

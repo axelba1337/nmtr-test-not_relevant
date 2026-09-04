@@ -50,6 +50,7 @@
                     <p class="eyebrow">{{ __('ui.chat.lead_eyebrow') }}</p>
                     <h2>{{ __('ui.chat.lead_title') }}</h2>
                     <p>{{ __('ui.chat.lead_body') }}</p>
+                    <p class="workspace-overview__scope">{{ __('ui.chat.scope_summary') }}</p>
                 </div>
                 <dl class="system-matrix" data-mono>
                     <div><dt>{{ __('ui.chat.engine') }}</dt><dd>{{ __('ui.chat.semantic_search') }}</dd></div>
