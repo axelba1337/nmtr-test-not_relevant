@@ -1,3 +1,7 @@
+import { initializeBrandEntry } from './brand-entry';
+
+initializeBrandEntry({ area: 'admin' });
+
 let adminTranslations = {};
 
 try {

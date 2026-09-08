@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" href="{{ asset('images/branding/neomatra-logo.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body>
+<body data-brand-area="user">
     <main class="page-shell">
         <section
             class="chat-card"
@@ -22,14 +22,15 @@
         >
             <header class="chat-header">
                 <div class="chat-header__main">
-                    <div class="chat-brand">
+                    <div class="chat-brand" data-brand-lock>
                         <img
                             class="chat-brand__logo"
                             src="{{ asset('images/branding/neomatra-logo.png') }}"
                             alt=""
                             aria-hidden="true"
+                            data-brand-mark
                         >
-                        <div class="chat-brand__copy">
+                        <div class="chat-brand__copy" data-brand-copy>
                             <p class="eyebrow">NMTR / SEMANTIC MARKET SEARCH</p>
                             <h1 id="chatbot-title">{{ config('app.name') }}</h1>
                         </div>
@@ -49,8 +50,7 @@
                 <div class="workspace-overview__lead">
                     <p class="eyebrow">{{ __('ui.chat.lead_eyebrow') }}</p>
                     <h2>{{ __('ui.chat.lead_title') }}</h2>
-                    <p>{{ __('ui.chat.lead_body') }}</p>
-                    <p class="workspace-overview__scope">{{ __('ui.chat.scope_summary') }}</p>
+                    <p class="workspace-overview__description">{{ __('ui.chat.lead_body') }} {{ __('ui.chat.scope_summary') }}</p>
                 </div>
                 <dl class="system-matrix" data-mono>
                     <div><dt>{{ __('ui.chat.engine') }}</dt><dd>{{ __('ui.chat.semantic_search') }}</dd></div>
@@ -90,7 +90,10 @@
                         </div>
                     </aside>
 
-                    <div class="console-panel">
+                    <div
+                        class="console-panel"
+                        style="--console-wordmark: url('{{ asset('images/branding/neomatra-wordmark-bg.png') }}')"
+                    >
                         <div class="transcript" data-transcript role="log" aria-live="polite" aria-relevant="additions">
                             <article class="message message--assistant">
                                 <p class="message__label">{{ __('ui.chat.welcome_label') }}</p>

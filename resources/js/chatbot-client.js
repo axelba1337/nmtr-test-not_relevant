@@ -22,12 +22,30 @@ const MAX_HISTORY_MESSAGES = 6;
 const MAX_HISTORY_CONTENT_LENGTH = 4000;
 const MAX_SOURCES = 8;
 const MAX_SEARCH_ENTRY_POINT_HTML_LENGTH = 20000;
+const DEFAULT_PIPELINE_STAGE_DELAYS = [0, 320, 720, 1160, 1600];
+const DEFAULT_MARKETPLACE_SCAN_INTERVAL = 280;
 
 const trimmedText = (value, maxLength) => (
     typeof value === 'string'
         ? value.trim().slice(0, maxLength)
         : ''
 );
+
+export const parseChatTranslations = (value) => {
+    if (typeof value !== 'string' || value.trim() === '') {
+        return {};
+    }
+
+    try {
+        const parsed = JSON.parse(value);
+
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed
+            : {};
+    } catch {
+        return {};
+    }
+};
 
 export const normalizeHttpUrl = (value) => {
     if (typeof value !== 'string' || value.trim() === '') {
@@ -151,6 +169,95 @@ export const scrollTranscriptToLatest = (transcript, reducedMotion = false) => {
     });
 
     return true;
+};
+
+export const createSearchPipelineLifecycle = ({
+    onStage = () => {},
+    onScan = () => {},
+    stageDelays = DEFAULT_PIPELINE_STAGE_DELAYS,
+    scanInterval = DEFAULT_MARKETPLACE_SCAN_INTERVAL,
+    scanStageIndex = 3,
+    sourceCount = 5,
+    animate = true,
+    setTimeoutImpl = globalThis.setTimeout.bind(globalThis),
+    clearTimeoutImpl = globalThis.clearTimeout.bind(globalThis),
+    setIntervalImpl = globalThis.setInterval.bind(globalThis),
+    clearIntervalImpl = globalThis.clearInterval.bind(globalThis),
+} = {}) => {
+    let active = false;
+    let generation = 0;
+    let stageTimers = [];
+    let scannerTimer = null;
+
+    const stop = () => {
+        const wasActive = active;
+
+        active = false;
+        generation += 1;
+        stageTimers.forEach((timer) => clearTimeoutImpl(timer));
+        stageTimers = [];
+
+        if (scannerTimer !== null) {
+            clearIntervalImpl(scannerTimer);
+            scannerTimer = null;
+        }
+
+        return wasActive;
+    };
+
+    const start = () => {
+        stop();
+        active = true;
+
+        const runGeneration = generation;
+        const delays = Array.isArray(stageDelays) && stageDelays.length > 0
+            ? stageDelays
+            : DEFAULT_PIPELINE_STAGE_DELAYS;
+        const lastStageIndex = delays.length - 1;
+
+        if (!animate) {
+            onStage(lastStageIndex);
+
+            return;
+        }
+
+        const activateStage = (stageIndex) => {
+            if (!active || runGeneration !== generation) return;
+
+            onStage(stageIndex);
+
+            if (stageIndex !== scanStageIndex
+                || scannerTimer !== null
+                || sourceCount < 1) {
+                return;
+            }
+
+            let sourceIndex = 0;
+
+            onScan(sourceIndex);
+            scannerTimer = setIntervalImpl(() => {
+                if (!active || runGeneration !== generation) return;
+
+                sourceIndex = (sourceIndex + 1) % sourceCount;
+                onScan(sourceIndex);
+            }, scanInterval);
+        };
+
+        activateStage(0);
+
+        delays.slice(1).forEach((delay, index) => {
+            stageTimers.push(setTimeoutImpl(
+                () => activateStage(index + 1),
+                Math.max(0, Number(delay) || 0),
+            ));
+        });
+    };
+
+    return {
+        isActive: () => active,
+        start,
+        stop,
+    };
 };
 
 export const requestChat = async ({

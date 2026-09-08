@@ -91,8 +91,92 @@ time,
 
 :focus-visible { outline: 2px solid var(--orange-bright); outline-offset: 2px; }
 
+[data-brand-lock] { position: relative; }
+
+[data-brand-lock]::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    background: var(--orange);
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left center;
+    pointer-events: none;
+}
+
+.brand-entry--full [data-brand-mark] {
+    animation: brand-mark-full 400ms cubic-bezier(0.22, 0.78, 0.24, 1) both;
+}
+
+.brand-entry--quiet [data-brand-mark] {
+    animation: brand-mark-quiet 310ms cubic-bezier(0.22, 0.76, 0.28, 1) both;
+}
+
+.brand-entry--locale [data-brand-mark] {
+    animation: brand-mark-locale 250ms cubic-bezier(0.22, 0.78, 0.26, 1) both;
+}
+
+.brand-entry--full [data-brand-copy] {
+    animation: brand-copy-entry 230ms ease-out 70ms both;
+}
+
+.brand-entry--full [data-brand-lock]::after {
+    animation: brand-lock-in 140ms ease-out 280ms both;
+}
+
+.brand-entry--quiet [data-brand-lock]::after {
+    animation: brand-lock-in 120ms ease-out 190ms both;
+}
+
+.brand-entry--locale [data-brand-lock]::after {
+    animation: brand-lock-in 110ms ease-out 140ms both;
+}
+
+@keyframes brand-mark-full {
+    0% { opacity: 0; transform: translateY(6px) scale(0.88); }
+    72% { opacity: 1; transform: translateY(0) scale(1.035); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes brand-mark-quiet {
+    0% { opacity: 0; transform: translateY(3px) scale(0.92); }
+    74% { opacity: 1; transform: translateY(0) scale(1.02); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes brand-mark-locale {
+    0% { opacity: 0; transform: translateY(2px) scale(0.94); }
+    70% { opacity: 1; transform: translateY(0) scale(1.025); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes brand-copy-entry {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes brand-lock-in {
+    0% { opacity: 0; transform: scaleX(0); }
+    20% { opacity: 1; }
+    80% { opacity: 1; transform: scaleX(1); }
+    100% { opacity: 0; transform: scaleX(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+
+    .brand-entry [data-brand-mark],
+    .brand-entry [data-brand-copy],
+    .brand-entry [data-brand-lock]::after {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    .brand-entry [data-brand-lock]::after { opacity: 0 !important; }
 }

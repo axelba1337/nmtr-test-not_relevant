@@ -32,7 +32,11 @@ final class ChatbotPageTest extends TestCase
             ->assertSee('role="log"', false)
             ->assertSee('aria-live="polite"', false)
             ->assertSee('class="chat-brand__logo"', false)
+            ->assertSee('data-brand-area="user"', false)
+            ->assertSee('data-brand-lock', false)
+            ->assertSee('data-brand-mark', false)
             ->assertSee(asset('images/branding/neomatra-logo.png'))
+            ->assertSee(asset('images/branding/neomatra-wordmark-bg.png'))
             ->assertSee('rel="icon"', false)
             ->assertSee('rel="apple-touch-icon"', false)
             ->assertSee('name="message"', false)
@@ -62,6 +66,7 @@ final class ChatbotPageTest extends TestCase
     public function test_chatbot_branding_assets_are_referenced_without_embedding_them(): void
     {
         $stylesheet = file_get_contents(resource_path('css/app.css'));
+        $themeStylesheet = file_get_contents(resource_path('css/theme.css'));
 
         $this->assertFileExists(public_path(
             'images/branding/neomatra-logo.png',
@@ -70,17 +75,27 @@ final class ChatbotPageTest extends TestCase
             'images/branding/neomatra-wordmark-bg.png',
         ));
         $this->assertIsString($stylesheet);
+        $this->assertIsString($themeStylesheet);
         $this->assertStringContainsString(
             '.console-panel::before',
             $stylesheet,
         );
         $this->assertStringContainsString(
-            "url('/images/branding/neomatra-wordmark-bg.png')",
+            'background-image: var(--console-wordmark)',
             $stylesheet,
         );
         $this->assertStringContainsString(
             'pointer-events: none',
             $stylesheet,
+        );
+        $this->assertStringContainsString('opacity: 0.16', $stylesheet);
+        $this->assertStringContainsString(
+            '@keyframes brand-mark-full',
+            $themeStylesheet,
+        );
+        $this->assertStringContainsString(
+            '@media (prefers-reduced-motion: reduce)',
+            $themeStylesheet,
         );
         $this->assertStringNotContainsString('data:image/', $stylesheet);
     }
@@ -105,8 +120,16 @@ final class ChatbotPageTest extends TestCase
             'title.textContent = source.title;',
             $javascript,
         );
-        $this->assertStringContainsString("t('sending'", $javascript);
+        $this->assertStringContainsString("t('searching'", $javascript);
         $this->assertStringContainsString("t('send'", $javascript);
+        $this->assertStringContainsString(
+            'appendSearchPipelineLoading',
+            $javascript,
+        );
+        $this->assertStringContainsString(
+            'createSearchPipelineLifecycle',
+            $javascript.$client,
+        );
         $this->assertStringContainsString(
             'history: [...conversationHistory]',
             $javascript,

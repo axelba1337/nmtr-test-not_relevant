@@ -5,14 +5,82 @@ import test from 'node:test';
 import {
     ChatbotRequestError,
     createRequestCoordinator,
+    createSearchPipelineLifecycle,
     normalizeHistory,
     normalizeSearchEntryPointHtml,
     normalizeSources,
     normalizeSuggestions,
+    parseChatTranslations,
     requestChat,
     requestSuggestions,
     scrollTranscriptToLatest,
 } from '../../resources/js/chatbot-client.js';
+import {
+    BRAND_AREA_STORAGE_KEY,
+    LOCALE_SWITCH_STORAGE_KEY,
+    bindLocaleSwitchMarkers,
+    initializeBrandEntry,
+    markLocaleSwitchIntent,
+    resolveBrandEntryMode,
+} from '../../resources/js/brand-entry.js';
+
+const createFakeTimerHarness = () => {
+    let nextId = 1;
+    const timeouts = new Map();
+    const intervals = new Map();
+
+    return {
+        timeouts,
+        intervals,
+        setTimeout(callback, delay) {
+            const id = nextId;
+
+            nextId += 1;
+            timeouts.set(id, { callback, delay });
+
+            return id;
+        },
+        clearTimeout(id) {
+            timeouts.delete(id);
+        },
+        setInterval(callback, delay) {
+            const id = nextId;
+
+            nextId += 1;
+            intervals.set(id, { callback, delay });
+
+            return id;
+        },
+        clearInterval(id) {
+            intervals.delete(id);
+        },
+        runTimeout(delay) {
+            const timer = [...timeouts.entries()]
+                .find(([, value]) => value.delay === delay);
+
+            assert.ok(timer, `Missing timeout for ${delay}ms.`);
+            timeouts.delete(timer[0]);
+            timer[1].callback();
+        },
+        runInterval() {
+            const timer = intervals.values().next().value;
+
+            assert.ok(timer, 'Missing scanner interval.');
+            timer.callback();
+        },
+    };
+};
+
+const createMemoryStorage = () => {
+    const values = new Map();
+
+    return {
+        getItem: (key) => values.get(key) ?? null,
+        removeItem: (key) => values.delete(key),
+        setItem: (key, value) => values.set(key, String(value)),
+        values,
+    };
+};
 
 test('transcript remains the scroll target after twenty sequential messages', () => {
     const calls = [];
@@ -43,6 +111,264 @@ test('chat layout constrains the viewport and only the transcript scrolls', () =
     assert.match(css, /\.chat-card\s*\{[^}]*height:\s*100%;[^}]*min-height:\s*0;[^}]*minmax\(0,\s*1fr\)/s);
     assert.match(css, /\.console-panel\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*hidden;/s);
     assert.match(css, /\.transcript\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
+    assert.match(css, /\.search-pipeline__source-grid\s*\{[^}]*minmax\(0,\s*1fr\)/s);
+    assert.match(css, /@media\s*\(max-width:\s*34rem\)[\s\S]*\.search-pipeline__source-grid/s);
+    assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.search-pipeline__scanner/s);
+    assert.match(css, /\.composer__controls:focus-within::after\s*\{[^}]*composer-focus-scan/s);
+});
+
+test('search pipeline progresses and releases every timer when stopped', () => {
+    const timerHarness = createFakeTimerHarness();
+    const stages = [];
+    const scannedSources = [];
+    const lifecycle = createSearchPipelineLifecycle({
+        onStage: (stage) => stages.push(stage),
+        onScan: (source) => scannedSources.push(source),
+        setTimeoutImpl: timerHarness.setTimeout.bind(timerHarness),
+        clearTimeoutImpl: timerHarness.clearTimeout.bind(timerHarness),
+        setIntervalImpl: timerHarness.setInterval.bind(timerHarness),
+        clearIntervalImpl: timerHarness.clearInterval.bind(timerHarness),
+    });
+
+    lifecycle.start();
+
+    assert.equal(lifecycle.isActive(), true);
+    assert.deepEqual(stages, [0]);
+    assert.equal(timerHarness.timeouts.size, 4);
+    assert.equal(timerHarness.intervals.size, 0);
+
+    timerHarness.runTimeout(320);
+    timerHarness.runTimeout(720);
+    timerHarness.runTimeout(1160);
+
+    assert.deepEqual(stages, [0, 1, 2, 3]);
+    assert.deepEqual(scannedSources, [0]);
+    assert.equal(timerHarness.intervals.size, 1);
+
+    timerHarness.runInterval();
+    assert.deepEqual(scannedSources, [0, 1]);
+
+    assert.equal(lifecycle.stop(), true);
+    assert.equal(lifecycle.isActive(), false);
+    assert.equal(timerHarness.timeouts.size, 0);
+    assert.equal(timerHarness.intervals.size, 0);
+});
+
+test('search pipeline stops through coordinator success and error lifecycles', async () => {
+    for (const shouldFail of [false, true]) {
+        const timerHarness = createFakeTimerHarness();
+        const lifecycle = createSearchPipelineLifecycle({
+            setTimeoutImpl: timerHarness.setTimeout.bind(timerHarness),
+            clearTimeoutImpl: timerHarness.clearTimeout.bind(timerHarness),
+            setIntervalImpl: timerHarness.setInterval.bind(timerHarness),
+            clearIntervalImpl: timerHarness.clearInterval.bind(timerHarness),
+        });
+        const coordinator = createRequestCoordinator({
+            perform: async () => {
+                if (shouldFail) throw new Error('Request failed');
+
+                return { answer: 'Ready' };
+            },
+            onStart: () => lifecycle.start(),
+            onSuccess: () => lifecycle.stop(),
+            onError: () => lifecycle.stop(),
+            onFinish: () => lifecycle.stop(),
+        });
+        const result = await coordinator.send('Query');
+
+        assert.equal(result.ok, !shouldFail);
+        assert.equal(lifecycle.isActive(), false);
+        assert.equal(timerHarness.timeouts.size, 0);
+        assert.equal(timerHarness.intervals.size, 0);
+    }
+});
+
+test('restarting the search pipeline invalidates old callbacks without duplicate timers', () => {
+    const timerHarness = createFakeTimerHarness();
+    const stages = [];
+    const lifecycle = createSearchPipelineLifecycle({
+        onStage: (stage) => stages.push(stage),
+        setTimeoutImpl: timerHarness.setTimeout.bind(timerHarness),
+        clearTimeoutImpl: timerHarness.clearTimeout.bind(timerHarness),
+        setIntervalImpl: timerHarness.setInterval.bind(timerHarness),
+        clearIntervalImpl: timerHarness.clearInterval.bind(timerHarness),
+    });
+
+    lifecycle.start();
+    const staleTimer = [...timerHarness.timeouts.values()][0];
+    lifecycle.start();
+
+    assert.deepEqual(stages, [0, 0]);
+    assert.equal(timerHarness.timeouts.size, 4);
+    assert.equal(timerHarness.intervals.size, 0);
+
+    staleTimer.callback();
+    assert.deepEqual(stages, [0, 0]);
+
+    lifecycle.stop();
+});
+
+test('reduced motion shows the current processing state without scheduling animation', () => {
+    const timerHarness = createFakeTimerHarness();
+    const stages = [];
+    const lifecycle = createSearchPipelineLifecycle({
+        animate: false,
+        onStage: (stage) => stages.push(stage),
+        setTimeoutImpl: timerHarness.setTimeout.bind(timerHarness),
+        clearTimeoutImpl: timerHarness.clearTimeout.bind(timerHarness),
+        setIntervalImpl: timerHarness.setInterval.bind(timerHarness),
+        clearIntervalImpl: timerHarness.clearInterval.bind(timerHarness),
+    });
+
+    lifecycle.start();
+
+    assert.deepEqual(stages, [4]);
+    assert.equal(timerHarness.timeouts.size, 0);
+    assert.equal(timerHarness.intervals.size, 0);
+    assert.equal(lifecycle.isActive(), true);
+
+    lifecycle.stop();
+});
+
+test('translation parsing is safe for valid, malformed, and non-object payloads', () => {
+    assert.deepEqual(
+        parseChatTranslations('{"searching":"SEARCHING…"}'),
+        { searching: 'SEARCHING…' },
+    );
+    assert.deepEqual(parseChatTranslations('{broken'), {});
+    assert.deepEqual(parseChatTranslations('[]'), {});
+    assert.deepEqual(parseChatTranslations(null), {});
+
+    for (const locale of ['id', 'en']) {
+        const translations = readFileSync(
+            new URL(`../../lang/${locale}/ui.php`, import.meta.url),
+            'utf8',
+        );
+
+        for (const key of [
+            'searching',
+            'pipeline_accessible',
+            'pipeline_label',
+            'pipeline_processing',
+            'pipeline_query_received',
+            'pipeline_interpreting',
+            'pipeline_semantic',
+            'pipeline_marketplace',
+            'pipeline_ranking',
+            'pipeline_ready',
+            'pipeline_active',
+            'pipeline_queued',
+            'marketplace_scan',
+        ]) {
+            assert.match(translations, new RegExp(`'${key}'\\s*=>`));
+        }
+    }
+});
+
+test('branding entry mode distinguishes area changes navigation and locale switches', () => {
+    const storage = createMemoryStorage();
+
+    assert.equal(resolveBrandEntryMode({ area: 'user', storage }), 'full');
+    assert.equal(storage.getItem(BRAND_AREA_STORAGE_KEY), 'user');
+    assert.equal(resolveBrandEntryMode({ area: 'user', storage }), 'none');
+    assert.equal(resolveBrandEntryMode({ area: 'admin', storage }), 'quiet');
+    assert.equal(resolveBrandEntryMode({ area: 'admin', storage }), 'none');
+
+    assert.equal(markLocaleSwitchIntent(storage), true);
+    assert.equal(storage.getItem(LOCALE_SWITCH_STORAGE_KEY), 'true');
+    assert.equal(resolveBrandEntryMode({ area: 'admin', storage }), 'locale');
+    assert.equal(storage.getItem(LOCALE_SWITCH_STORAGE_KEY), null);
+    assert.equal(resolveBrandEntryMode({ area: 'admin', storage }), 'none');
+});
+
+test('locale forms mark intent once without delaying native submission', () => {
+    const storage = createMemoryStorage();
+    const listeners = [];
+    const form = {
+        dataset: {},
+        addEventListener(event, callback) {
+            assert.equal(event, 'submit');
+            listeners.push(callback);
+        },
+    };
+    const root = {
+        querySelectorAll: () => [form],
+    };
+
+    assert.equal(bindLocaleSwitchMarkers({ root, storage }), 1);
+    assert.equal(bindLocaleSwitchMarkers({ root, storage }), 1);
+    assert.equal(listeners.length, 1);
+
+    listeners[0]();
+
+    assert.equal(storage.getItem(LOCALE_SWITCH_STORAGE_KEY), 'true');
+});
+
+test('branding initialization applies only the resolved reusable motion class', () => {
+    const storage = createMemoryStorage();
+    const classes = new Set();
+    const root = {
+        dataset: { brandArea: 'user' },
+        querySelectorAll: () => [],
+        classList: {
+            add: (...names) => names.forEach((name) => classes.add(name)),
+            remove: (...names) => names.forEach((name) => classes.delete(name)),
+            toggle(name, force) {
+                if (force) classes.add(name);
+                else classes.delete(name);
+            },
+        },
+    };
+
+    assert.equal(initializeBrandEntry({ root, storage }), 'full');
+    assert.deepEqual(
+        [...classes].sort(),
+        ['brand-entry', 'brand-entry--full'],
+    );
+    assert.equal(root.dataset.brandEntryMode, 'full');
+
+    assert.equal(initializeBrandEntry({ root, storage }), 'none');
+    assert.deepEqual([...classes], []);
+    assert.equal(root.dataset.brandEntryMode, 'none');
+});
+
+test('branding storage failures never block page initialization', () => {
+    const unavailableStorage = {
+        getItem() {
+            throw new Error('Storage disabled');
+        },
+        setItem() {
+            throw new Error('Storage disabled');
+        },
+    };
+
+    assert.equal(
+        resolveBrandEntryMode({ area: 'admin', storage: unavailableStorage }),
+        'quiet',
+    );
+    assert.equal(markLocaleSwitchIntent(unavailableStorage), false);
+});
+
+test('user and admin entrypoints share branding initialization and locale hooks', () => {
+    const userJavaScript = readFileSync(
+        new URL('../../resources/js/app.js', import.meta.url),
+        'utf8',
+    );
+    const adminJavaScript = readFileSync(
+        new URL('../../resources/js/admin.js', import.meta.url),
+        'utf8',
+    );
+    const localeSwitch = readFileSync(
+        new URL(
+            '../../resources/views/components/locale-switch.blade.php',
+            import.meta.url,
+        ),
+        'utf8',
+    );
+
+    assert.match(userJavaScript, /initializeBrandEntry\(\{ area: 'user' \}\)/);
+    assert.match(adminJavaScript, /initializeBrandEntry\(\{ area: 'admin' \}\)/);
+    assert.match(localeSwitch, /data-locale-switch-form/);
 });
 
 test('request coordinator allows only one fetch for concurrent sends', async () => {

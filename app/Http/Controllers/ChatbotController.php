@@ -1260,7 +1260,7 @@ final class ChatbotController extends Controller
                     3,
                 ),
             ],
-            'similarity_threshold' => null,
+            'similarity_    hold' => null,
             'ranking_authority' => 'backend',
             'duration_ms' => $this->searchBudget->elapsedMilliseconds(),
             'timed_out' => $this->searchBudget->hardExceeded(),

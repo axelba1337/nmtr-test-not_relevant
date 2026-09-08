@@ -32,6 +32,7 @@ final class LocalizationTest extends TestCase
             ->assertSee('Siap membantu')
             ->assertSee(route('locale.update', 'id'))
             ->assertSee(route('locale.update', 'en'))
+            ->assertSee('data-locale-switch-form', false)
             ->assertSee('aria-pressed="true"', false);
     }
 

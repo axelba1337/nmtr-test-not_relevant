@@ -1,6 +1,6 @@
 <nav class="locale-switch" aria-label="{{ __('ui.locale.label') }}">
     @foreach (['id' => 'ID', 'en' => 'EN'] as $localeCode => $localeLabel)
-        <form method="POST" action="{{ route('locale.update', $localeCode) }}">
+        <form method="POST" action="{{ route('locale.update', $localeCode) }}" data-locale-switch-form>
             @csrf
             <button
                 class="locale-switch__option {{ app()->isLocale($localeCode) ? 'is-active' : '' }}"

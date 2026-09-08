@@ -12,6 +12,7 @@
 </head>
 <body
     class="admin-body"
+    data-brand-area="admin"
     data-admin-translations="{{ json_encode(__('ui.admin.js'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
 >
     <a class="skip-link" href="#admin-content">{{ __('ui.admin.skip') }}</a>
@@ -23,14 +24,15 @@
             aria-label="{{ __('ui.admin.navigation') }}"
             data-admin-sidebar
         >
-            <div class="admin-sidebar__brand">
+            <div class="admin-sidebar__brand" data-brand-lock>
                 <img
                     class="admin-sidebar__logo"
                     src="{{ asset('images/branding/neomatra-logo.png') }}"
                     alt=""
                     aria-hidden="true"
+                    data-brand-mark
                 >
-                <span class="admin-sidebar__brand-copy">
+                <span class="admin-sidebar__brand-copy" data-brand-copy>
                     <span class="admin-sidebar__eyebrow">NMTR / CONTROL</span>
                     <span class="admin-sidebar__name">{{ config('app.name') }}</span>
                 </span>
