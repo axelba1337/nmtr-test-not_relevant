@@ -20,14 +20,16 @@
             <input id="category-slug" name="slug" value="{{ old('slug', $category->slug ?? '') }}" maxlength="255" placeholder="{{ __('ui.admin_pages.common.auto_slug') }}" @error('slug') aria-invalid="true" @enderror>
             @error('slug')<p class="form-error">{{ $message }}</p>@enderror
         </div>
+        @php($isSupportedRootEdit = isset($category) && $category->parent_id === null)
         <div class="form-field">
             <label for="category-parent">{{ __('ui.admin_pages.categories.parent') }}</label>
-            <select id="category-parent" name="parent_id" @error('parent_id') aria-invalid="true" @enderror>
-                <option value="">{{ __('ui.admin_pages.categories.no_parent') }}</option>
+            <select id="category-parent" name="parent_id" @required(! $isSupportedRootEdit) @error('parent_id') aria-invalid="true" @enderror>
+                <option value="" @disabled(! $isSupportedRootEdit)>{{ $isSupportedRootEdit ? __('ui.admin_pages.categories.no_parent') : __('ui.admin_pages.categories.choose_parent') }}</option>
                 @foreach ($parents as $parent)
                     <option value="{{ $parent->id }}" @selected((string) old('parent_id', $category->parent_id ?? '') === (string) $parent->id)>{{ $parent->name }}</option>
                 @endforeach
             </select>
+            <p class="form-hint">{{ __('ui.admin_pages.categories.parent_scope_help') }}</p>
             @error('parent_id')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-field">

@@ -160,10 +160,11 @@ return [
         'common' => ['auto_slug' => 'Generated automatically when left blank.', 'description' => 'Description', 'failed' => 'Please review the entered data.', 'pagination_summary' => ':first–:last of :total', 'relations' => 'Relations', 'sort_order' => 'Sort order'],
         'categories' => [
             'active' => 'Active category', 'active_help' => 'Can be selected for new products and knowledge.', 'add' => 'Add Category',
-            'check_data' => 'Please review the category data.', 'create_help' => 'Create a primary product category or subcategory.',
+            'check_data' => 'Please review the category data.', 'create_help' => 'Create a subcategory within one of the Neomatra product domains.',
             'delete_confirm' => 'Delete this category?', 'description' => 'Manage the category structure used by products and knowledge.',
             'edit' => 'Edit Category', 'edit_help' => 'Update the category structure and status.', 'empty' => 'No categories match the filters.',
             'heading' => 'Categories and Subcategories', 'name' => 'Category name', 'new' => 'New Category', 'no_parent' => 'No parent',
+            'choose_parent' => 'Choose a parent category', 'parent_scope_help' => 'New categories must belong to one of the Neomatra product domains.',
             'pagination' => 'Category navigation', 'parent' => 'Parent category', 'parent_short' => 'Parent',
             'product_count' => '{0} No products|{1} :count product|[2,*] :count products', 'save' => 'Save Category',
             'search_placeholder' => 'Name, slug, or description', 'slug' => 'Slug',
@@ -408,6 +409,9 @@ return [
         ],
         'custom' => [
             'category_parent_cycle' => 'The parent category cannot create a cycle.',
+            'category_root_create_forbidden' => 'New root categories cannot be created from Admin. Select a parent category within the Neomatra scope.',
+            'category_parent_unsupported' => 'The parent category must belong to one of the supported Neomatra product domains.',
+            'category_must_remain_scoped' => 'The category must remain within a supported Neomatra product domain.',
             'raw_payload_object' => 'The raw payload must be a JSON object or array.',
             'product_attributes_object' => 'The attributes must be a JSON object or array.',
             'product_alias_max' => 'Each alias must not exceed 255 characters.',

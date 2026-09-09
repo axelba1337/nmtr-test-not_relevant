@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Category;
+use App\Services\Catalog\CatalogScope;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -41,9 +42,52 @@ class StoreCategoryRequest extends FormRequest
     {
         return [function (Validator $validator): void {
             $category = $this->route('category');
-            $parentId = $this->integer('parent_id');
+            $scope = app(CatalogScope::class);
+            $parentValue = $this->input('parent_id');
 
-            if (! $category instanceof Category || $parentId < 1) {
+            if ($parentValue === null) {
+                if (! $category instanceof Category) {
+                    $validator->errors()->add(
+                        'parent_id',
+                        __('ui.validation.custom.category_root_create_forbidden'),
+                    );
+
+                    return;
+                }
+
+                $submittedSlug = strtolower(trim((string) $this->input('slug')));
+
+                if (! $scope->isSupportedRoot($category)
+                    || ! in_array(
+                        $submittedSlug,
+                        $scope->supportedRootSlugs(),
+                        true,
+                    )) {
+                    $validator->errors()->add(
+                        'parent_id',
+                        __('ui.validation.custom.category_must_remain_scoped'),
+                    );
+                }
+
+                return;
+            }
+
+            if (! is_numeric($parentValue) || (int) $parentValue < 1) {
+                return;
+            }
+
+            $parentId = (int) $parentValue;
+            $parent = Category::query()->find($parentId);
+
+            if ($parent instanceof Category
+                && ! $scope->canCreateChildUnder($parent)) {
+                $validator->errors()->add(
+                    'parent_id',
+                    __('ui.validation.custom.category_parent_unsupported'),
+                );
+            }
+
+            if (! $category instanceof Category) {
                 return;
             }
 

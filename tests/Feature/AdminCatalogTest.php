@@ -109,29 +109,23 @@ final class AdminCatalogTest extends TestCase
     public function test_admin_can_manage_category_hierarchy_safely(): void
     {
         $admin = $this->createUser();
+        $parent = $this->createCategory();
 
         $this->actingAs($admin)
             ->post(route('admin.categories.store'), [
-                'name' => '  PC dan Komponen  ',
+                'parent_id' => $parent->id,
+                'name' => '  GPU  ',
                 'slug' => '',
                 'description' => '  Kategori MVP  ',
                 'is_active' => '1',
-                'sort_order' => '1',
+                'sort_order' => '2',
             ])
             ->assertRedirect(route('admin.categories.index'))
             ->assertSessionHas('success');
 
-        $parent = Category::query()->sole();
-        $this->assertSame('PC dan Komponen', $parent->name);
-        $this->assertSame('pc-dan-komponen', $parent->slug);
-
-        $child = Category::query()->create([
-            'parent_id' => $parent->id,
-            'name' => 'GPU',
-            'slug' => 'gpu',
-            'is_active' => true,
-            'sort_order' => 2,
-        ]);
+        $child = Category::query()->where('slug', 'gpu')->sole();
+        $this->assertSame('GPU', $child->name);
+        $this->assertSame($parent->id, $child->parent_id);
 
         $this->actingAs($admin)
             ->put(route('admin.categories.update', $parent), [

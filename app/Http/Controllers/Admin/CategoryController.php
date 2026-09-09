@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\KnowledgeItem;
 use App\Models\Product;
 use App\Models\ProductAlias;
+use App\Services\Catalog\CatalogScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,10 @@ use Illuminate\View\View;
 
 final class CategoryController extends Controller
 {
+    public function __construct(
+        private readonly CatalogScope $catalogScope,
+    ) {}
+
     public function index(Request $request): View
     {
         $this->ensureAdmin($request);
@@ -55,7 +60,7 @@ final class CategoryController extends Controller
         $this->ensureAdmin($request);
 
         return view('admin.categories.create', [
-            'parents' => $this->parentOptions(),
+            'parents' => $this->catalogScope->validParentOptions(),
         ]);
     }
 
@@ -73,7 +78,7 @@ final class CategoryController extends Controller
 
         return view('admin.categories.edit', [
             'category' => $category,
-            'parents' => $this->parentOptions($category),
+            'parents' => $this->catalogScope->validParentOptions($category),
         ]);
     }
 
@@ -125,15 +130,6 @@ final class CategoryController extends Controller
 
         return redirect()->route('admin.categories.index')
             ->with('success', __('ui.messages.admin.category.deleted'));
-    }
-
-    private function parentOptions(?Category $except = null)
-    {
-        return Category::query()
-            ->when($except !== null, fn (Builder $query): Builder => $query
-                ->where('id', '!=', $except->getKey()))
-            ->ordered()
-            ->get(['id', 'name', 'parent_id']);
     }
 
     private function markRelatedEmbeddingsStale(Category $category): void

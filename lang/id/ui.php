@@ -250,11 +250,12 @@ return [
         'categories' => [
             'active' => 'Kategori aktif', 'active_help' => 'Dapat dipilih untuk produk dan knowledge baru.',
             'add' => 'Tambah Kategori', 'check_data' => 'Periksa kembali data kategori.',
-            'create_help' => 'Buat kategori utama atau subkategori produk.',
+            'create_help' => 'Buat subkategori di dalam salah satu domain produk Neomatra.',
             'delete_confirm' => 'Hapus kategori ini?', 'description' => 'Kelola struktur kategori yang dipakai produk dan knowledge.',
             'edit' => 'Edit Kategori', 'edit_help' => 'Perbarui struktur dan status kategori.',
             'empty' => 'Belum ada kategori yang sesuai dengan filter.', 'heading' => 'Kategori dan Subkategori',
             'name' => 'Nama kategori', 'new' => 'Kategori Baru', 'no_parent' => 'Tanpa induk',
+            'choose_parent' => 'Pilih kategori induk', 'parent_scope_help' => 'Kategori baru wajib berada di dalam salah satu domain produk Neomatra.',
             'pagination' => 'Navigasi kategori', 'parent' => 'Kategori induk', 'parent_short' => 'Induk',
             'product_count' => '{0} Tidak ada produk|{1} :count produk|[2,*] :count produk',
             'save' => 'Simpan Kategori', 'search_placeholder' => 'Nama, slug, atau deskripsi',
@@ -528,6 +529,9 @@ return [
         ],
         'custom' => [
             'category_parent_cycle' => 'Kategori induk tidak boleh membentuk siklus.',
+            'category_root_create_forbidden' => 'Kategori utama baru tidak dapat dibuat dari Admin. Pilih kategori induk dalam domain Neomatra.',
+            'category_parent_unsupported' => 'Kategori induk harus berada dalam salah satu domain produk Neomatra yang didukung.',
+            'category_must_remain_scoped' => 'Kategori harus tetap berada dalam domain produk Neomatra yang didukung.',
             'raw_payload_object' => 'Raw payload harus berupa object atau array JSON.',
             'product_attributes_object' => 'Atribut harus berupa object atau array JSON.',
             'product_alias_max' => 'Setiap alias maksimal 255 karakter.',

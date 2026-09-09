@@ -43,6 +43,21 @@ final class CatalogScope
             && in_array($root->slug, $this->supportedRootSlugs(), true);
     }
 
+    public function isSupportedRoot(Category $category): bool
+    {
+        return $category->parent_id === null
+            && in_array(
+                strtolower(trim((string) $category->slug)),
+                $this->supportedRootSlugs(),
+                true,
+            );
+    }
+
+    public function canCreateChildUnder(Category $category): bool
+    {
+        return $this->supports($category);
+    }
+
     public function supportsId(int $categoryId): bool
     {
         $category = Category::query()->with('parent.parent')->find($categoryId);
@@ -60,5 +75,44 @@ final class CatalogScope
             ->get(['id', 'parent_id', 'name', 'slug', 'is_active', 'sort_order'])
             ->filter(fn (Category $category): bool => $this->supports($category))
             ->values();
+    }
+
+    /** @return Collection<int, Category> */
+    public function validParentOptions(?Category $category = null): Collection
+    {
+        return $this->categoryOptions()
+            ->reject(function (Category $candidate) use ($category): bool {
+                if (! $category instanceof Category) {
+                    return false;
+                }
+
+                return $this->isSelfOrDescendantOf($candidate, $category);
+            })
+            ->values();
+    }
+
+    private function isSelfOrDescendantOf(
+        Category $candidate,
+        Category $category,
+    ): bool {
+        $current = $candidate;
+        $visited = [];
+
+        while ($current instanceof Category) {
+            if ((int) $current->getKey() === (int) $category->getKey()) {
+                return true;
+            }
+
+            if (isset($visited[$current->getKey()])) {
+                return true;
+            }
+
+            $visited[$current->getKey()] = true;
+            $current = $current->relationLoaded('parent')
+                ? $current->parent
+                : $current->parent()->first();
+        }
+
+        return false;
     }
 }
