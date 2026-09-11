@@ -23,7 +23,7 @@ final class ChatbotQueryRequest extends FormRequest
             'platform' => ['nullable', 'string', 'max:120'],
             'condition' => [
                 'nullable',
-                Rule::in(Listing::conditions()),
+                Rule::in(Listing::publicConditionFilters()),
             ],
             'session_key' => ['nullable', 'uuid'],
             'history' => ['nullable', 'array', 'max:6'],
@@ -53,13 +53,15 @@ final class ChatbotQueryRequest extends FormRequest
         $location = $this->input('location');
         $budget = $this->input('budget_max');
 
+        $condition = $this->nullableString('condition');
+
         $this->merge([
             'message' => is_string($message) ? trim($message) : $message,
             'location' => is_string($location) && trim($location) !== ''
                 ? trim($location)
                 : null,
             'platform' => $this->nullableString('platform'),
-            'condition' => $this->nullableString('condition'),
+            'condition' => $condition === 'all' ? null : $condition,
             'budget_max' => is_numeric($budget)
                 ? (int) $budget
                 : $budget,

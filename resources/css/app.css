@@ -267,6 +267,13 @@ a { color: inherit; }
     padding: 1rem 0;
 }
 
+.quick-filters__help {
+    margin: 0.75rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    line-height: 1.5;
+}
+
 .quick-filters__grid label {
     display: grid;
     gap: 0.35rem;

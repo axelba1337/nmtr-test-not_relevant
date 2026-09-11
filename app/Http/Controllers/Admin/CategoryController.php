@@ -10,6 +10,7 @@ use App\Models\KnowledgeItem;
 use App\Models\Product;
 use App\Models\ProductAlias;
 use App\Services\Catalog\CatalogScope;
+use App\Support\AdminIndexSort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,8 +32,9 @@ final class CategoryController extends Controller
         ]);
         $search = trim((string) ($filters['search'] ?? ''));
         $status = (string) ($filters['status'] ?? 'all');
+        $sort = AdminIndexSort::normalize($request->query('sort'));
 
-        $categories = Category::query()
+        $query = Category::query()
             ->with('parent:id,name')
             ->withCount(['children', 'products'])
             ->when($search !== '', fn (Builder $query): Builder => $query
@@ -43,15 +45,23 @@ final class CategoryController extends Controller
             ->when($status === 'active', fn (Builder $query): Builder => $query
                 ->where('is_active', true))
             ->when($status === 'inactive', fn (Builder $query): Builder => $query
-                ->where('is_active', false))
-            ->ordered()
-            ->paginate(15)
+                ->where('is_active', false));
+
+        $categories = AdminIndexSort::apply(
+            $query,
+            $sort,
+            'name',
+            static fn (Builder $query): Builder => $query
+                ->orderByDesc('is_active'),
+        )
+            ->paginate(AdminIndexSort::PER_PAGE)
             ->withQueryString();
 
         return view('admin.categories.index', compact(
             'categories',
             'search',
             'status',
+            'sort',
         ));
     }
 

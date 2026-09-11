@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateKnowledgeItemRequest;
 use App\Models\Category;
 use App\Models\KnowledgeItem;
 use App\Services\KnowledgeEmbeddingService;
+use App\Support\AdminIndexSort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,8 +32,9 @@ final class KnowledgeItemController extends Controller
         $search = trim((string) ($filters['search'] ?? ''));
         $status = (string) ($filters['status'] ?? 'all');
         $embeddingStatus = (string) ($filters['embedding_status'] ?? 'all');
+        $sort = AdminIndexSort::normalize($request->query('sort'));
 
-        $items = KnowledgeItem::query()
+        $query = KnowledgeItem::query()
             ->with('category:id,name')
             ->when(
                 $search !== '',
@@ -67,12 +69,16 @@ final class KnowledgeItemController extends Controller
                 static fn (Builder $query): Builder => $query
                     ->where('is_active', true)
                     ->whereNotNull('embedding_error'),
-            )
-            ->orderByDesc('is_featured')
-            ->orderBy('sort_order')
-            ->orderByDesc('updated_at')
-            ->orderBy('id')
-            ->paginate(15)
+            );
+
+        $items = AdminIndexSort::apply(
+            $query,
+            $sort,
+            'title',
+            static fn (Builder $query): Builder => $query
+                ->orderByDesc('is_active'),
+        )
+            ->paginate(AdminIndexSort::PER_PAGE)
             ->withQueryString();
 
         return view('admin.knowledge.index', [
@@ -80,6 +86,7 @@ final class KnowledgeItemController extends Controller
             'search' => $search,
             'status' => $status,
             'embeddingStatus' => $embeddingStatus,
+            'sort' => $sort,
             'categories' => $this->categoryOptions(),
         ]);
     }

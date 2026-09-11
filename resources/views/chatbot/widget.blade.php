@@ -64,6 +64,7 @@
                     <aside class="workspace-rail" aria-label="{{ __('ui.chat.filters_aria') }}">
                         <details class="quick-filters" data-filters open>
                             <summary>{{ __('ui.chat.filters') }}</summary>
+                            <p class="quick-filters__help">{{ __('ui.chat.filters_help') }}</p>
                             <div class="quick-filters__grid">
                         <label>
                             <span>{{ __('ui.chat.max_budget') }}</span>
@@ -73,7 +74,7 @@
                             <span>{{ __('ui.chat.condition') }}</span>
                             <select name="condition" data-filter>
                                 <option value="">{{ __('ui.chat.all_conditions') }}</option>
-                                @foreach (\App\Models\Listing::conditions() as $condition)
+                                @foreach (\App\Models\Listing::publicConditionFilters() as $condition)
                                     <option value="{{ $condition }}">{{ __('ui.labels.'.$condition) }}</option>
                                 @endforeach
                             </select>

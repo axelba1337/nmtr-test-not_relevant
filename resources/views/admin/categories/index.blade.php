@@ -27,6 +27,7 @@
                     <option value="inactive" @selected($status === 'inactive')>{{ __('ui.common.inactive') }}</option>
                 </select>
             </div>
+            <x-admin-sort-select id="category-sort" :sort="$sort" />
             <div class="filter-bar__actions">
                 <button class="button button--secondary" type="submit">{{ __('ui.common.apply') }}</button>
                 <a class="button button--text" href="{{ route('admin.categories.index') }}">{{ __('ui.common.reset') }}</a>

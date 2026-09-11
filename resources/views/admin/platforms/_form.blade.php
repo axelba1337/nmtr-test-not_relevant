@@ -1,15 +1,24 @@
 <form class="admin-form" method="POST" action="{{ $action }}" data-admin-form>
-    @csrf @isset($method) @method($method) @endisset
-    @if($errors->any())<div class="alert alert--error" role="alert"><p>{{ __('ui.admin_pages.platforms.check_data') }}</p><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+    @csrf
+    @method($method)
+
+    @if($errors->any())
+        <div class="alert alert--error" role="alert">
+            <p>{{ __('ui.admin_pages.platforms.check_data') }}</p>
+            <ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+        </div>
+    @endif
+
+    <dl class="data-list">
+        <div><dt>{{ __('ui.admin_pages.platforms.name') }}</dt><dd>{{ $platform->name }}</dd></div>
+        <div><dt>Slug</dt><dd><code>{{ $platform->slug }}</code></dd></div>
+    </dl>
+
     <div class="admin-form__grid">
-        <div class="form-field"><label for="platform-name">{{ __('ui.admin_pages.platforms.name') }}</label><input id="platform-name" name="name" value="{{ old('name', $platform->name ?? '') }}" required maxlength="255">@error('name')<p class="form-error">{{ $message }}</p>@enderror</div>
-        <div class="form-field"><label for="platform-slug">Slug</label><input id="platform-slug" name="slug" value="{{ old('slug', $platform->slug ?? '') }}" maxlength="255" placeholder="{{ __('ui.admin_pages.common.auto_slug') }}">@error('slug')<p class="form-error">{{ $message }}</p>@enderror</div>
-        <div class="form-field"><label for="platform-source-type">{{ __('ui.admin_pages.platforms.source_type') }}</label><select id="platform-source-type" name="source_type" required>@foreach(\App\Models\Platform::sourceTypes() as $type)<option value="{{ $type }}" @selected(old('source_type', $platform->source_type ?? \App\Models\Platform::SOURCE_DEMO) === $type)>{{ __('ui.admin_pages.platforms.values.'.$type) }}</option>@endforeach</select></div>
-        <div class="form-field"><label for="platform-access-type">{{ __('ui.admin_pages.platforms.access_type') }}</label><select id="platform-access-type" name="access_type" required>@foreach(\App\Models\Platform::accessTypes() as $type)<option value="{{ $type }}" @selected(old('access_type', $platform->access_type ?? \App\Models\Platform::ACCESS_DEMO_DATASET) === $type)>{{ __('ui.admin_pages.platforms.values.'.$type) }}</option>@endforeach</select></div>
-        <div class="form-field"><label for="platform-connector">{{ __('ui.admin_pages.platforms.connector_key') }}</label><input id="platform-connector" name="connector" value="{{ old('connector', $platform->connector ?? '') }}" maxlength="255" placeholder="{{ __('ui.admin_pages.platforms.connector_example') }}"><p class="form-help">{{ __('ui.admin_pages.platforms.connector_help') }}</p>@error('connector')<p class="form-error">{{ $message }}</p>@enderror</div>
-        <div class="form-field"><label for="platform-base-url">{{ __('ui.admin_pages.platforms.public_url') }}</label><input id="platform-base-url" name="base_url" type="url" value="{{ old('base_url', $platform->base_url ?? '') }}" maxlength="255" placeholder="https://example.com">@error('base_url')<p class="form-error">{{ $message }}</p>@enderror</div>
-        <div class="form-field"><label for="platform-status">{{ __('ui.admin_pages.platforms.connector_status') }}</label><select id="platform-status" name="status" required>@foreach(\App\Models\Platform::statuses() as $value)<option value="{{ $value }}" @selected(old('status', $platform->status ?? \App\Models\Platform::STATUS_READY) === $value)>{{ __('ui.labels.'.$value) }}</option>@endforeach</select></div>
-        <fieldset class="form-options"><legend>{{ __('ui.admin_pages.platforms.availability') }}</legend><input type="hidden" name="is_active" value="0"><input type="hidden" name="sync_enabled" value="0"><label class="check-field"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', $platform->is_active ?? true))><span><strong>{{ __('ui.admin_pages.platforms.active') }}</strong><small>{{ __('ui.admin_pages.platforms.active_help') }}</small></span></label><label class="check-field"><input name="sync_enabled" type="checkbox" value="1" @checked(old('sync_enabled', $platform->sync_enabled ?? false))><span><strong>{{ __('ui.admin_pages.platforms.sync_active') }}</strong><small>{{ __('ui.admin_pages.platforms.sync_help') }}</small></span></label></fieldset>
+        <div class="form-field"><label for="platform-base-url">{{ __('ui.admin_pages.platforms.public_url') }}</label><input id="platform-base-url" name="base_url" type="url" value="{{ old('base_url', $platform->base_url) }}" maxlength="255" placeholder="https://example.com">@error('base_url')<p class="form-error">{{ $message }}</p>@enderror</div>
+        <fieldset class="form-options"><legend>{{ __('ui.admin_pages.platforms.availability') }}</legend><input type="hidden" name="is_active" value="0"><label class="check-field"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', $platform->is_active))><span><strong>{{ __('ui.admin_pages.platforms.active') }}</strong><small>{{ __('ui.admin_pages.platforms.active_help') }}</small></span></label></fieldset>
     </div>
+
+    <p class="form-help">{{ __('ui.admin_pages.platforms.identity_locked') }}</p>
     <div class="form-actions"><a class="button button--secondary" href="{{ route('admin.platforms.index') }}">{{ __('ui.common.cancel') }}</a><button class="button button--primary" type="submit" data-busy-label="{{ __('ui.common.saving') }}">{{ $submitLabel }}</button></div>
 </form>

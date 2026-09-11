@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\KnowledgeItemController;
 use App\Http\Controllers\Admin\ListingController;
 use App\Http\Controllers\Admin\PlatformController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProductEmbeddingController;
 use App\Http\Controllers\Admin\UnansweredQueryController;
 use App\Http\Controllers\Admin\UnmatchedListingController;
 use App\Http\Controllers\ListingRedirectController;
@@ -48,14 +49,14 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
 
             Route::resource('categories', CategoryController::class)
                 ->except('show');
+            Route::post(
+                '/products/{product}/embedding/rebuild',
+                [ProductEmbeddingController::class, 'rebuildOne'],
+            )->name('products.embedding.rebuild');
             Route::resource('products', ProductController::class)
                 ->except('show');
-            Route::post(
-                '/platforms/{platform}/sync',
-                [PlatformController::class, 'sync'],
-            )->name('platforms.sync');
             Route::resource('platforms', PlatformController::class)
-                ->except('show');
+                ->only(['index', 'edit', 'update']);
             Route::get(
                 '/listings/unmatched',
                 [ListingController::class, 'unmatched'],

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\ChatbotQueryLog;
 use App\Models\KnowledgeItem;
 use App\Models\Listing;
-use App\Models\MarketplaceSyncRun;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -39,9 +38,6 @@ final class DashboardController extends Controller
         $unmatchedListingsCount = Listing::query()
             ->active()
             ->whereNull('product_id')
-            ->count();
-        $failedSyncCount = MarketplaceSyncRun::query()
-            ->where('status', MarketplaceSyncRun::STATUS_FAILED)
             ->count();
         $productsWithoutListingsQuery = Product::query()
             ->active()
@@ -142,7 +138,6 @@ final class DashboardController extends Controller
             'activeProductsCount' => $activeProductsCount,
             'pendingUnansweredCount' => $pendingUnansweredCount,
             'unmatchedListingsCount' => $unmatchedListingsCount,
-            'failedSyncCount' => $failedSyncCount,
             'productsWithoutListingsCount' => $productsWithoutListingsCount,
             'productsWithoutListings' => $productsWithoutListings,
             'activeKnowledgeCount' => $knowledgeStats['active'],

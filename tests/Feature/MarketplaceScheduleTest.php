@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 final class MarketplaceScheduleTest extends TestCase
 {
-    public function test_only_olx_is_scheduled_every_six_hours_without_overlap(): void
+    public function test_no_marketplace_sync_is_scheduled_for_the_manual_mvp_sources(): void
     {
         $events = collect(app(Schedule::class)->events());
         $marketplaceEvents = $events->filter(
@@ -17,21 +17,6 @@ final class MarketplaceScheduleTest extends TestCase
             ),
         )->values();
 
-        $this->assertCount(1, $marketplaceEvents);
-        $event = $marketplaceEvents->first();
-        $this->assertStringContainsString(
-            'marketplace:sync olx --mode=scheduled',
-            (string) $event->command,
-        );
-        $this->assertSame('0 */6 * * *', $event->expression);
-        $this->assertTrue($event->withoutOverlapping);
-        $this->assertSame(360, $event->expiresAt);
-
-        foreach (['tokopedia', 'shopee', 'facebook', 'carousell'] as $slug) {
-            $this->assertStringNotContainsString(
-                "marketplace:sync {$slug}",
-                $marketplaceEvents->pluck('command')->implode('\n'),
-            );
-        }
+        $this->assertCount(0, $marketplaceEvents);
     }
 }

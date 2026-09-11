@@ -26,35 +26,35 @@ final class NeomatraCatalogSeeder extends Seeder
             ],
         );
 
-        $root = Category::query()->updateOrCreate(
-            ['slug' => 'pc-dan-komponen'],
-            [
-                'parent_id' => null,
-                'name' => 'PC Components',
-                'description' => 'Komponen utama komputer desktop.',
-                'is_active' => true,
-                'sort_order' => 10,
-            ],
-        );
-
+        $taxonomy = (array) config('neomatra.scope.category_taxonomy', []);
         $categories = [];
 
-        foreach ([
-            ['GPU', 'gpu', 10],
-            ['CPU', 'cpu', 20],
-            ['RAM', 'ram', 30],
-            ['SSD', 'ssd', 40],
-        ] as [$name, $slug, $sortOrder]) {
+        foreach ($taxonomy as $slug => $definition) {
             $categories[$slug] = Category::query()->updateOrCreate(
                 ['slug' => $slug],
                 [
-                    'parent_id' => $root->id,
-                    'name' => $name,
-                    'description' => null,
+                    'parent_id' => null,
+                    'name' => (string) $definition['name'],
+                    'description' => $definition['description'] ?? null,
                     'is_active' => true,
-                    'sort_order' => $sortOrder,
+                    'sort_order' => (int) $definition['sort_order'],
                 ],
             );
+        }
+
+        foreach ($taxonomy as $parentSlug => $definition) {
+            foreach ((array) ($definition['children'] ?? []) as $slug => $child) {
+                $categories[$slug] = Category::query()->updateOrCreate(
+                    ['slug' => $slug],
+                    [
+                        'parent_id' => $categories[$parentSlug]->id,
+                        'name' => (string) $child['name'],
+                        'description' => null,
+                        'is_active' => true,
+                        'sort_order' => (int) $child['sort_order'],
+                    ],
+                );
+            }
         }
 
         $platforms = [];
@@ -62,7 +62,7 @@ final class NeomatraCatalogSeeder extends Seeder
         foreach ([
             ['Tokopedia', 'tokopedia', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://www.tokopedia.com', false],
             ['Shopee', 'shopee', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://shopee.co.id', false],
-            ['OLX', 'olx', Platform::SOURCE_SCRAPE, Platform::ACCESS_PUBLIC_HTML, 'olx-public-web', 'https://www.olx.co.id', true],
+            ['OLX', 'olx', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://www.olx.co.id', false],
             ['Facebook Marketplace', 'facebook', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://www.facebook.com/marketplace/', false],
             ['Carousell', 'carousell', Platform::SOURCE_MANUAL, Platform::ACCESS_CSV_IMPORT, 'manual-import', 'https://id.carousell.com', false],
         ] as [$name, $slug, $sourceType, $accessType, $connector, $baseUrl, $syncEnabled]) {

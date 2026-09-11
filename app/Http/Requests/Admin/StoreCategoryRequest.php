@@ -33,7 +33,7 @@ class StoreCategoryRequest extends FormRequest
             ],
             'description' => ['nullable', 'string', 'max:10000'],
             'is_active' => ['required', 'boolean'],
-            'sort_order' => ['required', 'integer', 'min:0', 'max:4294967295'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
         ];
     }
 
@@ -44,6 +44,8 @@ class StoreCategoryRequest extends FormRequest
             $category = $this->route('category');
             $scope = app(CatalogScope::class);
             $parentValue = $this->input('parent_id');
+            $submittedSlug = strtolower(trim((string) $this->input('slug')));
+            $submittedName = trim((string) $this->input('name'));
 
             if ($parentValue === null) {
                 if (! $category instanceof Category) {
@@ -55,19 +57,20 @@ class StoreCategoryRequest extends FormRequest
                     return;
                 }
 
-                $submittedSlug = strtolower(trim((string) $this->input('slug')));
-
                 if (! $scope->isSupportedRoot($category)
-                    || ! in_array(
-                        $submittedSlug,
-                        $scope->supportedRootSlugs(),
-                        true,
-                    )) {
+                    || ! $scope->matchesCanonicalParent($submittedSlug, null)) {
                     $validator->errors()->add(
                         'parent_id',
                         __('ui.validation.custom.category_must_remain_scoped'),
                     );
                 }
+
+                $this->validateCanonicalIdentity(
+                    $validator,
+                    $scope,
+                    $submittedSlug,
+                    $submittedName,
+                );
 
                 return;
             }
@@ -84,6 +87,22 @@ class StoreCategoryRequest extends FormRequest
                 $validator->errors()->add(
                     'parent_id',
                     __('ui.validation.custom.category_parent_unsupported'),
+                );
+            }
+
+            $this->validateCanonicalIdentity(
+                $validator,
+                $scope,
+                $submittedSlug,
+                $submittedName,
+            );
+
+            if ($parent instanceof Category
+                && $scope->isCanonicalSlug($submittedSlug)
+                && ! $scope->matchesCanonicalParent($submittedSlug, $parent)) {
+                $validator->errors()->add(
+                    'parent_id',
+                    __('ui.validation.custom.category_parent_mismatch'),
                 );
             }
 
@@ -111,6 +130,29 @@ class StoreCategoryRequest extends FormRequest
         }];
     }
 
+    private function validateCanonicalIdentity(
+        Validator $validator,
+        CatalogScope $scope,
+        string $slug,
+        string $name,
+    ): void {
+        if (! $scope->isCanonicalSlug($slug)) {
+            $validator->errors()->add(
+                'slug',
+                __('ui.validation.custom.category_slug_unsupported'),
+            );
+
+            return;
+        }
+
+        if (! $scope->matchesCanonicalName($slug, $name)) {
+            $validator->errors()->add(
+                'name',
+                __('ui.validation.custom.category_name_unsupported'),
+            );
+        }
+    }
+
     /** @return array<string, string> */
     public function attributes(): array
     {
@@ -129,7 +171,9 @@ class StoreCategoryRequest extends FormRequest
             'description' => $description !== '' ? $description : null,
             'parent_id' => $this->filled('parent_id') ? $this->input('parent_id') : null,
             'is_active' => $this->boolean('is_active'),
-            'sort_order' => $this->input('sort_order', 0),
+            'sort_order' => $this->filled('sort_order')
+                ? $this->input('sort_order')
+                : 0,
         ]);
     }
 }

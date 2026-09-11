@@ -43,25 +43,7 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
             Platform::query()->pluck('slug')->all(),
         );
 
-        foreach (['tokopedia', 'shopee'] as $slug) {
-            $this->assertDatabaseHas('platforms', [
-                'slug' => $slug,
-                'source_type' => Platform::SOURCE_MANUAL,
-                'access_type' => Platform::ACCESS_CSV_IMPORT,
-                'connector' => 'manual-import',
-                'sync_enabled' => false,
-            ]);
-        }
-
-        $this->assertDatabaseHas('platforms', [
-            'slug' => 'olx',
-            'source_type' => Platform::SOURCE_SCRAPE,
-            'access_type' => Platform::ACCESS_PUBLIC_HTML,
-            'connector' => 'olx-public-web',
-            'sync_enabled' => true,
-        ]);
-
-        foreach (['facebook', 'carousell'] as $slug) {
+        foreach ($expected as $slug) {
             $this->assertDatabaseHas('platforms', [
                 'slug' => $slug,
                 'source_type' => Platform::SOURCE_MANUAL,
@@ -96,6 +78,35 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
                 'status' => Platform::STATUS_READY,
             ]);
         }
+    }
+
+    public function test_v3_preserves_a_legacy_platform_record_as_disabled(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $legacy = Platform::query()->create([
+            'name' => 'Facebook Marketplace Legacy',
+            'slug' => 'facebook-marketplace',
+            'source_type' => Platform::SOURCE_MANUAL,
+            'access_type' => Platform::ACCESS_MANUAL_URL,
+            'connector' => 'manual-import',
+            'status' => Platform::STATUS_READY,
+            'is_active' => true,
+            'sync_enabled' => false,
+        ]);
+
+        $this->seed(NeomatraDatasetV3Seeder::class);
+
+        $this->assertDatabaseHas('platforms', [
+            'id' => $legacy->id,
+            'slug' => 'facebook-marketplace',
+            'status' => Platform::STATUS_DISABLED,
+            'is_active' => false,
+            'sync_enabled' => false,
+        ]);
+        $this->assertDatabaseHas('platforms', [
+            'slug' => 'facebook',
+            'status' => Platform::STATUS_READY,
+        ]);
     }
 
     public function test_category_hierarchy_uses_unique_stable_slugs(): void
@@ -203,7 +214,7 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_v3_cleanup_preserves_real_listings_and_removes_only_proven_demo_and_unused_platforms(): void
+    public function test_v3_cleanup_preserves_real_listings_and_disables_unsupported_platforms(): void
     {
         $this->seed(DatabaseSeeder::class);
         $tokopedia = Platform::query()->where('slug', 'tokopedia')->firstOrFail();
@@ -250,8 +261,13 @@ final class NeomatraDatasetTaxonomyTest extends TestCase
             'is_active' => true,
         ]);
         $this->assertDatabaseMissing('listings', ['id' => $demo->id]);
-        $this->assertDatabaseMissing('platforms', ['id' => $unsupported->id]);
-        $this->assertSame(5, Platform::query()->count());
+        $this->assertDatabaseHas('platforms', [
+            'id' => $unsupported->id,
+            'is_active' => false,
+            'sync_enabled' => false,
+            'status' => Platform::STATUS_DISABLED,
+        ]);
+        $this->assertSame(6, Platform::query()->count());
         Http::assertNothingSent();
     }
 

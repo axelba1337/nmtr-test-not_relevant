@@ -11,30 +11,32 @@
 
     <div class="admin-form__grid">
         <div class="form-field">
-            <label for="category-name">{{ __('ui.admin_pages.categories.name') }}</label>
+            <label for="category-name">{{ __('ui.admin_pages.categories.name') }} <x-required-marker /></label>
             <input id="category-name" name="name" value="{{ old('name', $category->name ?? '') }}" required maxlength="255" @error('name') aria-invalid="true" @enderror>
             @error('name')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-field">
             <label for="category-slug">{{ __('ui.admin_pages.categories.slug') }}</label>
             <input id="category-slug" name="slug" value="{{ old('slug', $category->slug ?? '') }}" maxlength="255" placeholder="{{ __('ui.admin_pages.common.auto_slug') }}" @error('slug') aria-invalid="true" @enderror>
+            <p class="form-help">{{ __('ui.admin_pages.categories.slug_help') }}</p>
             @error('slug')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         @php($isSupportedRootEdit = isset($category) && $category->parent_id === null)
         <div class="form-field">
-            <label for="category-parent">{{ __('ui.admin_pages.categories.parent') }}</label>
+            <label for="category-parent">{{ __('ui.admin_pages.categories.parent') }} @if(! $isSupportedRootEdit)<x-required-marker />@endif</label>
             <select id="category-parent" name="parent_id" @required(! $isSupportedRootEdit) @error('parent_id') aria-invalid="true" @enderror>
                 <option value="" @disabled(! $isSupportedRootEdit)>{{ $isSupportedRootEdit ? __('ui.admin_pages.categories.no_parent') : __('ui.admin_pages.categories.choose_parent') }}</option>
                 @foreach ($parents as $parent)
                     <option value="{{ $parent->id }}" @selected((string) old('parent_id', $category->parent_id ?? '') === (string) $parent->id)>{{ $parent->name }}</option>
                 @endforeach
             </select>
-            <p class="form-hint">{{ __('ui.admin_pages.categories.parent_scope_help') }}</p>
+            <p class="form-help">{{ __('ui.admin_pages.categories.parent_help') }}</p>
             @error('parent_id')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-field">
             <label for="category-order">{{ __('ui.admin_pages.common.sort_order') }}</label>
-            <input id="category-order" name="sort_order" type="number" min="0" value="{{ old('sort_order', $category->sort_order ?? 0) }}" required>
+            <input id="category-order" name="sort_order" type="number" min="0" value="{{ old('sort_order', $category->sort_order ?? '') }}">
+            <p class="form-help">{{ __('ui.admin_pages.categories.sort_order_help') }}</p>
             @error('sort_order')<p class="form-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-field form-field--full">

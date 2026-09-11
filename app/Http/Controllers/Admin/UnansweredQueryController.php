@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateUnansweredQueryRequest;
 use App\Models\ChatbotQueryLog;
+use App\Support\AdminIndexSort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,8 +24,9 @@ final class UnansweredQueryController extends Controller
         $search = trim((string) ($filters['search'] ?? ''));
         $review = (string) ($filters['review'] ?? 'pending');
         $reason = trim((string) ($filters['reason'] ?? ''));
+        $sort = AdminIndexSort::normalize($request->query('sort'));
 
-        $queries = ChatbotQueryLog::query()
+        $query = ChatbotQueryLog::query()
             ->where('is_unanswered', true)
             ->when($search !== '', fn (Builder $query): Builder => $query
                 ->where(fn (Builder $nested): Builder => $nested
@@ -35,10 +37,17 @@ final class UnansweredQueryController extends Controller
             ->when($review === 'reviewed', fn (Builder $query): Builder => $query
                 ->whereNotNull('reviewed_at'))
             ->when($reason !== '', fn (Builder $query): Builder => $query
-                ->where('unanswered_reason', $reason))
-            ->latest('created_at')
-            ->latest('id')
-            ->paginate(20)
+                ->where('unanswered_reason', $reason));
+
+        $queries = AdminIndexSort::apply(
+            $query,
+            $sort,
+            'query_text',
+            static fn (Builder $query): Builder => $query->orderByRaw(
+                'CASE WHEN reviewed_at IS NULL THEN 0 ELSE 1 END ASC',
+            ),
+        )
+            ->paginate(AdminIndexSort::PER_PAGE)
             ->withQueryString();
 
         $reasons = ChatbotQueryLog::query()
@@ -54,6 +63,7 @@ final class UnansweredQueryController extends Controller
             'search',
             'review',
             'reason',
+            'sort',
         ));
     }
 

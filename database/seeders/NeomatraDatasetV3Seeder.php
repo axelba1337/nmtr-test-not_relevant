@@ -16,14 +16,6 @@ use RuntimeException;
 
 final class NeomatraDatasetV3Seeder extends Seeder
 {
-    private const MVP_PLATFORM_SLUGS = [
-        'tokopedia',
-        'shopee',
-        'olx',
-        'facebook',
-        'carousell',
-    ];
-
     private const SOURCE_NAME = 'Neomatra Dataset & Taxonomy V3';
 
     private const OBSOLETE_KNOWLEDGE = [
@@ -96,23 +88,21 @@ final class NeomatraDatasetV3Seeder extends Seeder
 
         $legacy->listings()->update(['platform_id' => $facebook->id]);
         $legacy->syncRuns()->update(['platform_id' => $facebook->id]);
-        $legacy->delete();
+        $legacy->forceFill([
+            'is_active' => false,
+            'sync_enabled' => false,
+            'status' => Platform::STATUS_DISABLED,
+        ])->save();
     }
 
     private function cleanPlatformRegistry(): void
     {
-        foreach (Platform::query()->whereNotIn('slug', self::MVP_PLATFORM_SLUGS)->get() as $platform) {
-            if ($platform->listings()->exists() || $platform->syncRuns()->exists()) {
-                $platform->forceFill([
-                    'is_active' => false,
-                    'sync_enabled' => false,
-                    'status' => Platform::STATUS_DISABLED,
-                ])->save();
-
-                continue;
-            }
-
-            $platform->delete();
+        foreach (Platform::query()->whereNotIn('slug', Platform::MVP_SLUGS)->get() as $platform) {
+            $platform->forceFill([
+                'is_active' => false,
+                'sync_enabled' => false,
+                'status' => Platform::STATUS_DISABLED,
+            ])->save();
         }
     }
 

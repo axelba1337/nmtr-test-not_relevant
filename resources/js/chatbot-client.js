@@ -91,6 +91,26 @@ export const normalizeHistory = (history) => {
     return normalized.slice(-MAX_HISTORY_MESSAGES);
 };
 
+export const filtersFromFormData = (data) => {
+    const filters = {};
+
+    ['condition', 'location'].forEach((key) => {
+        const value = data.get(key);
+
+        if (typeof value === 'string' && value.trim() !== '') {
+            filters[key] = value.trim();
+        }
+    });
+
+    const budget = data.get('budget_max');
+
+    if (typeof budget === 'string' && budget.trim() !== '') {
+        filters.budget_max = Number(budget);
+    }
+
+    return filters;
+};
+
 export const normalizeSources = (payload) => {
     const source = Array.isArray(payload)
         ? payload

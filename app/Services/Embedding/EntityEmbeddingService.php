@@ -58,6 +58,29 @@ final class EntityEmbeddingService
     }
 
     /** @return array{processed: int, skipped: int, failed: int} */
+    public function rebuildProductTree(
+        Product $product,
+        bool $force = false,
+    ): array {
+        $counts = $this->emptyCounts();
+        $product = $product->fresh(['aliases.product']);
+
+        if ($product === null) {
+            $counts[self::SKIPPED]++;
+
+            return $counts;
+        }
+
+        $counts[$this->rebuildProduct($product, $force)]++;
+
+        foreach ($product->aliases as $alias) {
+            $counts[$this->rebuildAlias($alias, $force)]++;
+        }
+
+        return $counts;
+    }
+
+    /** @return array{processed: int, skipped: int, failed: int} */
     public function rebuildActiveProducts(
         bool $force = true,
         int $chunkSize = 100,
@@ -66,13 +89,10 @@ final class EntityEmbeddingService
 
         Product::query()
             ->active()
-            ->with('aliases.product')
             ->lazyById(max(1, $chunkSize))
             ->each(function (Product $product) use (&$counts, $force): void {
-                $counts[$this->rebuildProduct($product, $force)]++;
-
-                foreach ($product->aliases as $alias) {
-                    $counts[$this->rebuildAlias($alias, $force)]++;
+                foreach ($this->rebuildProductTree($product, $force) as $status => $count) {
+                    $counts[$status] += $count;
                 }
             });
 
@@ -108,8 +128,14 @@ final class EntityEmbeddingService
         }
 
         if (! $result->succeeded()) {
+            $safeFailure = trim((string) $result->failure?->safeMessage);
             $current->forceFill([
-                'embedding_error' => self::SAFE_FAILURE,
+                'embedding_error' => mb_substr(
+                    $safeFailure !== '' ? $safeFailure : self::SAFE_FAILURE,
+                    0,
+                    1000,
+                    'UTF-8',
+                ),
             ])->save();
 
             return self::FAILED;

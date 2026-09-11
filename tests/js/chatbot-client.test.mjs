@@ -6,6 +6,7 @@ import {
     ChatbotRequestError,
     createRequestCoordinator,
     createSearchPipelineLifecycle,
+    filtersFromFormData,
     normalizeHistory,
     normalizeSearchEntryPointHtml,
     normalizeSources,
@@ -15,6 +16,26 @@ import {
     requestSuggestions,
     scrollTranscriptToLatest,
 } from '../../resources/js/chatbot-client.js';
+
+test('chat filters are collected only when the user submits the composer', () => {
+    const populated = new FormData();
+    populated.set('budget_max', '3000000');
+    populated.set('condition', 'used');
+    populated.set('location', ' Surabaya ');
+
+    assert.deepEqual(filtersFromFormData(populated), {
+        condition: 'used',
+        location: 'Surabaya',
+        budget_max: 3000000,
+    });
+
+    const empty = new FormData();
+    empty.set('budget_max', '');
+    empty.set('condition', '');
+    empty.set('location', '  ');
+
+    assert.deepEqual(filtersFromFormData(empty), {});
+});
 import {
     BRAND_AREA_STORAGE_KEY,
     LOCALE_SWITCH_STORAGE_KEY,

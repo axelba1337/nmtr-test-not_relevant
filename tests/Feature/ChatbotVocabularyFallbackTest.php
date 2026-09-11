@@ -10,6 +10,7 @@ use App\Models\KnowledgeItem;
 use App\Models\Listing;
 use App\Models\Platform;
 use App\Models\Product;
+use App\Models\ProductAlias;
 use App\Services\Search\CategoryAliasResolver;
 use App\Services\Search\ProductFamilyResolver;
 use Database\Seeders\NeomatraDatasetV2Seeder;
@@ -370,13 +371,32 @@ final class ChatbotVocabularyFallbackTest extends TestCase
     {
         Http::fake();
 
-        foreach (['Honda Civic', 'Toyota Avanza', 'sepatu Nike', 'rumah Surabaya'] as $query) {
+        $categoriesBefore = Category::query()->count();
+        $productsBefore = Product::query()->count();
+        $aliasesBefore = ProductAlias::query()->count();
+
+        foreach ([
+            'Honda Civic',
+            'Mobil Toyota Avanza',
+            'Motor Yamaha NMAX',
+            'Rumah dijual di Jakarta',
+            'Apartemen murah',
+            'Baju dan sepatu',
+            'Makanan',
+            'Furniture',
+            'Tiket pesawat',
+            'Hotel',
+            'Lowongan kerja',
+        ] as $query) {
             $this->postJson('/api/chatbot/query', ['message' => $query])
                 ->assertOk()
                 ->assertJsonPath('state', SearchState::OUT_OF_SCOPE)
                 ->assertJsonPath('needs_clarification', false);
         }
 
+        $this->assertSame($categoriesBefore, Category::query()->count());
+        $this->assertSame($productsBefore, Product::query()->count());
+        $this->assertSame($aliasesBefore, ProductAlias::query()->count());
         Http::assertNothingSent();
     }
 

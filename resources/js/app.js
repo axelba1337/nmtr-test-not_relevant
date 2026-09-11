@@ -2,6 +2,7 @@ import {
     ChatbotRequestError,
     createRequestCoordinator,
     createSearchPipelineLifecycle,
+    filtersFromFormData,
     normalizeSearchEntryPointHtml,
     normalizeSources,
     parseChatTranslations,
@@ -579,26 +580,7 @@ if (chatbot) {
         return t('request_error', 'The request could not be processed.');
     };
 
-    const filtersFromForm = () => {
-        const data = new FormData(form);
-        const filters = {};
-
-        ['condition', 'location'].forEach((key) => {
-            const value = data.get(key);
-
-            if (typeof value === 'string' && value.trim() !== '') {
-                filters[key] = value.trim();
-            }
-        });
-
-        const budget = data.get('budget_max');
-
-        if (typeof budget === 'string' && budget.trim() !== '') {
-            filters.budget_max = Number(budget);
-        }
-
-        return filters;
-    };
+    const filtersFromForm = () => filtersFromFormData(new FormData(form));
 
     const coordinator = createRequestCoordinator({
         perform: ({ message, filters, history }) => requestChat({

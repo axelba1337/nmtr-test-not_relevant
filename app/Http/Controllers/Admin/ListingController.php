@@ -9,6 +9,7 @@ use App\Models\Listing;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Services\Neomatra\ListingFingerprintService;
+use App\Support\AdminIndexSort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,8 +41,9 @@ final class ListingController extends Controller
         $stockStatus = (string) ($filters['stock_status'] ?? '');
         $status = (string) ($filters['status'] ?? 'all');
         $mappingStatus = (string) ($filters['mapping_status'] ?? 'all');
+        $sort = AdminIndexSort::normalize($request->query('sort'));
 
-        $listings = Listing::query()
+        $query = Listing::query()
             ->with(['platform:id,name', 'product:id,name'])
             ->when($search !== '', fn (Builder $query): Builder => $query
                 ->where(fn (Builder $nested): Builder => $nested
@@ -62,10 +64,17 @@ final class ListingController extends Controller
             ->when($mappingStatus === 'matched', fn (Builder $query): Builder => $query
                 ->whereNotNull('product_id'))
             ->when($mappingStatus === 'unmatched', fn (Builder $query): Builder => $query
-                ->whereNull('product_id'))
-            ->latest('updated_at')
-            ->latest('id')
-            ->paginate(20)
+                ->whereNull('product_id'));
+
+        $listings = AdminIndexSort::apply(
+            $query,
+            $sort,
+            'title',
+            static fn (Builder $query): Builder => $query
+                ->orderByDesc('is_active')
+                ->orderBy('stock_status'),
+        )
+            ->paginate(AdminIndexSort::PER_PAGE)
             ->withQueryString();
 
         return view('admin.listings.index', [
@@ -77,6 +86,7 @@ final class ListingController extends Controller
             'stockStatus' => $stockStatus,
             'status' => $status,
             'mappingStatus' => $mappingStatus,
+            'sort' => $sort,
         ]);
     }
 

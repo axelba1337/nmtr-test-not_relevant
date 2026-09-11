@@ -38,7 +38,7 @@
         @error('content')
             <p class="form-field__error">{{ $message }}</p>
         @enderror
-        <p class="form-field__hint">{{ __('ui.admin_pages.knowledge.form.content_hint') }}</p>
+        <p class="form-help">{{ __('ui.admin_pages.knowledge.form.content_hint') }}</p>
     </div>
 
     <div class="form-field">
@@ -101,7 +101,7 @@
         @error('sort_order')
             <p class="form-field__error">{{ $message }}</p>
         @enderror
-        <p class="form-field__hint">{{ __('ui.admin_pages.knowledge.form.sort_order_hint') }}</p>
+        <p class="form-help">{{ __('ui.admin_pages.knowledge.form.sort_order_hint') }}</p>
     </div>
 
     <fieldset class="form-options">

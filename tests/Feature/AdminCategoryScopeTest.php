@@ -46,8 +46,8 @@ final class AdminCategoryScopeTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.categories.store'), $this->categoryPayload([
                 'parent_id' => $pcAccessories->id,
-                'name' => 'USB Hub',
-                'slug' => 'usb-hub',
+                'name' => 'Monitor',
+                'slug' => 'monitor',
             ]))
             ->assertSessionDoesntHaveErrors()
             ->assertRedirect(route('admin.categories.index'));
@@ -55,18 +55,18 @@ final class AdminCategoryScopeTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.categories.store'), $this->categoryPayload([
                 'parent_id' => $networking->id,
-                'name' => 'Managed Switch',
-                'slug' => 'managed-switch',
+                'name' => 'Router',
+                'slug' => 'router',
             ]))
             ->assertSessionDoesntHaveErrors()
             ->assertRedirect(route('admin.categories.index'));
 
         $this->assertDatabaseHas('categories', [
-            'slug' => 'usb-hub',
+            'slug' => 'monitor',
             'parent_id' => $pcAccessories->id,
         ]);
         $this->assertDatabaseHas('categories', [
-            'slug' => 'managed-switch',
+            'slug' => 'router',
             'parent_id' => $networking->id,
         ]);
     }
@@ -86,6 +86,70 @@ final class AdminCategoryScopeTest extends TestCase
         $this->assertDatabaseMissing('categories', ['slug' => 'car-accessories']);
     }
 
+    public function test_out_of_scope_children_are_rejected_under_supported_categories(): void
+    {
+        $laptop = $this->root('laptop', 'Laptop');
+        $gamingLaptop = $this->child(
+            $laptop,
+            'Gaming Laptop',
+            'gaming-laptop',
+        );
+        $pcAccessories = $this->root('pc-accessories', 'PC Accessories');
+        $handphone = $this->root('handphone', 'Handphone');
+        $admin = $this->admin();
+
+        foreach ([
+            [$gamingLaptop, 'Honda Civic', 'honda-civic'],
+            [$pcAccessories, 'Baju dan sepatu', 'baju-dan-sepatu'],
+            [$laptop, 'Lowongan kerja', 'lowongan-kerja'],
+            [$handphone, 'Tiket pesawat', 'tiket-pesawat'],
+        ] as [$parent, $name, $slug]) {
+            $this->actingAs($admin)
+                ->post(route('admin.categories.store'), $this->categoryPayload([
+                    'parent_id' => $parent->id,
+                    'name' => $name,
+                    'slug' => $slug,
+                ]))
+                ->assertSessionHasErrors('slug');
+
+            $this->assertDatabaseMissing('categories', ['slug' => $slug]);
+        }
+    }
+
+    public function test_canonical_category_with_wrong_parent_is_rejected(): void
+    {
+        $laptop = $this->root('laptop', 'Laptop');
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.categories.store'), $this->categoryPayload([
+                'parent_id' => $laptop->id,
+                'name' => 'GPU',
+                'slug' => 'gpu',
+            ]))
+            ->assertSessionHasErrors('parent_id');
+
+        $this->assertDatabaseMissing('categories', ['slug' => 'gpu']);
+    }
+
+    public function test_canonical_category_with_correct_parent_is_accepted(): void
+    {
+        $laptop = $this->root('laptop', 'Laptop');
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.categories.store'), $this->categoryPayload([
+                'parent_id' => $laptop->id,
+                'name' => 'Gaming Laptop',
+                'slug' => 'gaming-laptop',
+            ]))
+            ->assertSessionDoesntHaveErrors()
+            ->assertRedirect(route('admin.categories.index'));
+
+        $this->assertDatabaseHas('categories', [
+            'slug' => 'gaming-laptop',
+            'parent_id' => $laptop->id,
+        ]);
+    }
+
     public function test_existing_supported_root_can_still_be_edited(): void
     {
         $root = $this->root('pc-dan-komponen', 'PC Components');
@@ -93,16 +157,18 @@ final class AdminCategoryScopeTest extends TestCase
         $this->actingAs($this->admin())
             ->put(route('admin.categories.update', $root), $this->categoryPayload([
                 'parent_id' => null,
-                'name' => 'PC dan Komponen',
+                'name' => 'PC Components',
                 'slug' => 'pc-dan-komponen',
+                'description' => 'Metadata aman diperbarui.',
             ]))
             ->assertSessionDoesntHaveErrors()
             ->assertRedirect(route('admin.categories.index'));
 
         $this->assertDatabaseHas('categories', [
             'id' => $root->id,
-            'name' => 'PC dan Komponen',
+            'name' => 'PC Components',
             'parent_id' => null,
+            'description' => 'Metadata aman diperbarui.',
         ]);
     }
 
@@ -127,22 +193,23 @@ final class AdminCategoryScopeTest extends TestCase
     {
         $root = $this->root('networking', 'Networking');
         $child = $this->child($root, 'Router', 'router');
-        $grandchild = $this->child($child, 'Wi-Fi 6', 'wi-fi-6');
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->put(route('admin.categories.update', $child), $this->categoryPayload([
-                'parent_id' => $grandchild->id,
-                'name' => $child->name,
-                'slug' => $child->slug,
+            ->put(route('admin.categories.update', $root), $this->categoryPayload([
+                'parent_id' => $child->id,
+                'name' => $root->name,
+                'slug' => $root->slug,
             ]))
             ->assertSessionHasErrors('parent_id');
+
+        $this->assertNull($root->fresh()?->parent_id);
 
         $this->actingAs($admin)
             ->get(route('admin.categories.edit', $child))
             ->assertOk()
             ->assertDontSee('value="'.$child->id.'"', false)
-            ->assertDontSee('value="'.$grandchild->id.'"', false);
+            ->assertSee('value="'.$root->id.'"', false);
     }
 
     public function test_parent_dropdown_only_contains_supported_scope_categories(): void
@@ -150,18 +217,35 @@ final class AdminCategoryScopeTest extends TestCase
         $supported = $this->root('networking', 'Networking');
         $supportedChild = $this->child($supported, 'Router', 'router');
         $unsupported = $this->root('vehicle', 'Vehicle');
+        $invalidChild = $this->child(
+            $supported,
+            'Healthy',
+            'healthy',
+        );
 
         $this->actingAs($this->admin())
             ->get(route('admin.categories.create'))
             ->assertOk()
             ->assertSee('value="'.$supported->id.'"', false)
-            ->assertSee('value="'.$supportedChild->id.'"', false)
-            ->assertDontSee('value="'.$unsupported->id.'"', false);
+            ->assertDontSee('value="'.$supportedChild->id.'"', false)
+            ->assertDontSee('value="'.$unsupported->id.'"', false)
+            ->assertDontSee('value="'.$invalidChild->id.'"', false);
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.categories.store'), $this->categoryPayload([
+                'parent_id' => $invalidChild->id,
+                'name' => 'Switch',
+                'slug' => 'switch',
+            ]))
+            ->assertSessionHasErrors('parent_id');
+
+        $this->assertDatabaseMissing('categories', ['slug' => 'switch']);
     }
 
     public function test_non_admin_is_forbidden_and_product_guardrail_still_rejects_unsupported_category(): void
     {
-        $unsupported = $this->root('vehicle', 'Vehicle');
+        $laptop = $this->root('laptop', 'Laptop');
+        $unsupported = $this->child($laptop, 'Honda Civic', 'honda-civic');
         $user = User::query()->create([
             'name' => 'Catalog User',
             'email' => 'catalog-user@example.test',

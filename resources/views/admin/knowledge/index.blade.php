@@ -64,9 +64,11 @@
                 </select>
             </div>
 
+            <x-admin-sort-select id="knowledge-sort" :sort="$sort" />
+
             <div class="filter-bar__actions">
                 <button class="button button--secondary" type="submit">{{ __('ui.admin_pages.knowledge.index.apply') }}</button>
-                @if ($search !== '' || $status !== 'all' || $embeddingStatus !== 'all')
+                @if ($search !== '' || $status !== 'all' || $embeddingStatus !== 'all' || $sort !== 'newest')
                     <a class="button button--text" href="{{ route('admin.knowledge.index') }}">
                         {{ __('ui.admin_pages.knowledge.index.reset') }}
                     </a>

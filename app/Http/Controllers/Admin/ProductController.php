@@ -9,6 +9,8 @@ use App\Http\Requests\Admin\UpdateProductRequest;
 use App\Models\Product;
 use App\Services\Catalog\CatalogScope;
 use App\Services\Embedding\EntityEmbeddingService;
+use App\Services\Embedding\ProductEmbeddingStatus;
+use App\Support\AdminIndexSort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +22,7 @@ final class ProductController extends Controller
 {
     public function __construct(
         private readonly EntityEmbeddingService $embeddingService,
+        private readonly ProductEmbeddingStatus $embeddingStatus,
         private readonly CatalogScope $catalogScope,
     ) {}
 
@@ -38,10 +41,16 @@ final class ProductController extends Controller
             : null;
         $status = (string) ($filters['status'] ?? 'all');
         $listingStatus = (string) ($filters['listing_status'] ?? 'all');
+        $embeddingStatus = $this->embeddingStatus->normalize(
+            $request->query('embedding_status'),
+        );
+        $sortOptions = [...AdminIndexSort::values(), 'embedding'];
+        $sort = AdminIndexSort::normalize(
+            $request->query('sort'),
+            $sortOptions,
+        );
 
-        $products = Product::query()
-            ->with('category:id,name')
-            ->withCount(['aliases', 'listings'])
+        $query = Product::query()
             ->when($search !== '', fn (Builder $query): Builder => $query
                 ->where(fn (Builder $nested): Builder => $nested
                     ->where('name', 'like', "%{$search}%")
@@ -63,10 +72,22 @@ final class ProductController extends Controller
                         static fn (Builder $listingQuery): Builder => $listingQuery
                             ->available(),
                     ),
-            )
-            ->orderBy('name')
-            ->orderBy('id')
-            ->paginate(15)
+            );
+
+        $this->embeddingStatus->applyFilter($query, $embeddingStatus);
+
+        $products = ($sort === 'embedding'
+            ? $this->embeddingStatus->applyOperationalOrder($query)
+            : AdminIndexSort::apply(
+                $query,
+                $sort,
+                'name',
+                static fn (Builder $query): Builder => $query
+                    ->orderByDesc('is_active'),
+            ))
+            ->with('category:id,name')
+            ->withCount(['aliases', 'listings'])
+            ->paginate(AdminIndexSort::PER_PAGE)
             ->withQueryString();
 
         return view('admin.products.index', [
@@ -76,6 +97,9 @@ final class ProductController extends Controller
             'categoryId' => $categoryId,
             'status' => $status,
             'listingStatus' => $listingStatus,
+            'embeddingStatus' => $embeddingStatus,
+            'sort' => $sort,
+            'sortOptions' => $sortOptions,
         ]);
     }
 
@@ -255,19 +279,12 @@ final class ProductController extends Controller
 
     private function rebuildEmbeddings(Product $product, bool $force): bool
     {
-        $product->refresh()->load('aliases.product');
-        $statuses = [
-            $this->embeddingService->rebuildProduct($product, $force),
-        ];
+        $counts = $this->embeddingService->rebuildProductTree(
+            $product,
+            $force,
+        );
 
-        foreach ($product->aliases as $alias) {
-            $statuses[] = $this->embeddingService->rebuildAlias(
-                $alias,
-                $force,
-            );
-        }
-
-        return in_array(EntityEmbeddingService::FAILED, $statuses, true);
+        return $counts[EntityEmbeddingService::FAILED] > 0;
     }
 
     private function decodeJson(mixed $value): ?array

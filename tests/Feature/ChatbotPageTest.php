@@ -45,9 +45,31 @@ final class ChatbotPageTest extends TestCase
             ->assertSee('Pertanyaan yang disarankan')
             ->assertSee('Tanyakan apa saja')
             ->assertSee('<option value="">Semua kondisi</option>', false)
+            ->assertSee('<option value="new">Baru</option>', false)
+            ->assertSee('<option value="used">Bekas</option>', false)
+            ->assertSee('<option value="unknown">Tidak diketahui</option>', false)
+            ->assertDontSee('<option value="open_box">', false)
+            ->assertDontSee('<option value="refurbished">', false)
+            ->assertDontSee('<option value="ex_display">', false)
             ->assertDontSee('<option value="">Otomatis</option>', false)
             ->assertSee('Harga dan kondisi berasal dari listing sumber')
             ->assertSee('Kirim');
+    }
+
+    public function test_english_condition_filter_uses_only_the_simple_groups(): void
+    {
+        $this->withoutVite();
+
+        $this->withSession(['locale' => 'en'])
+            ->get('/')
+            ->assertOk()
+            ->assertSee('<option value="">All conditions</option>', false)
+            ->assertSee('<option value="new">New</option>', false)
+            ->assertSee('<option value="used">Used</option>', false)
+            ->assertSee('<option value="unknown">Unknown</option>', false)
+            ->assertDontSee('<option value="open_box">', false)
+            ->assertDontSee('<option value="refurbished">', false)
+            ->assertDontSee('<option value="ex_display">', false);
     }
 
     public function test_page_source_declares_both_vite_entries(): void

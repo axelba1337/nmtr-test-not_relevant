@@ -70,73 +70,31 @@ final class NeomatraDatasetV2Seeder extends Seeder
 
     private function seedTaxonomy(): void
     {
-        $roots = [
-            ['PC Components', 'pc-dan-komponen', 'Komponen utama komputer desktop.', 10],
-            ['Handphone', 'handphone', 'Perangkat telepon seluler dan smartphone.', 20],
-            ['Laptop', 'laptop', 'Komputer portabel dengan konfigurasi yang teridentifikasi.', 30],
-            ['PC Accessories', 'pc-accessories', 'Periferal dan aksesori komputer.', 40],
-            ['Networking', 'networking', 'Perangkat jaringan rumah dan bisnis kecil.', 50],
-        ];
+        $taxonomy = (array) config('neomatra.scope.category_taxonomy', []);
 
-        foreach ($roots as [$name, $slug, $description, $sortOrder]) {
+        foreach ($taxonomy as $slug => $definition) {
             $this->categories[$slug] = Category::query()->updateOrCreate(
                 ['slug' => $slug],
                 [
                     'parent_id' => null,
-                    'name' => $name,
-                    'description' => $description,
+                    'name' => (string) $definition['name'],
+                    'description' => $definition['description'] ?? null,
                     'is_active' => true,
-                    'sort_order' => $sortOrder,
+                    'sort_order' => (int) $definition['sort_order'],
                 ],
             );
         }
 
-        $children = [
-            'pc-dan-komponen' => [
-                ['GPU', 'gpu'],
-                ['CPU', 'cpu'],
-                ['RAM', 'ram'],
-                ['SSD', 'ssd'],
-                ['HDD', 'hdd'],
-                ['Motherboard', 'motherboard'],
-                ['PSU', 'psu'],
-                ['CPU Cooler', 'cpu-cooler'],
-            ],
-            'handphone' => [
-                ['Smartphone', 'smartphone'],
-            ],
-            'laptop' => [
-                ['Gaming Laptop', 'gaming-laptop'],
-                ['Business Laptop', 'business-laptop'],
-                ['Consumer Laptop', 'consumer-laptop'],
-            ],
-            'pc-accessories' => [
-                ['Monitor', 'monitor'],
-                ['Keyboard', 'keyboard'],
-                ['Mouse', 'mouse'],
-                ['Headset', 'headset'],
-                ['Webcam', 'webcam'],
-                ['Keyboard Mouse Combo', 'keyboard-mouse-combo'],
-            ],
-            'networking' => [
-                ['Router', 'router'],
-                ['Access Point', 'access-point'],
-                ['Switch', 'switch'],
-                ['Modem', 'modem'],
-                ['Network Adapter', 'network-adapter'],
-            ],
-        ];
-
-        foreach ($children as $parentSlug => $items) {
-            foreach ($items as $index => [$name, $slug]) {
+        foreach ($taxonomy as $parentSlug => $definition) {
+            foreach ((array) ($definition['children'] ?? []) as $slug => $child) {
                 $this->categories[$slug] = Category::query()->updateOrCreate(
                     ['slug' => $slug],
                     [
                         'parent_id' => $this->categories[$parentSlug]->id,
-                        'name' => $name,
+                        'name' => (string) $child['name'],
                         'description' => null,
                         'is_active' => true,
-                        'sort_order' => ($index + 1) * 10,
+                        'sort_order' => (int) $child['sort_order'],
                     ],
                 );
             }
@@ -160,18 +118,18 @@ final class NeomatraDatasetV2Seeder extends Seeder
                     'name' => $name,
                     'source_type' => $isDemo && app()->environment('testing')
                         ? Platform::SOURCE_DEMO
-                        : ($slug === 'olx' ? Platform::SOURCE_SCRAPE : Platform::SOURCE_MANUAL),
+                        : Platform::SOURCE_MANUAL,
                     'access_type' => $isDemo && app()->environment('testing')
                         ? Platform::ACCESS_DEMO_DATASET
-                        : ($slug === 'olx' ? Platform::ACCESS_PUBLIC_HTML : Platform::ACCESS_CSV_IMPORT),
+                        : Platform::ACCESS_CSV_IMPORT,
                     'connector' => $isDemo && app()->environment('testing')
                         ? 'demo-dataset'
-                        : ($slug === 'olx' ? 'olx-public-web' : 'manual-import'),
+                        : 'manual-import',
                     'base_url' => $baseUrl,
                     'is_active' => true,
                     'sync_enabled' => app()->environment('testing')
                         ? $isDemo
-                        : $slug === 'olx',
+                        : false,
                     'status' => Platform::STATUS_READY,
                 ],
             );

@@ -151,6 +151,35 @@ final class Listing extends Model
     }
 
     /** @return list<string> */
+    public static function publicConditionFilters(): array
+    {
+        return [
+            self::CONDITION_NEW,
+            self::CONDITION_USED,
+            self::CONDITION_UNKNOWN,
+        ];
+    }
+
+    /** @return list<string> */
+    public static function conditionValuesForSearch(string $condition): array
+    {
+        return match ($condition) {
+            self::CONDITION_USED => [
+                self::CONDITION_USED,
+                self::CONDITION_OPEN_BOX,
+                self::CONDITION_REFURBISHED,
+                self::CONDITION_EX_DISPLAY,
+            ],
+            self::CONDITION_NEW,
+            self::CONDITION_OPEN_BOX,
+            self::CONDITION_REFURBISHED,
+            self::CONDITION_EX_DISPLAY,
+            self::CONDITION_UNKNOWN => [$condition],
+            default => [],
+        };
+    }
+
+    /** @return list<string> */
     public static function sellerTypes(): array
     {
         return [

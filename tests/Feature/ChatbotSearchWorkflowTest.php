@@ -131,7 +131,7 @@ final class ChatbotSearchWorkflowTest extends TestCase
             ->assertJsonPath('relaxed_filters.0', 'budget')
             ->assertJsonPath('attempt_count', 2)
             ->assertJsonPath('applied_filters.budget_max', null)
-            ->assertJsonCount(2, 'listings')
+            ->assertJsonCount(3, 'listings')
             ->assertDontSee('Maaf', false);
 
         $log = ChatbotQueryLog::query()->latest('id')->firstOrFail();
@@ -162,7 +162,10 @@ final class ChatbotSearchWorkflowTest extends TestCase
 
     public function test_sc12_condition_is_never_relaxed(): void
     {
-        Listing::query()->where('condition', Listing::CONDITION_USED)
+        Listing::query()->whereIn(
+            'condition',
+            Listing::conditionValuesForSearch(Listing::CONDITION_USED),
+        )
             ->update(['is_active' => false]);
         $this->fakeProviderFailure();
 

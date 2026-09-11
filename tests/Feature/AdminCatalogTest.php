@@ -6,7 +6,6 @@ use App\Models\Category;
 use App\Models\ChatbotQueryLog;
 use App\Models\KnowledgeItem;
 use App\Models\Listing;
-use App\Models\MarketplaceSyncRun;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\User;
@@ -56,7 +55,6 @@ final class AdminCatalogTest extends TestCase
             route('admin.products.create'),
             route('admin.products.edit', $product),
             route('admin.platforms.index'),
-            route('admin.platforms.create'),
             route('admin.platforms.edit', $platform),
             route('admin.listings.index'),
             route('admin.listings.create'),
@@ -71,13 +69,10 @@ final class AdminCatalogTest extends TestCase
             ['post', route('admin.products.store')],
             ['put', route('admin.products.update', $product)],
             ['delete', route('admin.products.destroy', $product)],
-            ['post', route('admin.platforms.store')],
             ['put', route('admin.platforms.update', $platform)],
-            ['delete', route('admin.platforms.destroy', $platform)],
             ['post', route('admin.listings.store')],
             ['put', route('admin.listings.update', $listing)],
             ['delete', route('admin.listings.destroy', $listing)],
-            ['post', route('admin.platforms.sync', $platform)],
             ['patch', route('admin.unanswered.update', $queryLog)],
         ];
 
@@ -156,7 +151,7 @@ final class AdminCatalogTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_category_name_change_marks_related_embeddings_stale(): void
+    public function test_category_name_cannot_leave_canonical_taxonomy(): void
     {
         $admin = $this->createUser();
         $category = $this->createCategory();
@@ -209,12 +204,11 @@ final class AdminCatalogTest extends TestCase
                 'is_active' => '1',
                 'sort_order' => '1',
             ])
-            ->assertRedirect(route('admin.categories.index'))
-            ->assertSessionHas('warning');
+            ->assertSessionHasErrors('name');
 
-        $this->assertNull($product->fresh()?->embedding_hash);
-        $this->assertNull($alias->fresh()?->embedding_hash);
-        $this->assertNull($knowledge->fresh()?->embedding_hash);
+        $this->assertNotNull($product->fresh()?->embedding_hash);
+        $this->assertNotNull($alias->fresh()?->embedding_hash);
+        $this->assertNotNull($knowledge->fresh()?->embedding_hash);
         $this->assertSame([1, 0], $product->fresh()?->embedding);
         Http::assertNothingSent();
     }
@@ -292,7 +286,7 @@ final class AdminCatalogTest extends TestCase
         $this->assertNull($product->embedding_hash);
         $this->assertSame('old-model', $product->embedding_model);
         $this->assertSame(
-            'Embedding baru gagal dibuat.',
+            'Layanan embedding mengembalikan vektor yang tidak valid.',
             $product->embedding_error,
         );
         $this->assertSame(2, $product->aliases()->count());
@@ -313,28 +307,20 @@ final class AdminCatalogTest extends TestCase
         Http::assertSentCount(6);
     }
 
-    public function test_admin_can_manage_platforms_and_listings_with_safe_urls(): void
+    public function test_admin_can_safely_edit_a_fixed_platform_and_manage_listings(): void
     {
         $admin = $this->createUser();
         $category = $this->createCategory();
         $product = $this->createProduct($category);
-
-        $this->actingAs($admin)
-            ->post(route('admin.platforms.store'), [
-                'name' => 'Demo Shop',
-                'slug' => '',
-                'source_type' => Platform::SOURCE_DEMO,
-                'access_type' => Platform::ACCESS_DEMO_DATASET,
-                'connector' => 'demo',
-                'base_url' => 'https://example.test',
-                'status' => Platform::STATUS_READY,
-                'is_active' => '1',
-                'sync_enabled' => '1',
-            ])
-            ->assertRedirect(route('admin.platforms.index'))
-            ->assertSessionHas('success');
-
-        $platform = Platform::query()->sole();
+        $platform = $this->createPlatform([
+            'name' => 'Tokopedia',
+            'slug' => 'tokopedia',
+            'source_type' => Platform::SOURCE_MANUAL,
+            'access_type' => Platform::ACCESS_CSV_IMPORT,
+            'connector' => 'manual-import',
+            'base_url' => 'https://www.tokopedia.com',
+            'sync_enabled' => false,
+        ]);
 
         $this->actingAs($admin)
             ->post(route('admin.listings.store'), [
@@ -380,18 +366,25 @@ final class AdminCatalogTest extends TestCase
 
         $this->actingAs($admin)
             ->put(route('admin.platforms.update', $platform), [
-                'name' => $platform->name,
-                'slug' => 'slug-baru',
-                'source_type' => $platform->source_type,
-                'access_type' => $platform->access_type,
-                'connector' => $platform->connector,
-                'base_url' => $platform->base_url,
+                'name' => 'OLX',
+                'slug' => 'olx',
+                'source_type' => Platform::SOURCE_SCRAPE,
+                'access_type' => Platform::ACCESS_PUBLIC_HTML,
+                'connector' => 'olx-public-web',
+                'base_url' => 'https://www.tokopedia.com/catalog',
                 'status' => $platform->status,
                 'is_active' => '1',
                 'sync_enabled' => '1',
             ])
-            ->assertSessionHasErrors('slug');
-        $this->assertSame('demo-shop', $platform->fresh()?->slug);
+            ->assertRedirect(route('admin.platforms.index'))
+            ->assertSessionHas('success');
+        $platform->refresh();
+        $this->assertSame('Tokopedia', $platform->name);
+        $this->assertSame('tokopedia', $platform->slug);
+        $this->assertSame(Platform::SOURCE_MANUAL, $platform->source_type);
+        $this->assertSame('manual-import', $platform->connector);
+        $this->assertSame('https://www.tokopedia.com/catalog', $platform->base_url);
+        $this->assertFalse($platform->sync_enabled);
 
         $this->actingAs($admin)
             ->put(
@@ -410,61 +403,12 @@ final class AdminCatalogTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->delete(route('admin.platforms.destroy', $platform))
-            ->assertSessionHas('warning');
-        $this->actingAs($admin)
             ->delete(route('admin.listings.destroy', $listing))
-            ->assertSessionHas('success');
-        $this->actingAs($admin)
-            ->delete(route('admin.platforms.destroy', $platform))
             ->assertSessionHas('success');
 
         $this->assertDatabaseCount('listings', 0);
-        $this->assertDatabaseCount('platforms', 0);
-        Http::assertNothingSent();
-    }
-
-    public function test_demo_marketplace_sync_is_admin_only_and_idempotent(): void
-    {
-        $admin = $this->createUser();
-        $category = $this->createCategory();
-        $this->createProduct($category);
-        $platform = $this->createPlatform([
-            'name' => 'Tokopedia Demo',
-            'slug' => 'tokopedia',
-        ]);
-
-        $this->actingAs($admin)
-            ->post(route('admin.platforms.sync', $platform), [
-                'max_pages' => 2,
-            ])
-            ->assertRedirect()
-            ->assertSessionHas('success');
-
-        $this->assertDatabaseCount('listings', 1);
-        $this->assertDatabaseHas('marketplace_sync_runs', [
-            'platform_id' => $platform->id,
-            'initiated_by' => $admin->id,
-            'status' => MarketplaceSyncRun::STATUS_COMPLETED,
-            'records_created' => 1,
-            'records_failed' => 0,
-        ]);
-        $this->assertNotNull($platform->fresh()?->last_synced_at);
-
-        $this->actingAs($admin)
-            ->post(route('admin.platforms.sync', $platform), [
-                'max_pages' => 2,
-            ])
-            ->assertSessionHas('success');
-
-        $this->assertDatabaseCount('listings', 1);
-        $this->assertDatabaseCount('marketplace_sync_runs', 2);
-        $this->assertSame(
-            1,
-            MarketplaceSyncRun::query()->latest('id')->value(
-                'records_skipped',
-            ),
-        );
+        $this->assertDatabaseCount('platforms', 1);
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
         Http::assertNothingSent();
     }
 
@@ -537,7 +481,7 @@ final class AdminCatalogTest extends TestCase
     private function createCategory(array $overrides = []): Category
     {
         return Category::query()->create(array_merge([
-            'name' => 'PC dan Komponen',
+            'name' => 'PC Components',
             'slug' => 'pc-dan-komponen',
             'is_active' => true,
             'sort_order' => 1,

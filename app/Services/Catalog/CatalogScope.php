@@ -7,6 +7,12 @@ use Illuminate\Support\Collection;
 
 final class CatalogScope
 {
+    /** @return array<string, array<string, mixed>> */
+    public function canonicalTaxonomy(): array
+    {
+        return (array) config('neomatra.scope.category_taxonomy', []);
+    }
+
     /** @return list<string> */
     public function supportedRootSlugs(): array
     {
@@ -18,44 +24,56 @@ final class CatalogScope
 
     public function supports(Category $category): bool
     {
-        $root = $category;
-        $visited = [];
-
-        while ($root->parent_id !== null) {
-            if (isset($visited[$root->getKey()])) {
-                return false;
-            }
-
-            $visited[$root->getKey()] = true;
-            $parent = $root->relationLoaded('parent')
-                ? $root->parent
-                : $root->parent()->first();
-
-            if (! $parent instanceof Category) {
-                return false;
-            }
-
-            $root = $parent;
-        }
-
-        return $category->is_active
-            && $root->is_active
-            && in_array($root->slug, $this->supportedRootSlugs(), true);
+        return $this->supportsCanonicalPath($category, []);
     }
 
     public function isSupportedRoot(Category $category): bool
     {
         return $category->parent_id === null
-            && in_array(
-                strtolower(trim((string) $category->slug)),
-                $this->supportedRootSlugs(),
-                true,
-            );
+            && $this->canonicalParentSlug((string) $category->slug) === null
+            && $this->isCanonicalSlug((string) $category->slug);
     }
 
     public function canCreateChildUnder(Category $category): bool
     {
-        return $this->supports($category);
+        $definition = $this->canonicalDefinition((string) $category->slug);
+
+        return $this->supports($category)
+            && is_array($definition)
+            && ($definition['children'] ?? []) !== [];
+    }
+
+    public function isCanonicalSlug(string $slug): bool
+    {
+        return $this->canonicalDefinition($slug) !== null;
+    }
+
+    public function matchesCanonicalName(string $slug, string $name): bool
+    {
+        $definition = $this->canonicalDefinition($slug);
+
+        return is_array($definition)
+            && $this->normalizeName($name)
+                === $this->normalizeName((string) ($definition['name'] ?? ''));
+    }
+
+    public function matchesCanonicalParent(
+        string $slug,
+        ?Category $parent,
+    ): bool {
+        if (! $this->isCanonicalSlug($slug)) {
+            return false;
+        }
+
+        $expectedParentSlug = $this->canonicalParentSlug($slug);
+
+        if ($expectedParentSlug === null) {
+            return $parent === null;
+        }
+
+        return $parent instanceof Category
+            && strtolower(trim((string) $parent->slug)) === $expectedParentSlug
+            && $this->supports($parent);
     }
 
     public function supportsId(int $categoryId): bool
@@ -80,39 +98,92 @@ final class CatalogScope
     /** @return Collection<int, Category> */
     public function validParentOptions(?Category $category = null): Collection
     {
+        $expectedParentSlug = $category instanceof Category
+            ? $this->canonicalParentSlug((string) $category->slug)
+            : null;
+
         return $this->categoryOptions()
-            ->reject(function (Category $candidate) use ($category): bool {
-                if (! $category instanceof Category) {
-                    return false;
+            ->filter(function (Category $candidate) use (
+                $category,
+                $expectedParentSlug,
+            ): bool {
+                if ($category instanceof Category) {
+                    return $expectedParentSlug !== null
+                        && $candidate->slug === $expectedParentSlug;
                 }
 
-                return $this->isSelfOrDescendantOf($candidate, $category);
+                return $this->canCreateChildUnder($candidate);
             })
             ->values();
     }
 
-    private function isSelfOrDescendantOf(
-        Category $candidate,
-        Category $category,
-    ): bool {
-        $current = $candidate;
-        $visited = [];
+    /** @return array<string, mixed>|null */
+    private function canonicalDefinition(string $slug): ?array
+    {
+        $slug = strtolower(trim($slug));
 
-        while ($current instanceof Category) {
-            if ((int) $current->getKey() === (int) $category->getKey()) {
-                return true;
+        foreach ($this->canonicalTaxonomy() as $rootSlug => $root) {
+            if ($slug === $rootSlug) {
+                return $root + ['parent_slug' => null];
             }
 
-            if (isset($visited[$current->getKey()])) {
-                return true;
+            foreach ((array) ($root['children'] ?? []) as $childSlug => $child) {
+                if ($slug === $childSlug) {
+                    return (array) $child + ['parent_slug' => $rootSlug];
+                }
             }
-
-            $visited[$current->getKey()] = true;
-            $current = $current->relationLoaded('parent')
-                ? $current->parent
-                : $current->parent()->first();
         }
 
-        return false;
+        return null;
+    }
+
+    private function canonicalParentSlug(string $slug): ?string
+    {
+        $definition = $this->canonicalDefinition($slug);
+
+        return is_string($definition['parent_slug'] ?? null)
+            ? $definition['parent_slug']
+            : null;
+    }
+
+    /** @param array<int, true> $visited */
+    private function supportsCanonicalPath(
+        Category $category,
+        array $visited,
+    ): bool {
+        $categoryId = (int) $category->getKey();
+
+        if (isset($visited[$categoryId]) || ! $category->is_active) {
+            return false;
+        }
+
+        $visited[$categoryId] = true;
+        $slug = strtolower(trim((string) $category->slug));
+
+        if (! $this->isCanonicalSlug($slug)) {
+            return false;
+        }
+
+        $expectedParentSlug = $this->canonicalParentSlug($slug);
+
+        if ($expectedParentSlug === null) {
+            return $category->parent_id === null;
+        }
+
+        $parent = $category->relationLoaded('parent')
+            ? $category->parent
+            : $category->parent()->first();
+
+        return $parent instanceof Category
+            && strtolower(trim((string) $parent->slug)) === $expectedParentSlug
+            && $this->supportsCanonicalPath($parent, $visited);
+    }
+
+    private function normalizeName(string $name): string
+    {
+        return mb_strtolower(
+            preg_replace('/\s+/u', ' ', trim($name)) ?? '',
+            'UTF-8',
+        );
     }
 }

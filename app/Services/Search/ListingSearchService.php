@@ -222,7 +222,15 @@ final class ListingSearchService
         $this->whereSourceAvailable($query);
 
         if ($intent->conditions !== []) {
-            $query->whereIn('condition', $intent->conditions);
+            $conditions = collect($intent->conditions)
+                ->flatMap(static fn (string $condition): array => Listing::conditionValuesForSearch($condition))
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($conditions !== []) {
+                $query->whereIn('condition', $conditions);
+            }
         }
 
         if ($intent->locations !== []) {

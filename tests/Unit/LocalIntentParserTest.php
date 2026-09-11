@@ -79,7 +79,9 @@ final class LocalIntentParserTest extends TestCase
     public static function conditionCases(): iterable
     {
         yield 'bekas' => ['RTX 3060 bekas', 'used'];
+        yield 'second' => ['RTX 3060 second', 'used'];
         yield 'secondhand' => ['RTX 3060 secondhand', 'used'];
+        yield 'used english' => ['used RTX 3060', 'used'];
         yield 'pre-owned' => ['RTX 3060 pre-owned', 'used'];
         yield 'seken' => ['RTX 3060 seken', 'used'];
         yield 'brand new' => ['iPhone brand new', 'new'];
@@ -87,7 +89,9 @@ final class LocalIntentParserTest extends TestCase
         yield 'open-box' => ['Laptop open-box', 'open_box'];
         yield 'open_box' => ['Laptop open_box', 'open_box'];
         yield 'refurb' => ['Laptop refurb', 'refurbished'];
+        yield 'refurbished' => ['RTX 3060 refurbished', 'refurbished'];
         yield 'ex-display' => ['Monitor ex-display', 'ex_display'];
+        yield 'ex display' => ['Monitor ex display', 'ex_display'];
     }
 
     /** @return iterable<string, array{string, int}> */

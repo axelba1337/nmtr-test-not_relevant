@@ -6,7 +6,6 @@ use App\Models\Category;
 use App\Models\ChatbotQueryLog;
 use App\Models\KnowledgeItem;
 use App\Models\Listing;
-use App\Models\MarketplaceSyncRun;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\User;
@@ -215,14 +214,14 @@ final class AdminPanelTest extends TestCase
             'is_active' => false,
         ]);
         $platform = Platform::query()->create([
-            'name' => 'Platform Dashboard',
-            'slug' => 'platform-dashboard',
-            'source_type' => Platform::SOURCE_DEMO,
-            'access_type' => Platform::ACCESS_DEMO_DATASET,
-            'connector' => 'demo',
+            'name' => 'OLX',
+            'slug' => 'olx',
+            'source_type' => Platform::SOURCE_MANUAL,
+            'access_type' => Platform::ACCESS_CSV_IMPORT,
+            'connector' => 'manual-import',
             'status' => Platform::STATUS_READY,
             'is_active' => true,
-            'sync_enabled' => true,
+            'sync_enabled' => false,
         ]);
         Listing::query()->create([
             'platform_id' => $platform->id,
@@ -266,14 +265,6 @@ final class AdminPanelTest extends TestCase
             'price_type' => Listing::PRICE_FULL,
             'is_active' => false,
         ]);
-        MarketplaceSyncRun::query()->create([
-            'platform_id' => $platform->id,
-            'status' => MarketplaceSyncRun::STATUS_FAILED,
-            'records_failed' => 1,
-            'error_code' => 'connection_failure',
-            'finished_at' => now(),
-        ]);
-
         $this->createCurrentItem(['title' => 'Ready']);
         KnowledgeItem::query()->create([
             'title' => 'Missing',
@@ -301,7 +292,6 @@ final class AdminPanelTest extends TestCase
             ->assertViewHas('activeProductsCount', 2)
             ->assertViewHas('pendingUnansweredCount', 1)
             ->assertViewHas('unmatchedListingsCount', 1)
-            ->assertViewHas('failedSyncCount', 1)
             ->assertViewHas('productsWithoutListingsCount', 1)
             ->assertViewHas(
                 'productsWithoutListings',
@@ -337,9 +327,6 @@ final class AdminPanelTest extends TestCase
                 'embedding_status' => 'failed',
             ])), false)
             ->assertSee(e(route('admin.listings.unmatched')), false)
-            ->assertSee(e(route('admin.platforms.index', [
-                'sync_status' => 'failed',
-            ])), false)
             ->assertSee(e(route('admin.unanswered.index', [
                 'review' => 'pending',
             ])), false);
@@ -371,13 +358,6 @@ final class AdminPanelTest extends TestCase
             ->assertSeeText('Listing Belum Dipetakan Dashboard')
             ->assertDontSeeText('Listing Aktif Dashboard');
 
-        $this->actingAs($admin)
-            ->get(route('admin.platforms.index', [
-                'sync_status' => 'failed',
-            ]))
-            ->assertOk()
-            ->assertSeeText('Platform Dashboard')
-            ->assertSeeText('1 sync gagal');
     }
 
     public function test_admin_can_create_a_faq_and_its_embedding(): void

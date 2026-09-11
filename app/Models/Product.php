@@ -13,6 +13,12 @@ final class Product extends Model
 {
     public const EMBEDDING_FORMAT_VERSION = 'product-v2';
 
+    public const EMBEDDING_READY = 'ready';
+
+    public const EMBEDDING_NEEDS_REBUILD = 'needs_rebuild';
+
+    public const EMBEDDING_FAILED = 'failed';
+
     protected $fillable = [
         'category_id',
         'name',
@@ -142,6 +148,17 @@ final class Product extends Model
                 $this->embedding,
                 $dimensions,
             ) !== null;
+    }
+
+    public function embeddingStatus(string $model, int $dimensions): string
+    {
+        if ($this->hasCurrentEmbedding($model, $dimensions)) {
+            return self::EMBEDDING_READY;
+        }
+
+        return filled($this->embedding_error)
+            ? self::EMBEDDING_FAILED
+            : self::EMBEDDING_NEEDS_REBUILD;
     }
 
     public static function makeEmbeddingHash(

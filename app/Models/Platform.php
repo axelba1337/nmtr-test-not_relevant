@@ -8,6 +8,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Platform extends Model
 {
+    public const MVP_SLUGS = [
+        'tokopedia',
+        'shopee',
+        'olx',
+        'facebook',
+        'carousell',
+    ];
+
     public const SOURCE_API = 'api';
 
     public const SOURCE_FEED = 'feed';
@@ -90,6 +98,17 @@ final class Platform extends Model
             ->active()
             ->where('sync_enabled', true)
             ->where('status', '!=', self::STATUS_DISABLED);
+    }
+
+    public function isMvpSource(): bool
+    {
+        return in_array($this->slug, self::MVP_SLUGS, true);
+    }
+
+    public function usesPublicWebConnector(): bool
+    {
+        return $this->slug === 'olx'
+            && $this->connector === 'olx-public-web';
     }
 
     /** @return list<string> */
