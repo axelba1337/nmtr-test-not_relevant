@@ -107,6 +107,48 @@ document.querySelectorAll('[data-auto-submit]').forEach((control) => {
     });
 });
 
+document.querySelectorAll('[data-copy-target]').forEach((button) => {
+    button.addEventListener('click', async () => {
+        if (!(button instanceof HTMLButtonElement) || button.disabled) {
+            return;
+        }
+
+        const targetSelector = button.dataset.copyTarget;
+        const statusSelector = button.dataset.copyStatus;
+        const target = targetSelector ? document.querySelector(targetSelector) : null;
+        const status = statusSelector ? document.querySelector(statusSelector) : null;
+
+        if (!(target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement)) {
+            return;
+        }
+
+        button.disabled = true;
+
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(target.value);
+            } else {
+                target.focus();
+                target.select();
+
+                if (!document.execCommand('copy')) {
+                    throw new Error('Copy command unavailable');
+                }
+            }
+
+            if (status instanceof HTMLElement) {
+                status.textContent = button.dataset.copySuccess || '';
+            }
+        } catch {
+            if (status instanceof HTMLElement) {
+                status.textContent = button.dataset.copyFailure || '';
+            }
+        } finally {
+            button.disabled = false;
+        }
+    });
+});
+
 document.addEventListener('submit', (event) => {
     const form = event.target;
 

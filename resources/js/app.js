@@ -2,6 +2,7 @@ import {
     ChatbotRequestError,
     createRequestCoordinator,
     createSearchPipelineLifecycle,
+    createTextareaAutoResize,
     filtersFromFormData,
     normalizeSearchEntryPointHtml,
     normalizeSources,
@@ -9,6 +10,7 @@ import {
     requestChat,
     requestSuggestions,
     scrollTranscriptToLatest,
+    textareaEnterAction,
 } from './chatbot-client';
 import { initializeBrandEntry } from './brand-entry';
 
@@ -50,6 +52,7 @@ if (chatbot) {
     let loadingMessage = null;
     let searchPipeline = null;
     let conversationHistory = [];
+    const textareaAutoResize = createTextareaAutoResize(input, { maxRows: 5 });
 
     function getSessionKey() {
         try {
@@ -599,6 +602,7 @@ if (chatbot) {
                 motionClass: 'message--query-entry',
             });
             input.value = '';
+            textareaAutoResize.reset();
             setBusy(true);
             loadingMessage = appendSearchPipelineLoading();
         },
@@ -672,6 +676,21 @@ if (chatbot) {
     form.addEventListener('submit', (event) => {
         event.preventDefault();
         void sendMessage(input.value);
+    });
+    input.addEventListener('keydown', (event) => {
+        const action = textareaEnterAction(
+            event,
+            input.value,
+            textareaAutoResize.isComposing(),
+        );
+
+        if (action === 'submit' || action === 'empty') {
+            event.preventDefault();
+        }
+
+        if (action === 'submit') {
+            form.requestSubmit();
+        }
     });
     window.addEventListener('pagehide', stopSearchPipeline);
 

@@ -11,7 +11,10 @@
                 <h2 id="categories-title">{{ __('ui.admin_pages.categories.heading') }}</h2>
                 <p>{{ __('ui.admin_pages.categories.description') }}</p>
             </div>
-            <a class="button button--primary" href="{{ route('admin.categories.create') }}">{{ __('ui.admin_pages.categories.add') }}</a>
+            <div class="header-actions">
+                <a class="button button--secondary" href="{{ route('admin.categories.export', $exportQuery) }}">{{ __('ui.admin_pages.common.download_xlsx') }}</a>
+                <a class="button button--primary" href="{{ route('admin.categories.create') }}">{{ __('ui.admin_pages.categories.add') }}</a>
+            </div>
         </div>
 
         <form class="filter-bar" method="GET" action="{{ route('admin.categories.index') }}">

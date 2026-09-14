@@ -18,5 +18,14 @@ final class MarketplaceScheduleTest extends TestCase
         )->values();
 
         $this->assertCount(0, $marketplaceEvents);
+
+        $discoveryEvents = $events->filter(
+            static fn ($event): bool => str_contains(
+                (string) $event->command,
+                'listing-discovery:dispatch',
+            ),
+        );
+
+        $this->assertCount(0, $discoveryEvents);
     }
 }

@@ -189,6 +189,7 @@ final class LocalizationTest extends TestCase
             'admin.products.index',
             'admin.platforms.index',
             'admin.listings.index',
+            'admin.listings.coverage',
             'admin.knowledge.index',
             'admin.unanswered.index',
         ] as $routeName) {
@@ -198,6 +199,30 @@ final class LocalizationTest extends TestCase
                 ->assertOk()
                 ->assertDontSee('ui.admin_pages.', false);
         }
+    }
+
+    public function test_admin_listing_availability_kpi_is_clear_in_both_locales(): void
+    {
+        $admin = User::query()->create([
+            'name' => 'Listing KPI Admin',
+            'email' => 'listing-kpi-admin@example.test',
+            'password' => Hash::make('password'),
+            'is_admin' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->withSession(['locale' => 'id'])
+            ->get(route('admin.listings.index'))
+            ->assertOk()
+            ->assertSeeText('Listing Tersedia')
+            ->assertSeeText('Listing aktif yang dapat digunakan dalam pencarian.');
+
+        $this->actingAs($admin)
+            ->withSession(['locale' => 'en'])
+            ->get(route('admin.listings.index'))
+            ->assertOk()
+            ->assertSeeText('Available Listings')
+            ->assertSeeText('Active Listings currently available for search.');
     }
 
     public function test_indonesian_and_english_translation_catalogs_have_matching_keys(): void

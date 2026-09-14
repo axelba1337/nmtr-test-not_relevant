@@ -329,6 +329,8 @@ a { color: inherit; }
 
 .summary-card:first-child .summary-card__value { color: var(--orange-bright); }
 .summary-card__note { margin: 0.65rem 0 0; color: var(--text-muted); font-size: 0.7rem; line-height: 1.45; }
+.summary-card__action { display: inline-flex; margin-top: 0.65rem; }
+.summary-counting-hint { margin: 0 0 0.65rem; padding-left: 0.65rem; border-left: 2px solid var(--info); color: var(--text-secondary); font-size: 0.7rem; line-height: 1.5; }
 .summary-card__unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; }
 .summary-card__details { display: grid; gap: 0.2rem; margin: 0.65rem 0 0; padding-left: 1rem; color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.58rem; line-height: 1.45; }
 .summary-card__details a { color: inherit; text-decoration-color: var(--border-strong); text-underline-offset: 0.18rem; }
@@ -370,7 +372,21 @@ a { color: inherit; }
 .form-actions,
 .table-actions,
 .button-group,
+.header-actions,
 .filter-bar__actions { display: flex; align-items: center; gap: 0.55rem; }
+
+.header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.summary-grid--compact {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.summary-grid--compact .summary-card {
+    min-height: 7rem;
+}
 
 .filter-bar {
     align-items: flex-end;
@@ -588,6 +604,75 @@ a { color: inherit; }
 .table-action-form { margin-top: 0.4rem; }
 .table-source-link { width: fit-content; display: block; margin-top: 0.4rem; color: var(--orange); font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600; }
 
+.listing-workflow {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.listing-workflow__split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    align-items: stretch;
+}
+
+.workflow-step {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--orange-burnt);
+    background: var(--surface-alt);
+}
+
+.workflow-step__heading {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.7rem;
+    align-items: start;
+}
+
+.workflow-step__heading h3 { margin: 0; color: var(--text); font-size: 0.95rem; }
+.workflow-step__heading p { margin: 0.28rem 0 0; color: var(--text-secondary); font-size: 0.72rem; line-height: 1.5; }
+.workflow-step__index {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border: 1px solid var(--orange-burnt);
+    color: var(--orange-bright);
+    background: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 600;
+}
+.workflow-step__label { color: var(--orange) !important; font-family: var(--font-mono); font-size: 0.55rem !important; font-weight: 600; letter-spacing: 0.06em; }
+.workflow-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; margin-top: 0.8rem; }
+.workflow-helper { margin: 0.65rem 0 0; color: var(--text-secondary); font-size: 0.68rem; line-height: 1.5; }
+.workflow-helper--prompt-action { max-width: 58rem; color: var(--text-muted); }
+.workflow-targets { margin-top: 0.8rem; }
+.workflow-targets .admin-table { min-width: 44rem; }
+.workflow-details { margin-top: 0.8rem; border: 1px solid var(--border); background: var(--surface); }
+.workflow-details summary { padding: 0.72rem 0.8rem; color: var(--orange-bright); cursor: pointer; font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600; text-transform: uppercase; }
+.workflow-details[open] summary { border-bottom: 1px solid var(--border); }
+.workflow-details > p { margin: 0; padding: 0.8rem 0.8rem 0; color: var(--text-secondary); font-size: 0.7rem; line-height: 1.5; }
+.workflow-details > .workflow-actions { margin: 0; padding: 0.8rem; }
+.prompt-panel__content { width: calc(100% - 1.6rem); margin: 0.8rem 0.8rem 0; resize: vertical; color: var(--text-secondary); background: var(--bg); font-family: var(--font-mono); font-size: 0.64rem; line-height: 1.5; }
+.prompt-panel__section { padding: 0.8rem 0.8rem 0; }
+.prompt-panel__section .workflow-step__label,
+.prompt-panel__section .workflow-helper { margin: 0; }
+.prompt-panel__section .workflow-helper { margin-top: 0.32rem; }
+.prompt-panel__section--actions { padding-bottom: 0.8rem; }
+.prompt-panel__section--actions .workflow-actions { margin-top: 0.5rem; }
+.prompt-panel__steps { margin: 0.4rem 0 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.68rem; line-height: 1.55; }
+.prompt-panel__steps li + li { margin-top: 0.18rem; }
+.copy-status { color: var(--success); font-family: var(--font-mono); font-size: 0.62rem; }
+.field-guide { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 1px; background: var(--border); }
+.field-guide div { padding: 0.7rem; background: var(--surface-alt); }
+.field-guide dt { color: var(--orange-bright); font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600; }
+.field-guide dd { margin: 0.25rem 0 0; color: var(--text-secondary); font-size: 0.66rem; line-height: 1.45; }
+.workflow-upload { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.8rem; align-items: end; margin-top: 0.8rem; }
+.workflow-upload .form-actions { margin: 0; padding: 0; border: 0; }
+
 code,
 .code-block { color: var(--info); font-family: var(--font-mono); overflow-wrap: anywhere; }
 
@@ -767,6 +852,10 @@ code,
     .products-filter__row--primary,
     .products-filter__row--secondary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .products-filter__actions { grid-column: 1 / -1; }
+    .listing-workflow__split {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+    }
 }
 
 @media (max-width: 42rem) {
@@ -775,6 +864,7 @@ code,
     .admin-identity__label { display: none; }
     .admin-card__heading { align-items: stretch; flex-direction: column; }
     .admin-card__heading .button { width: 100%; }
+    .header-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
     .summary-grid,
     .admin-form__grid { grid-template-columns: 1fr; }
     .data-list { grid-template-columns: 1fr; }
@@ -797,6 +887,10 @@ code,
     }
     .products-filter__actions .button { width: 100%; }
     .form-actions .button { flex: 1 1 auto; }
+    .workflow-upload { grid-template-columns: minmax(0, 1fr); }
+    .workflow-upload .button,
+    .workflow-actions .button { width: 100%; }
+    .field-guide { grid-template-columns: minmax(0, 1fr); }
     .activity-chart { overflow-x: auto; }
     .pagination { align-items: stretch; flex-direction: column; }
     .pagination__links { justify-content: space-between; }

@@ -614,6 +614,7 @@ a { color: inherit; }
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0;
+    align-items: end;
     box-shadow: inset 0 0 0 0 transparent;
     transition: box-shadow 160ms ease;
 }
@@ -637,19 +638,26 @@ a { color: inherit; }
 .composer__controls:focus-within::after { animation: composer-focus-scan 160ms ease-out 1; }
 .composer__controls.is-busy::after { animation: composer-busy-scan 950ms linear infinite; }
 
-.composer input {
+.composer textarea[data-input] {
     width: 100%;
     min-width: 0;
     min-height: 3.4rem;
+    max-height: calc(7.25em + 1.6rem + 2px);
     padding: 0.8rem 1rem;
     border: 1px solid var(--border);
     border-right: 0;
     color: var(--text);
     background: var(--surface-alt);
+    line-height: 1.45;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    resize: none;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
-.composer input::placeholder { color: var(--text-muted); }
-.composer input:focus { border-color: var(--orange); outline: 0; }
+.composer textarea[data-input]::placeholder { color: var(--text-muted); }
+.composer textarea[data-input]:focus { border-color: var(--orange); outline: 0; }
 
 .composer__controls button {
     position: relative;
@@ -694,9 +702,9 @@ a { color: inherit; }
 .composer__controls.is-busy button::after { content: ''; margin: 0; }
 .composer__controls.is-busy button::before { animation: button-activity-line 850ms linear infinite; }
 .composer__controls button:disabled,
-.composer input:disabled,
+.composer textarea[data-input]:disabled,
 .composer select:disabled { cursor: wait; opacity: 0.76; }
-.composer input:disabled { color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); }
+.composer textarea[data-input]:disabled { color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); }
 
 .chat-disclaimer {
     margin: 0;
@@ -856,7 +864,7 @@ a { color: inherit; }
     .quick-filters__grid { grid-template-columns: 1fr; }
     .suggestions__list { grid-template-columns: 1fr; }
     .composer__controls { grid-template-columns: 1fr; gap: 0.5rem; }
-    .composer input { border-right: 1px solid var(--border); }
+    .composer textarea[data-input] { border-right: 1px solid var(--border); }
     .composer__controls button { width: 100%; }
     .listing-results__heading { align-items: flex-start; flex-direction: column; }
     .listing-results__heading p { text-align: left; }

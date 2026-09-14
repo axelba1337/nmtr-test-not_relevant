@@ -11,6 +11,7 @@
                 <p>{{ __('ui.admin_pages.products.description') }}</p>
             </div>
             <div class="button-group products-index__header-actions">
+                <a class="button button--secondary" href="{{ route('admin.products.export', $exportQuery) }}">{{ __('ui.admin_pages.common.download_xlsx') }}</a>
                 <a class="button button--primary" href="{{ route('admin.products.create') }}">{{ __('ui.admin_pages.products.add') }}</a>
             </div>
         </div>

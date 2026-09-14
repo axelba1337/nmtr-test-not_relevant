@@ -6,6 +6,9 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\KnowledgeEmbeddingController;
 use App\Http\Controllers\Admin\KnowledgeItemController;
 use App\Http\Controllers\Admin\ListingController;
+use App\Http\Controllers\Admin\ListingCoverageController;
+use App\Http\Controllers\Admin\ListingDiscoveryController;
+use App\Http\Controllers\Admin\ListingImportController;
 use App\Http\Controllers\Admin\PlatformController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductEmbeddingController;
@@ -47,16 +50,76 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             Route::get('/', DashboardController::class)
                 ->name('dashboard');
 
+            Route::get('/categories/export', [
+                CategoryController::class,
+                'export',
+            ])->name('categories.export');
             Route::resource('categories', CategoryController::class)
                 ->except('show');
+            Route::get('/products/export', [
+                ProductController::class,
+                'export',
+            ])->name('products.export');
             Route::post(
                 '/products/{product}/embedding/rebuild',
                 [ProductEmbeddingController::class, 'rebuildOne'],
             )->name('products.embedding.rebuild');
             Route::resource('products', ProductController::class)
                 ->except('show');
+            Route::get('/platforms/export', [
+                PlatformController::class,
+                'export',
+            ])->name('platforms.export');
             Route::resource('platforms', PlatformController::class)
                 ->only(['index', 'edit', 'update']);
+            Route::get('/listings/export', [
+                ListingController::class,
+                'export',
+            ])->name('listings.export');
+            Route::get('/listings/import', [
+                ListingImportController::class,
+                'create',
+            ])->name('listings.import');
+            Route::post('/listings/import/preview', [
+                ListingImportController::class,
+                'preview',
+            ])->name('listings.import.preview');
+            Route::post('/listings/import/confirm', [
+                ListingImportController::class,
+                'import',
+            ])->name('listings.import.confirm');
+            Route::get('/listings/import/template', [
+                ListingImportController::class,
+                'template',
+            ])->name('listings.import.template');
+            Route::get('/listings/coverage', [
+                ListingCoverageController::class,
+                'index',
+            ])->name('listings.coverage');
+            Route::get('/listings/coverage/export', [
+                ListingCoverageController::class,
+                'export',
+            ])->name('listings.coverage.export');
+            Route::get('/listings/coverage/research-prompt', [
+                ListingCoverageController::class,
+                'researchPrompt',
+            ])->name('listings.coverage.research-prompt');
+            Route::get('/listings/automatic', [
+                ListingDiscoveryController::class,
+                'index',
+            ])->name('listings.discovery');
+            Route::post('/listings/automatic/start', [
+                ListingDiscoveryController::class,
+                'start',
+            ])->name('listings.discovery.start');
+            Route::post(
+                '/listings/automatic/candidates/{candidate}/approve',
+                [ListingDiscoveryController::class, 'approve'],
+            )->name('listings.discovery.candidates.approve');
+            Route::post(
+                '/listings/automatic/candidates/{candidate}/reject',
+                [ListingDiscoveryController::class, 'reject'],
+            )->name('listings.discovery.candidates.reject');
             Route::get(
                 '/listings/unmatched',
                 [ListingController::class, 'unmatched'],

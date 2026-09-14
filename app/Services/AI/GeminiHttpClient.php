@@ -25,12 +25,28 @@ final class GeminiHttpClient
         string $path,
         array $payload,
     ): ProviderHttpResult {
+        return $this->postFromConfiguration(
+            'ai.'.$configuration,
+            $operation,
+            $model,
+            $path,
+            $payload,
+        );
+    }
+
+    public function postFromConfiguration(
+        string $configurationRoot,
+        string $operation,
+        string $model,
+        string $path,
+        array $payload,
+    ): ProviderHttpResult {
         $provider = strtolower(trim(
-            (string) config("ai.{$configuration}.provider", ''),
+            (string) config("{$configurationRoot}.provider", ''),
         ));
-        $apiKey = trim((string) config("ai.{$configuration}.api_key", ''));
+        $apiKey = trim((string) config("{$configurationRoot}.api_key", ''));
         $baseUrl = rtrim(
-            trim((string) config("ai.{$configuration}.base_url", '')),
+            trim((string) config("{$configurationRoot}.base_url", '')),
             '/',
         );
 
@@ -58,7 +74,7 @@ final class GeminiHttpClient
         }
 
         try {
-            $response = $this->request($apiKey)->post(
+            $response = $this->request($apiKey, $configurationRoot)->post(
                 $baseUrl.'/'.ltrim($path, '/'),
                 $payload,
             );
@@ -99,14 +115,22 @@ final class GeminiHttpClient
         return ProviderHttpResult::success($response);
     }
 
-    private function request(string $apiKey): PendingRequest
-    {
+    private function request(
+        string $apiKey,
+        string $configurationRoot,
+    ): PendingRequest {
         $timeout = $this->searchBudget->remainingTimeoutSeconds(
-            max(1, (int) config('ai.http.timeout', 25)),
+            max(1, (int) config(
+                "{$configurationRoot}.http.timeout",
+                config('ai.http.timeout', 25),
+            )),
         );
         $retries = min(5, max(
             0,
-            (int) config('ai.http.retries', 2),
+            (int) config(
+                "{$configurationRoot}.http.retries",
+                config('ai.http.retries', 2),
+            ),
         ));
 
         if ($this->searchBudget->active()) {
@@ -114,7 +138,10 @@ final class GeminiHttpClient
         }
         $retryDelay = min(5000, max(
             0,
-            (int) config('ai.http.retry_delay_ms', 1000),
+            (int) config(
+                "{$configurationRoot}.http.retry_delay_ms",
+                config('ai.http.retry_delay_ms', 1000),
+            ),
         ));
 
         $request = Http::acceptJson()

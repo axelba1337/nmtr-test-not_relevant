@@ -24,12 +24,103 @@ const MAX_SOURCES = 8;
 const MAX_SEARCH_ENTRY_POINT_HTML_LENGTH = 20000;
 const DEFAULT_PIPELINE_STAGE_DELAYS = [0, 320, 720, 1160, 1600];
 const DEFAULT_MARKETPLACE_SCAN_INTERVAL = 280;
+const DEFAULT_TEXTAREA_MAX_ROWS = 5;
 
 const trimmedText = (value, maxLength) => (
     typeof value === 'string'
         ? value.trim().slice(0, maxLength)
         : ''
 );
+
+export const resizeTextarea = (
+    textarea,
+    {
+        maxRows = DEFAULT_TEXTAREA_MAX_ROWS,
+        getComputedStyleImpl = globalThis.getComputedStyle,
+    } = {},
+) => {
+    if (!textarea?.style || typeof getComputedStyleImpl !== 'function') {
+        return null;
+    }
+
+    const styles = getComputedStyleImpl(textarea);
+    const lineHeight = Number.parseFloat(styles.lineHeight) || 20;
+    const verticalChrome = [
+        styles.paddingTop,
+        styles.paddingBottom,
+        styles.borderTopWidth,
+        styles.borderBottomWidth,
+    ].reduce((total, value) => total + (Number.parseFloat(value) || 0), 0);
+    const maximumHeight = Math.ceil(
+        (lineHeight * Math.max(1, Number(maxRows) || DEFAULT_TEXTAREA_MAX_ROWS))
+        + verticalChrome,
+    );
+
+    textarea.style.height = 'auto';
+
+    const scrollHeight = Math.max(
+        Number(textarea.scrollHeight) || 0,
+        Math.ceil(lineHeight + verticalChrome),
+    );
+    const height = Math.min(scrollHeight, maximumHeight);
+    const overflowY = scrollHeight > maximumHeight ? 'auto' : 'hidden';
+
+    textarea.style.height = `${height}px`;
+    textarea.style.overflowY = overflowY;
+
+    return { height, maximumHeight, overflowY };
+};
+
+export const createTextareaAutoResize = (
+    textarea,
+    options = {},
+) => {
+    let composing = false;
+    const resize = () => resizeTextarea(textarea, options);
+    const startComposition = () => { composing = true; };
+    const finishComposition = () => {
+        composing = false;
+        resize();
+    };
+
+    textarea?.addEventListener?.('input', resize);
+    textarea?.addEventListener?.('compositionstart', startComposition);
+    textarea?.addEventListener?.('compositionend', finishComposition);
+    resize();
+
+    return {
+        destroy: () => {
+            textarea?.removeEventListener?.('input', resize);
+            textarea?.removeEventListener?.('compositionstart', startComposition);
+            textarea?.removeEventListener?.('compositionend', finishComposition);
+        },
+        isComposing: () => composing,
+        reset: resize,
+        resize,
+    };
+};
+
+export const textareaEnterAction = (
+    event,
+    value,
+    compositionActive = false,
+) => {
+    if (event?.key !== 'Enter') {
+        return 'ignore';
+    }
+
+    if (compositionActive || event.isComposing || event.keyCode === 229) {
+        return 'ignore';
+    }
+
+    if (event.shiftKey) {
+        return 'newline';
+    }
+
+    return typeof value === 'string' && value.trim() !== ''
+        ? 'submit'
+        : 'empty';
+};
 
 export const parseChatTranslations = (value) => {
     if (typeof value !== 'string' || value.trim() === '') {

@@ -6,6 +6,7 @@ import {
     ChatbotRequestError,
     createRequestCoordinator,
     createSearchPipelineLifecycle,
+    createTextareaAutoResize,
     filtersFromFormData,
     normalizeHistory,
     normalizeSearchEntryPointHtml,
@@ -14,7 +15,9 @@ import {
     parseChatTranslations,
     requestChat,
     requestSuggestions,
+    resizeTextarea,
     scrollTranscriptToLatest,
+    textareaEnterAction,
 } from '../../resources/js/chatbot-client.js';
 
 test('chat filters are collected only when the user submits the composer', () => {
@@ -35,6 +38,85 @@ test('chat filters are collected only when the user submits the composer', () =>
     empty.set('location', '  ');
 
     assert.deepEqual(filtersFromFormData(empty), {});
+});
+
+test('chat textarea grows through wrapped lines and scrolls after five rows', () => {
+    const listeners = new Map();
+    const textarea = {
+        scrollHeight: 38,
+        style: {},
+        addEventListener: (name, listener) => listeners.set(name, listener),
+        removeEventListener: (name) => listeners.delete(name),
+    };
+    const options = {
+        maxRows: 5,
+        getComputedStyleImpl: () => ({
+            lineHeight: '20px',
+            paddingTop: '8px',
+            paddingBottom: '8px',
+            borderTopWidth: '1px',
+            borderBottomWidth: '1px',
+        }),
+    };
+    const short = resizeTextarea(textarea, options);
+
+    assert.deepEqual(short, {
+        height: 38,
+        maximumHeight: 118,
+        overflowY: 'hidden',
+    });
+    assert.equal(textarea.style.height, '38px');
+
+    const autoResize = createTextareaAutoResize(textarea, options);
+
+    textarea.scrollHeight = 220;
+    listeners.get('input')();
+    assert.equal(textarea.style.height, '118px');
+    assert.equal(textarea.style.overflowY, 'auto');
+
+    textarea.scrollHeight = 58;
+    autoResize.reset();
+    assert.equal(textarea.style.height, '58px');
+    assert.equal(textarea.style.overflowY, 'hidden');
+
+    listeners.get('compositionstart')();
+    assert.equal(autoResize.isComposing(), true);
+    listeners.get('compositionend')();
+    assert.equal(autoResize.isComposing(), false);
+    autoResize.destroy();
+    assert.equal(listeners.size, 0);
+});
+
+test('chat textarea Enter behavior preserves newline empty and IME input', () => {
+    assert.equal(textareaEnterAction({ key: 'Enter' }, 'find RTX 3060'), 'submit');
+    assert.equal(textareaEnterAction({ key: 'Enter', shiftKey: true }, 'line one'), 'newline');
+    assert.equal(textareaEnterAction({ key: 'Enter' }, '   '), 'empty');
+    assert.equal(textareaEnterAction({ key: 'Enter', isComposing: true }, 'teks'), 'ignore');
+    assert.equal(textareaEnterAction({ key: 'Enter', keyCode: 229 }, 'teks'), 'ignore');
+    assert.equal(textareaEnterAction({ key: 'A' }, 'teks'), 'ignore');
+});
+
+test('chat composer markup and CSS keep the growing textarea bounded and mobile safe', () => {
+    const blade = readFileSync(
+        new URL('../../resources/views/chatbot/widget.blade.php', import.meta.url),
+        'utf8',
+    );
+    const css = readFileSync(
+        new URL('../../resources/css/app.css', import.meta.url),
+        'utf8',
+    );
+    const appJavaScript = readFileSync(
+        new URL('../../resources/js/app.js', import.meta.url),
+        'utf8',
+    );
+
+    assert.match(blade, /<textarea[^>]+id="chatbot-message"[^>]+name="message"[^>]+rows="1"[^>]+data-input><\/textarea>/);
+    assert.match(css, /\.composer textarea\[data-input\][^{]*\{[^}]*max-height:[^;}]+;[^}]*overflow-x:\s*hidden;[^}]*overflow-y:\s*hidden;[^}]*resize:\s*none;/s);
+    assert.match(css, /\.composer__controls\s*\{[^}]*align-items:\s*end;/s);
+    assert.match(css, /@media\s*\(max-width:\s*34rem\)[\s\S]*\.composer textarea\[data-input\]/s);
+    assert.match(appJavaScript, /textareaAutoResize\.reset\(\)/);
+    assert.match(appJavaScript, /form\.requestSubmit\(\)/);
+    assert.match(appJavaScript, /filters:\s*filtersFromForm\(\)/);
 });
 import {
     BRAND_AREA_STORAGE_KEY,
@@ -389,6 +471,8 @@ test('user and admin entrypoints share branding initialization and locale hooks'
 
     assert.match(userJavaScript, /initializeBrandEntry\(\{ area: 'user' \}\)/);
     assert.match(adminJavaScript, /initializeBrandEntry\(\{ area: 'admin' \}\)/);
+    assert.match(adminJavaScript, /\[data-copy-target\]/);
+    assert.match(adminJavaScript, /navigator\.clipboard\?\.writeText/);
     assert.match(localeSwitch, /data-locale-switch-form/);
 });
 

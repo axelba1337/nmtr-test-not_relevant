@@ -4,11 +4,14 @@
 
 @section('content')
     <section class="admin-card" aria-labelledby="platforms-title">
-        <div class="admin-card__heading">
+        <div class="admin-card__heading admin-card__heading--actions">
             <div>
                 <p class="admin-card__eyebrow">{{ __('ui.admin_pages.platforms.source_registry') }}</p>
                 <h2 id="platforms-title">{{ __('ui.admin_pages.platforms.heading') }}</h2>
                 <p>{{ __('ui.admin_pages.platforms.description') }}</p>
+            </div>
+            <div class="header-actions">
+                <a class="button button--secondary" href="{{ route('admin.platforms.export', $exportQuery) }}">{{ __('ui.admin_pages.common.download_xlsx') }}</a>
             </div>
         </div>
 

@@ -110,7 +110,7 @@
                         <div class="composer-dock">
                             <label class="composer__label" for="chatbot-message">{{ __('ui.chat.input_label') }}</label>
                             <div class="composer__controls">
-                                <input id="chatbot-message" name="message" type="text" required maxlength="2000" autocomplete="off" placeholder="{{ __('ui.chat.input_placeholder') }}" data-input>
+                                <textarea id="chatbot-message" name="message" rows="1" required maxlength="2000" autocomplete="off" placeholder="{{ __('ui.chat.input_placeholder') }}" data-input></textarea>
                                 <button type="submit" data-submit>{{ __('ui.chat.send') }}</button>
                             </div>
                         </div>

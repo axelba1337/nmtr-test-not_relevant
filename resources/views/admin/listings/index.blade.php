@@ -6,12 +6,48 @@
     <section class="admin-card" aria-labelledby="listings-title">
         <div class="admin-card__heading admin-card__heading--actions">
             <div><p class="admin-card__eyebrow">{{ __('ui.admin_pages.listings.source_integration') }}</p><h2 id="listings-title">{{ __('ui.admin_pages.listings.heading') }}</h2><p>{{ __('ui.admin_pages.listings.description') }}</p></div>
-            <a class="button button--primary" href="{{ route('admin.listings.create') }}">{{ __('ui.admin_pages.listings.add') }}</a>
+            <div class="header-actions">
+                <a class="button button--secondary" href="{{ route('admin.listings.export', $exportQuery) }}">{{ __('ui.admin_pages.common.download_xlsx') }}</a>
+                <a class="button button--secondary" href="{{ route('admin.listings.discovery') }}">{{ __('ui.admin_pages.listings.automatic') }}</a>
+                <a class="button button--secondary" href="{{ route('admin.listings.import') }}">{{ __('ui.admin_pages.listings.import_csv') }}</a>
+                <a class="button button--primary" href="{{ route('admin.listings.create') }}">{{ __('ui.admin_pages.listings.add') }}</a>
+            </div>
+        </div>
+        <p class="summary-counting-hint">{{ __('ui.admin_pages.listings.counting_hint') }}</p>
+        <div class="summary-grid summary-grid--compact">
+            <article class="summary-card">
+                <p class="summary-card__label">{{ __('ui.admin_pages.listings.active_count') }}</p>
+                <p class="summary-card__value">{{ number_format($coverage['active'], 0, ',', '.') }}</p>
+                <p class="summary-card__note">{{ __('ui.admin_pages.listings.active_count_help') }}</p>
+            </article>
+            <article class="summary-card">
+                <p class="summary-card__label">{{ __('ui.admin_pages.listings.matched_count') }}</p>
+                <p class="summary-card__value">{{ number_format($coverage['matched'], 0, ',', '.') }}</p>
+                <p class="summary-card__note">{{ __('ui.admin_pages.listings.matched_count_help') }}</p>
+            </article>
+            <article class="summary-card">
+                <p class="summary-card__label">{{ __('ui.admin_pages.listings.unmatched_count') }}</p>
+                <p class="summary-card__value">{{ number_format($coverage['unmatched'], 0, ',', '.') }}</p>
+                <p class="summary-card__note">{{ __('ui.admin_pages.listings.unmatched_count_help') }}</p>
+                <a class="table-source-link summary-card__action" href="{{ route('admin.listings.unmatched') }}">{{ __('ui.admin_pages.listings.review_candidate') }}</a>
+            </article>
+            <article class="summary-card">
+                <p class="summary-card__label">{{ __('ui.admin_pages.listings.products_without') }}</p>
+                <p class="summary-card__value">{{ number_format($coverage['without_active'], 0, ',', '.') }}</p>
+                <p class="summary-card__note">{{ __('ui.admin_pages.listings.products_without_help') }}</p>
+                <a class="table-source-link summary-card__action" href="{{ route('admin.products.index', ['status' => 'active', 'listing_status' => 'without_active']) }}">{{ __('ui.admin_pages.listings.view_products') }}</a>
+            </article>
+            <article class="summary-card">
+                <p class="summary-card__label">{{ __('ui.admin_pages.listings.products_needing') }}</p>
+                <p class="summary-card__value">{{ number_format($coverage['needing'], 0, ',', '.') }}</p>
+                <p class="summary-card__note">{{ __('ui.admin_pages.listings.products_needing_help', ['target' => $listingTarget]) }}</p>
+                <a class="table-source-link summary-card__action" href="{{ route('admin.listings.coverage') }}">{{ __('ui.common.view') }}</a>
+            </article>
         </div>
         <form class="filter-bar" method="GET" action="{{ route('admin.listings.index') }}">
             <div class="form-field filter-bar__search"><label for="listing-search">{{ __('ui.common.search') }}</label><input id="listing-search" name="search" type="search" value="{{ $search }}" placeholder="{{ __('ui.admin_pages.listings.search_placeholder') }}"></div>
             <div class="form-field"><label for="listing-platform-filter">Platform</label><select id="listing-platform-filter" name="platform_id"><option value="">{{ __('ui.common.all') }}</option>@foreach($platforms as $platform)<option value="{{ $platform->id }}" @selected((string) $platformId === (string) $platform->id)>{{ $platform->name }}</option>@endforeach</select></div>
-            <div class="form-field"><label for="listing-condition-filter">{{ __('ui.admin_pages.listings.condition') }}</label><select id="listing-condition-filter" name="condition"><option value="">{{ __('ui.common.all') }}</option>@foreach(\App\Models\Listing::conditions() as $value)<option value="{{ $value }}" @selected($condition === $value)>{{ __('ui.labels.'.$value) }}</option>@endforeach</select></div>
+            <div class="form-field"><label for="listing-condition-filter">{{ __('ui.admin_pages.listings.condition') }}</label><select id="listing-condition-filter" name="condition"><option value="">{{ __('ui.chat.all_conditions') }}</option>@foreach(\App\Models\Listing::publicConditionFilters() as $value)<option value="{{ $value }}" @selected($condition === $value)>{{ __('ui.labels.'.$value) }}</option>@endforeach</select></div>
             <div class="form-field"><label for="listing-stock-filter">{{ __('ui.admin_pages.listings.stock') }}</label><select id="listing-stock-filter" name="stock_status"><option value="">{{ __('ui.common.all') }}</option>@foreach(\App\Models\Listing::stockStatuses() as $value)<option value="{{ $value }}" @selected($stockStatus === $value)>{{ __('ui.labels.'.$value) }}</option>@endforeach</select></div>
             <div class="form-field"><label for="listing-status-filter">{{ __('ui.common.status') }}</label><select id="listing-status-filter" name="status"><option value="all" @selected($status === 'all')>{{ __('ui.common.all') }}</option><option value="active" @selected($status === 'active')>{{ __('ui.common.active') }}</option><option value="inactive" @selected($status === 'inactive')>{{ __('ui.common.inactive') }}</option></select></div>
             <div class="form-field"><label for="listing-mapping-filter">{{ __('ui.admin_pages.listings.mapping_status') }}</label><select id="listing-mapping-filter" name="mapping_status"><option value="all" @selected($mappingStatus === 'all')>{{ __('ui.common.all') }}</option><option value="matched" @selected($mappingStatus === 'matched')>{{ __('ui.admin_pages.listings.matched') }}</option><option value="unmatched" @selected($mappingStatus === 'unmatched')>{{ __('ui.admin_pages.listings.unmatched') }}</option></select></div>
@@ -26,7 +62,7 @@
                 @foreach($listings as $listing)
                     <tr>
                         <td class="admin-table__question"><strong>{{ $listing->title }}</strong><span>{{ $listing->external_listing_id ?: __('ui.admin_pages.listings.no_external_id') }}</span><a class="table-source-link" href="{{ $listing->product_url }}" target="_blank" rel="noopener noreferrer">{{ __('ui.common.open_source') }}</a></td>
-                        <td>{{ $listing->platform?->name ?? '—' }}<span class="table-meta">{{ $listing->product?->name ?? __('ui.common.unmapped') }}</span></td>
+                        <td>{{ $listing->platform?->name ?? '—' }}@if($listing->product)<span class="table-meta">{{ $listing->product->name }}</span>@else<span class="badge badge--danger">{{ __('ui.admin_pages.listings.unmatched') }}</span>@endif</td>
                         <td><strong>{{ $listing->currency === 'IDR' ? 'Rp' : $listing->currency.' ' }}{{ number_format($listing->price, 0, ',', '.') }}</strong><span class="table-meta">{{ $listing->currency }} · {{ __('ui.labels.'.$listing->price_type) }}</span></td>
                         <td><span class="badge badge--info">{{ __('ui.labels.'.$listing->condition) }}</span><span class="table-meta">{{ __('ui.messages.search.condition_seller') }}</span></td>
                         <td>{{ $listing->seller_name ?: '—' }}<span class="table-meta">{{ $listing->location ?: __('ui.admin_pages.listings.unknown_location') }}</span></td>

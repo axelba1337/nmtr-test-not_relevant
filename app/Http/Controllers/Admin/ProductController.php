@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Services\Catalog\CatalogScope;
 use App\Services\Embedding\EntityEmbeddingService;
 use App\Services\Embedding\ProductEmbeddingStatus;
+use App\Services\Export\AdminXlsxExporter;
 use App\Support\AdminIndexSort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 final class ProductController extends Controller
 {
@@ -24,67 +26,14 @@ final class ProductController extends Controller
         private readonly EntityEmbeddingService $embeddingService,
         private readonly ProductEmbeddingStatus $embeddingStatus,
         private readonly CatalogScope $catalogScope,
+        private readonly AdminXlsxExporter $xlsx,
     ) {}
 
     public function index(Request $request): View
     {
         $this->ensureAdmin($request);
-        $filters = $request->validate([
-            'search' => ['nullable', 'string', 'max:255'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
-            'status' => ['nullable', 'in:all,active,inactive'],
-            'listing_status' => ['nullable', 'in:all,without_active'],
-        ]);
-        $search = trim((string) ($filters['search'] ?? ''));
-        $categoryId = isset($filters['category_id'])
-            ? (int) $filters['category_id']
-            : null;
-        $status = (string) ($filters['status'] ?? 'all');
-        $listingStatus = (string) ($filters['listing_status'] ?? 'all');
-        $embeddingStatus = $this->embeddingStatus->normalize(
-            $request->query('embedding_status'),
-        );
-        $sortOptions = [...AdminIndexSort::values(), 'embedding'];
-        $sort = AdminIndexSort::normalize(
-            $request->query('sort'),
-            $sortOptions,
-        );
-
-        $query = Product::query()
-            ->when($search !== '', fn (Builder $query): Builder => $query
-                ->where(fn (Builder $nested): Builder => $nested
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('brand', 'like', "%{$search}%")
-                    ->orWhere('model', 'like', "%{$search}%")
-                    ->orWhere('variant', 'like', "%{$search}%")
-                    ->orWhere('sku_or_part_number', 'like', "%{$search}%")))
-            ->when($categoryId !== null, fn (Builder $query): Builder => $query
-                ->where('category_id', $categoryId))
-            ->when($status === 'active', fn (Builder $query): Builder => $query
-                ->where('is_active', true))
-            ->when($status === 'inactive', fn (Builder $query): Builder => $query
-                ->where('is_active', false))
-            ->when(
-                $listingStatus === 'without_active',
-                fn (Builder $query): Builder => $query
-                    ->whereDoesntHave(
-                        'listings',
-                        static fn (Builder $listingQuery): Builder => $listingQuery
-                            ->available(),
-                    ),
-            );
-
-        $this->embeddingStatus->applyFilter($query, $embeddingStatus);
-
-        $products = ($sort === 'embedding'
-            ? $this->embeddingStatus->applyOperationalOrder($query)
-            : AdminIndexSort::apply(
-                $query,
-                $sort,
-                'name',
-                static fn (Builder $query): Builder => $query
-                    ->orderByDesc('is_active'),
-            ))
+        $state = $this->indexState($request);
+        $products = $this->filteredQuery($state)
             ->with('category:id,name')
             ->withCount(['aliases', 'listings'])
             ->paginate(AdminIndexSort::PER_PAGE)
@@ -93,14 +42,56 @@ final class ProductController extends Controller
         return view('admin.products.index', [
             'products' => $products,
             'categories' => $this->categoryOptions(),
-            'search' => $search,
-            'categoryId' => $categoryId,
-            'status' => $status,
-            'listingStatus' => $listingStatus,
-            'embeddingStatus' => $embeddingStatus,
-            'sort' => $sort,
-            'sortOptions' => $sortOptions,
+            ...$state,
+            'exportQuery' => $this->exportQuery($state),
         ]);
+    }
+
+    public function export(Request $request): Response
+    {
+        $this->ensureAdmin($request);
+        $state = $this->indexState($request);
+        $rows = $this->filteredQuery($state)
+            ->with([
+                'category:id,name',
+                'aliases:id,product_id,alias',
+            ])
+            ->withCount([
+                'listings as active_listings_count' => static fn (Builder $query): Builder => $query
+                    ->available(),
+            ])
+            ->get()
+            ->map(fn (Product $product): array => [
+                $product->id,
+                $product->name,
+                $product->category?->name,
+                $product->brand,
+                $product->model,
+                $product->variant,
+                $product->sku_or_part_number,
+                $product->aliases->pluck('alias')->sort()->implode(', '),
+                $product->is_active ? 'ACTIVE' : 'INACTIVE',
+                $product->active_listings_count,
+                strtoupper(str_replace(
+                    '_',
+                    ' ',
+                    $this->embeddingStatus->status($product),
+                )),
+                $product->updated_at,
+            ]);
+
+        return $this->xlsx->download(
+            'neomatra-products-'.now()->format('Y-m-d-Hi').'.xlsx',
+            'Products',
+            [
+                'ID', 'Canonical Name', 'Category', 'Brand', 'Model', 'Variant',
+                'SKU / Part Number', 'Aliases', 'Status', 'Active Listings',
+                'Embedding Status', 'Updated At',
+            ],
+            $rows,
+            [1 => 9, 2 => 34, 3 => 24, 4 => 18, 5 => 20, 6 => 24, 7 => 22, 8 => 48, 9 => 14, 10 => 15, 11 => 20, 12 => 21],
+            [2, 6, 7, 8],
+        );
     }
 
     public function create(Request $request): View
@@ -292,6 +283,98 @@ final class ProductController extends Controller
         return is_string($value) && $value !== ''
             ? json_decode($value, true, 512, JSON_THROW_ON_ERROR)
             : null;
+    }
+
+    /**
+     * @return array{
+     *     search: string,
+     *     categoryId: ?int,
+     *     status: string,
+     *     listingStatus: string,
+     *     embeddingStatus: string,
+     *     sort: string,
+     *     sortOptions: list<string>
+     * }
+     */
+    private function indexState(Request $request): array
+    {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'status' => ['nullable', 'in:all,active,inactive'],
+            'listing_status' => ['nullable', 'in:all,without_active'],
+        ]);
+        $sortOptions = [...AdminIndexSort::values(), 'embedding'];
+
+        return [
+            'search' => trim((string) ($filters['search'] ?? '')),
+            'categoryId' => isset($filters['category_id'])
+                ? (int) $filters['category_id']
+                : null,
+            'status' => (string) ($filters['status'] ?? 'all'),
+            'listingStatus' => (string) ($filters['listing_status'] ?? 'all'),
+            'embeddingStatus' => $this->embeddingStatus->normalize(
+                $request->query('embedding_status'),
+            ),
+            'sort' => AdminIndexSort::normalize(
+                $request->query('sort'),
+                $sortOptions,
+            ),
+            'sortOptions' => $sortOptions,
+        ];
+    }
+
+    /** @param array<string, mixed> $state */
+    private function filteredQuery(array $state): Builder
+    {
+        $query = Product::query()
+            ->when($state['search'] !== '', fn (Builder $query): Builder => $query
+                ->where(fn (Builder $nested): Builder => $nested
+                    ->where('name', 'like', "%{$state['search']}%")
+                    ->orWhere('brand', 'like', "%{$state['search']}%")
+                    ->orWhere('model', 'like', "%{$state['search']}%")
+                    ->orWhere('variant', 'like', "%{$state['search']}%")
+                    ->orWhere('sku_or_part_number', 'like', "%{$state['search']}%")))
+            ->when($state['categoryId'] !== null, fn (Builder $query): Builder => $query
+                ->where('category_id', $state['categoryId']))
+            ->when($state['status'] === 'active', fn (Builder $query): Builder => $query
+                ->where('is_active', true))
+            ->when($state['status'] === 'inactive', fn (Builder $query): Builder => $query
+                ->where('is_active', false))
+            ->when(
+                $state['listingStatus'] === 'without_active',
+                fn (Builder $query): Builder => $query
+                    ->whereDoesntHave(
+                        'listings',
+                        static fn (Builder $listingQuery): Builder => $listingQuery
+                            ->available(),
+                    ),
+            );
+
+        $this->embeddingStatus->applyFilter($query, $state['embeddingStatus']);
+
+        return $state['sort'] === 'embedding'
+            ? $this->embeddingStatus->applyOperationalOrder($query)
+            : AdminIndexSort::apply(
+                $query,
+                $state['sort'],
+                'name',
+                static fn (Builder $query): Builder => $query
+                    ->orderByDesc('is_active'),
+            );
+    }
+
+    /** @param array<string, mixed> $state */
+    private function exportQuery(array $state): array
+    {
+        return [
+            'search' => $state['search'],
+            'category_id' => $state['categoryId'],
+            'status' => $state['status'],
+            'listing_status' => $state['listingStatus'],
+            'embedding_status' => $state['embeddingStatus'],
+            'sort' => $state['sort'],
+        ];
     }
 
     private function categoryOptions()

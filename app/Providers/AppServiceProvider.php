@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Contracts\AI\ChatClient;
 use App\Contracts\AI\EmbeddingClient;
+use App\Contracts\Marketplace\ListingDiscoveryProvider;
 use App\Models\User;
 use App\Services\AI\GeminiChatAdapter;
 use App\Services\AI\GeminiEmbeddingAdapter;
+use App\Services\Marketplace\GeminiListingDiscoveryProvider;
 use App\Services\Search\SearchExecutionBudget;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -24,6 +26,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(
             SearchExecutionBudget::class,
             static fn (): SearchExecutionBudget => new SearchExecutionBudget,
+        );
+
+        $this->app->bind(
+            ListingDiscoveryProvider::class,
+            GeminiListingDiscoveryProvider::class,
         );
 
         $this->app->bind(ChatClient::class, function ($app): ChatClient {
