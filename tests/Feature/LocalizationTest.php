@@ -215,6 +215,7 @@ final class LocalizationTest extends TestCase
             ->get(route('admin.listings.index'))
             ->assertOk()
             ->assertSeeText('Listing Tersedia')
+            ->assertDontSeeText('Listing Tersedia Belum Terpetakan')
             ->assertSeeText('Listing aktif yang dapat digunakan dalam pencarian.');
 
         $this->actingAs($admin)
@@ -222,6 +223,7 @@ final class LocalizationTest extends TestCase
             ->get(route('admin.listings.index'))
             ->assertOk()
             ->assertSeeText('Available Listings')
+            ->assertDontSeeText('Available Unmapped Listings')
             ->assertSeeText('Active Listings currently available for search.');
     }
 

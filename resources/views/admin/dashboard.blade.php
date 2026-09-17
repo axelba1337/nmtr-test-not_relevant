@@ -4,7 +4,7 @@
 @section('page-title', __('ui.admin.dashboard'))
 
 @section('content')
-    <div class="summary-grid" aria-label="{{ __('ui.admin.dashboard_page.eyebrow') }}">
+    <div class="summary-grid summary-grid--dashboard" aria-label="{{ __('ui.admin.dashboard_page.eyebrow') }}">
         <article class="summary-card">
             <p class="summary-card__label">{{ __('ui.admin.dashboard_page.questions_today') }}</p>
             <p class="summary-card__value">{{ number_format($todayQuestions, 0, ',', '.') }}</p>
@@ -18,14 +18,6 @@
         </article>
 
         <article class="summary-card">
-            <p class="summary-card__label">{{ __('ui.admin.dashboard_page.top_similarity') }}</p>
-            <p class="summary-card__value">
-                {{ $averageTop1Similarity === null ? '—' : number_format($averageTop1Similarity, 4, ',', '.') }}
-            </p>
-            <p class="summary-card__note">{{ __('ui.admin.dashboard_page.monitoring_only') }}</p>
-        </article>
-
-        <article class="summary-card">
             <p class="summary-card__label">{{ __('ui.admin.dashboard_page.knowledge_status') }}</p>
             <p class="summary-card__value">
                 {{ number_format($activeProductsCount, 0, ',', '.') }}
@@ -33,10 +25,9 @@
             </p>
             <ul class="summary-card__details">
                 <li>{{ __('ui.admin.dashboard_page.active_knowledge_count', ['count' => number_format($activeKnowledgeCount, 0, ',', '.')]) }}</li>
-                <li>{{ __('ui.admin.dashboard_page.ready_embedding_count', ['count' => number_format($knowledgeStats['ready'], 0, ',', '.')]) }}</li>
+                <li>{{ __('u', ['count' => number_format($knowledgeStats['ready'], 0, ',', '.')]) }}</li>
                 <li><a href="{{ route('admin.knowledge.index', ['status' => 'active', 'embedding_status' => 'failed']) }}">{{ __('ui.admin.dashboard_page.failed_embedding_count', ['count' => number_format($knowledgeStats['failed'], 0, ',', '.')]) }}</a></li>
-                <li>{{ __('ui.admin.dashboard_page.pending_embedding_count', ['count' => number_format($knowledgeStats['pending'], 0, ',', '.')]) }}</li>
-                <li><a href="{{ route('admin.unanswered.index', ['review' => 'pending']) }}">{{ __('ui.admin.dashboard_page.pending_query_count', ['count' => number_format($pendingUnansweredCount, 0, ',', '.')]) }}</a></li>
+                {{-- <li>{{ __('ui.admin.dashboard_page.pending_embedding_count', ['count' => number_format($knowledgeStats['pending'], 0, ',', '.')]) }}</li> --}}
                 <li><a href="{{ route('admin.listings.unmatched') }}">{{ __('ui.admin.dashboard_page.unmatched_listing_count', ['count' => number_format($unmatchedListingsCount, 0, ',', '.')]) }}</a></li>
                 @if ($knowledgeStats['warnings'] > 0)
                     <li>{{ __('ui.admin.dashboard_page.warning_count', ['count' => number_format($knowledgeStats['warnings'], 0, ',', '.')]) }}</li>

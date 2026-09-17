@@ -122,7 +122,7 @@ final class GeminiHttpClient
         $timeout = $this->searchBudget->remainingTimeoutSeconds(
             max(1, (int) config(
                 "{$configurationRoot}.http.timeout",
-                config('ai.http.timeout', 25),
+                config('ai.http.timeout', 30),
             )),
         );
         $retries = min(5, max(

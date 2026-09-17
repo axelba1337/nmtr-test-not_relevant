@@ -24,6 +24,7 @@ final class ListingDiscoveryRun extends Model
         'provider',
         'model',
         'region',
+        'products_targeted',
         'products_checked',
         'candidates_found',
         'valid_candidates',
@@ -38,6 +39,7 @@ final class ListingDiscoveryRun extends Model
     protected function casts(): array
     {
         return [
+            'products_targeted' => 'integer',
             'products_checked' => 'integer',
             'candidates_found' => 'integer',
             'valid_candidates' => 'integer',
@@ -56,5 +58,18 @@ final class ListingDiscoveryRun extends Model
     public function candidates(): HasMany
     {
         return $this->hasMany(ListingCandidate::class);
+    }
+
+    public function runProducts(): HasMany
+    {
+        return $this->hasMany(ListingDiscoveryRunProduct::class);
+    }
+
+    public function isActive(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_QUEUED,
+            self::STATUS_RUNNING,
+        ], true);
     }
 }

@@ -42,6 +42,7 @@ final class AdminListingOperationsTest extends TestCase
             route('admin.listings.import.preview'),
             route('admin.listings.import.confirm'),
             route('admin.listings.discovery.start'),
+            route('admin.listings.discovery.candidates.approve-all'),
         ] as $url) {
             $this->post($url)->assertRedirect(route('admin.login'));
         }
@@ -68,7 +69,10 @@ final class AdminListingOperationsTest extends TestCase
 
     public function test_import_page_presents_the_compact_manual_five_step_workflow(): void
     {
-        config(['listing-discovery.target_active_listings' => 5]);
+        config([
+            'listing-discovery.target_active_listings' => 3,
+            'listing-discovery.research_prompt_max_products' => 25,
+        ]);
         $this->product('NVIDIA GeForce RTX 3060', 'RTX 3060');
 
         $response = $this->actingAs($this->user())
@@ -87,7 +91,9 @@ final class AdminListingOperationsTest extends TestCase
         $response->assertSee('data-copy-target="#listing-research-prompt"', false)
             ->assertSeeText('NVIDIA GeForce RTX 3060')
             ->assertSeeText('Unduh Daftar Target Produk')
-            ->assertSeeText('Prompt riset menggunakan maksimal 10 produk prioritas')
+            ->assertSeeText('Lihat Semua Product')
+            ->assertSeeText('Prompt Riset AI menggunakan maksimal 25 Product prioritas')
+            ->assertSeeText('1 dari 1 Product')
             ->assertSeeText('Gunakan prompt ini pada AI yang memiliki kemampuan pencarian web')
             ->assertSeeText('Unduh Prompt .MD')
             ->assertSeeText('Pencarian dapat dilakukan manual atau dengan prompt riset AI dari Langkah 1.')
@@ -98,7 +104,9 @@ final class AdminListingOperationsTest extends TestCase
             ->withSession(['locale' => 'en'])
             ->get(route('admin.listings.import'))
             ->assertOk()
-            ->assertSeeText('The research prompt uses at most 10 priority products')
+            ->assertSeeText('View All Products')
+            ->assertSeeText('The AI Research Prompt uses at most 25 priority Products')
+            ->assertSeeText('1 of 1 Products')
             ->assertSeeText('Use this prompt with an AI that has web browsing capabilities')
             ->assertSeeText('Download Prompt .MD')
             ->assertSeeText('You can search manually or use the AI research prompt from Step 1.')
@@ -309,18 +317,17 @@ final class AdminListingOperationsTest extends TestCase
         $response = $this->actingAs($this->user())
             ->get(route('admin.listings.index'))
             ->assertOk()
-            ->assertSeeText('Angka Listing menghitung jumlah data listing marketplace.')
+            ->assertSeeText('Angka Listing menghitung jumlah data Listing marketplace.')
             ->assertSeeText('Listing Tersedia')
             ->assertSeeText('Listing Terpetakan')
-            ->assertSeeText('Listing Belum Terpetakan')
+            ->assertDontSeeText('Listing Tersedia Belum Terpetakan')
             ->assertSeeText('Product Tanpa Listing Tersedia')
             ->assertSeeText('Product di Bawah Target Listing')
             ->assertSeeText('Listing aktif yang dapat digunakan dalam pencarian.')
             ->assertSeeText('Listing tersedia yang sudah terhubung ke Product.')
-            ->assertSeeText('Listing tersedia yang belum memiliki Product.')
             ->assertSeeText('Product unik yang belum memiliki satu pun Listing tersedia.')
             ->assertSeeText('Product unik yang jumlah Listing tersedianya masih di bawah target 3.')
-            ->assertSee('href="'.route('admin.listings.unmatched').'"', false)
+            ->assertDontSee('href="'.route('admin.listings.unmatched').'"', false)
             ->assertSee(route('admin.products.index', [
                 'status' => 'active',
                 'listing_status' => 'without_active',
@@ -334,6 +341,20 @@ final class AdminListingOperationsTest extends TestCase
             'needing' => 2,
         ], $response->viewData('coverage'));
         $this->assertSame(3, $response->viewData('listingTarget'));
+        $this->assertSame(
+            1,
+            substr_count(
+                $response->getContent(),
+                'href="'.route('admin.listings.discovery').'"',
+            ),
+        );
+        $this->assertSame(
+            1,
+            substr_count(
+                $response->getContent(),
+                'href="'.route('admin.listings.import').'"',
+            ),
+        );
     }
 
     /** @param list<list<string>> $rows */

@@ -91,7 +91,7 @@ return [
     ],
 
     'http' => [
-        'timeout' => max(1, (int) env('AI_HTTP_TIMEOUT', 25)),
+        'timeout' => max(1, (int) env('AI_HTTP_TIMEOUT', 30)),
         'retries' => min(5, max(0, (int) env('AI_HTTP_RETRIES', 2))),
         'retry_delay_ms' => min(5000, max(
             0,

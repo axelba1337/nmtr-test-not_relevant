@@ -112,6 +112,18 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
                 ListingDiscoveryController::class,
                 'start',
             ])->name('listings.discovery.start');
+            Route::get('/listings/automatic/runs/{run}', [
+                ListingDiscoveryController::class,
+                'show',
+            ])->name('listings.discovery.runs.show');
+            Route::get('/listings/automatic/runs/{run}/progress', [
+                ListingDiscoveryController::class,
+                'progress',
+            ])->name('listings.discovery.runs.progress');
+            Route::post(
+                '/listings/automatic/candidates/approve-all',
+                [ListingDiscoveryController::class, 'approveAll'],
+            )->name('listings.discovery.candidates.approve-all');
             Route::post(
                 '/listings/automatic/candidates/{candidate}/approve',
                 [ListingDiscoveryController::class, 'approve'],

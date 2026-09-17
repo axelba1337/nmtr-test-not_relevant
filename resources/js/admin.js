@@ -1,6 +1,8 @@
 import { initializeBrandEntry } from './brand-entry';
+import { initializeListingDiscoveryProgress } from './listing-discovery-progress';
 
 initializeBrandEntry({ area: 'admin' });
+initializeListingDiscoveryProgress();
 
 let adminTranslations = {};
 
@@ -146,6 +148,37 @@ document.querySelectorAll('[data-copy-target]').forEach((button) => {
         } finally {
             button.disabled = false;
         }
+    });
+});
+
+document.querySelectorAll('[data-dialog-open]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const dialogId = button.dataset.dialogOpen;
+        const dialog = dialogId ? document.getElementById(dialogId) : null;
+
+        if (!(dialog instanceof HTMLElement) || dialog.tagName !== 'DIALOG') {
+            return;
+        }
+
+        if (typeof dialog.showModal === 'function') {
+            dialog.showModal();
+        } else {
+            dialog.setAttribute('open', '');
+        }
+
+        dialog.querySelector('[data-dialog-close]')?.focus();
+    });
+});
+
+document.querySelectorAll('[data-admin-dialog]').forEach((dialog) => {
+    dialog.querySelectorAll('[data-dialog-close]').forEach((button) => {
+        button.addEventListener('click', () => {
+            if (typeof dialog.close === 'function') {
+                dialog.close();
+            } else {
+                dialog.removeAttribute('open');
+            }
+        });
     });
 });
 

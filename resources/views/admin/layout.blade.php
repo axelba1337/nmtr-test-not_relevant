@@ -39,6 +39,23 @@
             </div>
 
             <nav class="admin-nav" aria-label="{{ __('ui.admin.main_menu') }}">
+                @php
+                    $listingAutomaticActive = request()->routeIs('admin.listings.discovery*');
+                    $listingImportActive = request()->routeIs(
+                        'admin.listings.import*',
+                        'admin.listings.coverage*',
+                    );
+                    $listingDataActive = request()->routeIs(
+                        'admin.listings.index',
+                        'admin.listings.create',
+                        'admin.listings.edit',
+                        'admin.listings.unmatched',
+                        'admin.listings.candidate.*',
+                    );
+                    $listingSectionActive = $listingAutomaticActive
+                        || $listingImportActive
+                        || $listingDataActive;
+                @endphp
                 <p class="admin-nav__label">{{ __('ui.admin.summary') }}</p>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}"
@@ -69,13 +86,45 @@
                 >
                     {{ __('ui.admin.platforms') }}
                 </a>
-                <a
-                    class="admin-nav__link {{ request()->routeIs('admin.listings.*') ? 'is-active' : '' }}"
-                    href="{{ route('admin.listings.index') }}"
-                    @if (request()->routeIs('admin.listings.*')) aria-current="page" @endif
+                <details
+                    class="admin-nav__group"
+                    data-admin-listing-group
+                    data-admin-listing-expanded="{{ $listingSectionActive ? 'true' : 'false' }}"
+                    @if($listingSectionActive) open @endif
                 >
-                    {{ __('ui.admin.listings') }}
-                </a>
+                    <summary class="admin-nav__link admin-nav__parent {{ $listingSectionActive ? 'is-active' : '' }}">
+                        {{ __('ui.admin.listings') }}
+                    </summary>
+                    <div class="admin-nav__submenu">
+                        <a
+                            class="admin-nav__link admin-nav__sublink {{ $listingDataActive ? 'is-active' : '' }}"
+                            href="{{ route('admin.listings.index') }}"
+                            data-admin-nav-child="listing-data"
+                            data-admin-nav-active="{{ $listingDataActive ? 'true' : 'false' }}"
+                            @if($listingDataActive) aria-current="page" @endif
+                        >
+                            {{ __('ui.admin.listing_data') }}
+                        </a>
+                        <a
+                            class="admin-nav__link admin-nav__sublink {{ $listingAutomaticActive ? 'is-active' : '' }}"
+                            href="{{ route('admin.listings.discovery') }}"
+                            data-admin-nav-child="automatic-listing"
+                            data-admin-nav-active="{{ $listingAutomaticActive ? 'true' : 'false' }}"
+                            @if($listingAutomaticActive) aria-current="page" @endif
+                        >
+                            {{ __('ui.admin.automatic_listing') }}
+                        </a>
+                        <a
+                            class="admin-nav__link admin-nav__sublink {{ $listingImportActive ? 'is-active' : '' }}"
+                            href="{{ route('admin.listings.import') }}"
+                            data-admin-nav-child="import-csv"
+                            data-admin-nav-active="{{ $listingImportActive ? 'true' : 'false' }}"
+                            @if($listingImportActive) aria-current="page" @endif
+                        >
+                            {{ __('ui.admin.import_csv') }}
+                        </a>
+                    </div>
+                </details>
                 <p class="admin-nav__label admin-nav__label--spaced">{{ __('ui.admin.ai_evaluation') }}</p>
                 <a
                     class="admin-nav__link {{ request()->routeIs('admin.knowledge.*') ? 'is-active' : '' }}"
@@ -83,13 +132,6 @@
                     @if (request()->routeIs('admin.knowledge.*')) aria-current="page" @endif
                 >
                     {{ __('ui.admin.knowledge') }}
-                </a>
-                <a
-                    class="admin-nav__link {{ request()->routeIs('admin.unanswered.*') ? 'is-active' : '' }}"
-                    href="{{ route('admin.unanswered.index') }}"
-                    @if (request()->routeIs('admin.unanswered.*')) aria-current="page" @endif
-                >
-                    {{ __('ui.admin.unanswered') }}
                 </a>
             </nav>
 

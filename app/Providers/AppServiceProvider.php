@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AI\GeminiChatAdapter;
 use App\Services\AI\GeminiEmbeddingAdapter;
 use App\Services\Marketplace\GeminiListingDiscoveryProvider;
+use App\Services\Marketplace\TavilyListingDiscoveryProvider;
 use App\Services\Search\SearchExecutionBudget;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -30,7 +31,20 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(
             ListingDiscoveryProvider::class,
-            GeminiListingDiscoveryProvider::class,
+            function ($app): ListingDiscoveryProvider {
+                $provider = strtolower(trim((string) config(
+                    'listing-discovery.provider',
+                    'tavily',
+                )));
+
+                return match ($provider) {
+                    'gemini' => $app->make(GeminiListingDiscoveryProvider::class),
+                    'tavily' => $app->make(TavilyListingDiscoveryProvider::class),
+                    default => throw new \LogicException(
+                        "Listing discovery provider tidak didukung: {$provider}",
+                    ),
+                };
+            },
         );
 
         $this->app->bind(ChatClient::class, function ($app): ChatClient {

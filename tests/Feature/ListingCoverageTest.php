@@ -11,11 +11,45 @@ use App\Services\Marketplace\ListingCoverageService;
 use App\Services\Marketplace\ListingResearchService;
 use App\Services\Marketplace\MarketplaceCsvImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class ListingCoverageTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_runtime_defaults_are_config_only_and_target_cannot_drop_below_minimum(): void
+    {
+        $this->assertSame(2, (int) config('listing-discovery.minimum_active_listings'));
+        $this->assertSame(3, (int) config('listing-discovery.target_active_listings'));
+        $this->assertSame(25, (int) config('listing-discovery.research_prompt_max_products'));
+
+        $example = (string) file_get_contents(base_path('.env.example'));
+        $this->assertMatchesRegularExpression('/^LISTING_DISCOVERY_MIN_ACTIVE_LISTINGS=2$/m', $example);
+        $this->assertMatchesRegularExpression('/^LISTING_DISCOVERY_TARGET_ACTIVE_LISTINGS=3$/m', $example);
+        $this->assertMatchesRegularExpression('/^LISTING_RESEARCH_PROMPT_MAX_PRODUCTS=25$/m', $example);
+
+        foreach (['target_listing_count', 'minimum_listing_count', 'research_batch_size'] as $column) {
+            $this->assertFalse(Schema::hasColumn('products', $column));
+        }
+
+        config([
+            'listing-discovery.minimum_active_listings' => 4,
+            'listing-discovery.target_active_listings' => 2,
+            'listing-discovery.research_prompt_max_products' => 17,
+        ]);
+        $coverage = app(ListingCoverageService::class);
+        $research = app(ListingResearchService::class);
+
+        $this->assertSame(4, $research->minimumListings());
+        $this->assertSame(4, $research->targetListings());
+        $this->assertSame(4, $coverage->target());
+        $this->assertSame(17, $research->promptMaximumProducts());
+        $this->assertSame(4, $coverage->stillNeeded(0));
+        $this->assertSame(1, $coverage->stillNeeded(3));
+        $this->assertSame(0, $coverage->stillNeeded(4));
+        $this->assertSame(0, $coverage->stillNeeded(8));
+    }
 
     public function test_coverage_prioritizes_zero_then_below_minimum_and_skips_sufficient_or_inactive_products(): void
     {
@@ -89,7 +123,7 @@ final class ListingCoverageTest extends TestCase
             'listing-discovery.max_new_listings_per_product' => 3,
             'listing-discovery.max_per_platform_per_product' => 2,
             'listing-discovery.region' => 'Indonesia',
-            'listing-discovery.api_key' => 'DO_NOT_LEAK_DISCOVERY_KEY',
+            'listing-discovery.tavily.api_key' => 'DO_NOT_LEAK_DISCOVERY_KEY',
             'database.connections.mysql.password' => 'DO_NOT_LEAK_DB_PASSWORD',
         ]);
         $category = Category::query()->create([
@@ -189,6 +223,98 @@ final class ListingCoverageTest extends TestCase
         foreach ([$withListing, $zeroAlpha, $zeroBeta, $zeroGamma] as $product) {
             $this->assertStringContainsString($product->name, $export);
         }
+    }
+
+    public function test_coverage_ui_uses_real_target_and_caps_prompt_batch_at_twenty_five(): void
+    {
+        config([
+            'listing-discovery.minimum_active_listings' => 2,
+            'listing-discovery.target_active_listings' => 3,
+            'listing-discovery.research_prompt_max_products' => 25,
+        ]);
+        $category = Category::query()->create([
+            'name' => 'GPU', 'slug' => 'gpu', 'is_active' => true,
+        ]);
+        $platform = Platform::query()->create([
+            'name' => 'OLX', 'slug' => 'olx',
+            'source_type' => Platform::SOURCE_MANUAL,
+            'access_type' => Platform::ACCESS_CSV_IMPORT,
+            'connector' => 'manual-import', 'status' => Platform::STATUS_READY,
+            'is_active' => true, 'sync_enabled' => false,
+        ]);
+
+        $zeroProducts = collect(range(1, 27))->map(
+            fn (int $index): Product => $this->product(
+                $category,
+                sprintf('Zero Product %03d', $index),
+                true,
+            ),
+        );
+        $partial = $this->product($category, 'Partial Coverage', true);
+        $reached = $this->product($category, 'Reached Target', true);
+        $this->listing($platform, $partial, 'partial-1');
+        foreach (range(1, 3) as $index) {
+            $this->listing($platform, $reached, 'reached-'.$index);
+        }
+
+        $research = app(ListingResearchService::class);
+        $this->assertSame(28, $research->targetCount());
+        $this->assertSame(25, $research->promptTargets()->count());
+        $this->assertSame('Zero Product 001', $research->promptTargets()->first()?->name);
+        $this->assertFalse($research->promptTargets()->contains('id', $zeroProducts->last()->id));
+        $this->assertFalse($research->targetsQuery()->get()->contains('id', $reached->id));
+
+        $prompt = $research->prompt();
+        $this->assertStringContainsString('Zero Product 025', $prompt);
+        $this->assertStringNotContainsString('Zero Product 026', $prompt);
+        $this->assertStringNotContainsString('Partial Coverage', $prompt);
+
+        $admin = User::query()->create([
+            'name' => 'Admin', 'email' => 'coverage-ux@example.test',
+            'password' => 'password', 'is_admin' => true,
+        ]);
+        $coveragePage = $this->actingAs($admin)
+            ->get(route('admin.listings.coverage'))
+            ->assertOk()
+            ->assertSeeText('Target coverage adalah jumlah ideal Listing tersedia untuk setiap Product')
+            ->assertSeeText('Target saat ini: 3 Listing tersedia per Product.')
+            ->assertSeeText('25 dari 28 Product')
+            ->assertSeeText('Listing Tersedia')
+            ->assertSeeText('Target')
+            ->assertSeeText('Masih Dibutuhkan')
+            ->assertDontSeeText('Reached Target');
+        $this->assertMatchesRegularExpression(
+            '/<strong>Zero Product 001<\/strong>.*?<td>GPU<\/td><td>0<\/td><td>3<\/td><td>3<\/td>/s',
+            $coveragePage->getContent(),
+        );
+        $this->assertMatchesRegularExpression(
+            '/<strong>Partial Coverage<\/strong>.*?<td>GPU<\/td><td>1<\/td><td>3<\/td><td>2<\/td>/s',
+            $coveragePage->getContent(),
+        );
+
+        $this->actingAs($admin)
+            ->get(route('admin.listings.import'))
+            ->assertOk()
+            ->assertSeeText('Batch Riset AI')
+            ->assertSeeText('25 dari 28 Product')
+            ->assertSeeText('Lihat Semua Product');
+
+        $listingPage = $this->actingAs($admin)
+            ->get(route('admin.listings.index'))
+            ->assertOk()
+            ->assertSeeText('Product unik yang jumlah Listing tersedianya masih di bawah target 3.');
+        $this->assertSame(3, $listingPage->viewData('listingTarget'));
+        $this->assertSame(28, $listingPage->viewData('coverage')['needing']);
+
+        $export = $this->actingAs($admin)
+            ->get(route('admin.listings.coverage.export'))
+            ->assertOk()
+            ->assertDownload('neomatra-products-needing-listings.csv')
+            ->streamedContent();
+        $this->assertStringContainsString('Zero Product 027', $export);
+        $this->assertStringContainsString('Partial Coverage', $export);
+        $this->assertStringNotContainsString('Reached Target', $export);
+        $this->assertCount(29, preg_split('/\r\n|\n|\r/', trim($export)));
     }
 
     public function test_research_prompt_download_is_markdown_and_matches_the_copy_source(): void

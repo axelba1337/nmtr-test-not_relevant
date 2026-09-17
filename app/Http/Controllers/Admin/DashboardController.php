@@ -25,16 +25,8 @@ final class DashboardController extends Controller
             ->whereBetween('created_at', [$todayStart, $todayEnd])
             ->count();
 
-        $averageSimilarity = ChatbotQueryLog::query()
-            ->whereBetween('created_at', [$todayStart, $todayEnd])
-            ->whereNotNull('top1_similarity')
-            ->avg('top1_similarity');
-
         $activeListingsCount = Listing::query()->active()->count();
         $activeProductsCount = Product::query()->active()->count();
-        $pendingUnansweredCount = ChatbotQueryLog::query()
-            ->pendingReview()
-            ->count();
         $unmatchedListingsCount = Listing::query()
             ->active()
             ->whereNull('product_id')
@@ -136,14 +128,10 @@ final class DashboardController extends Controller
             'todayQuestions' => $todayQuestions,
             'activeListingsCount' => $activeListingsCount,
             'activeProductsCount' => $activeProductsCount,
-            'pendingUnansweredCount' => $pendingUnansweredCount,
             'unmatchedListingsCount' => $unmatchedListingsCount,
             'productsWithoutListingsCount' => $productsWithoutListingsCount,
             'productsWithoutListings' => $productsWithoutListings,
             'activeKnowledgeCount' => $knowledgeStats['active'],
-            'averageTop1Similarity' => $averageSimilarity === null
-                ? null
-                : (float) $averageSimilarity,
             'knowledgeStats' => $knowledgeStats,
             'activity' => $activity,
             'maximumActivity' => $maximumActivity,

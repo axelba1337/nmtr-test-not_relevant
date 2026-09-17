@@ -8,8 +8,6 @@
             <div><p class="admin-card__eyebrow">{{ __('ui.admin_pages.listings.source_integration') }}</p><h2 id="listings-title">{{ __('ui.admin_pages.listings.heading') }}</h2><p>{{ __('ui.admin_pages.listings.description') }}</p></div>
             <div class="header-actions">
                 <a class="button button--secondary" href="{{ route('admin.listings.export', $exportQuery) }}">{{ __('ui.admin_pages.common.download_xlsx') }}</a>
-                <a class="button button--secondary" href="{{ route('admin.listings.discovery') }}">{{ __('ui.admin_pages.listings.automatic') }}</a>
-                <a class="button button--secondary" href="{{ route('admin.listings.import') }}">{{ __('ui.admin_pages.listings.import_csv') }}</a>
                 <a class="button button--primary" href="{{ route('admin.listings.create') }}">{{ __('ui.admin_pages.listings.add') }}</a>
             </div>
         </div>
@@ -24,12 +22,6 @@
                 <p class="summary-card__label">{{ __('ui.admin_pages.listings.matched_count') }}</p>
                 <p class="summary-card__value">{{ number_format($coverage['matched'], 0, ',', '.') }}</p>
                 <p class="summary-card__note">{{ __('ui.admin_pages.listings.matched_count_help') }}</p>
-            </article>
-            <article class="summary-card">
-                <p class="summary-card__label">{{ __('ui.admin_pages.listings.unmatched_count') }}</p>
-                <p class="summary-card__value">{{ number_format($coverage['unmatched'], 0, ',', '.') }}</p>
-                <p class="summary-card__note">{{ __('ui.admin_pages.listings.unmatched_count_help') }}</p>
-                <a class="table-source-link summary-card__action" href="{{ route('admin.listings.unmatched') }}">{{ __('ui.admin_pages.listings.review_candidate') }}</a>
             </article>
             <article class="summary-card">
                 <p class="summary-card__label">{{ __('ui.admin_pages.listings.products_without') }}</p>

@@ -50,6 +50,7 @@
                     <button class="button button--primary" type="button" data-copy-target="#listing-research-prompt" data-copy-status="#listing-research-copy-status" data-copy-success="{{ __('ui.admin_pages.listing_import.prompt.copy_success') }}" data-copy-failure="{{ __('ui.admin_pages.listing_import.prompt.copy_failure') }}">{{ __('ui.admin_pages.listing_import.prompt.copy') }}</button>
                 </div>
                 <p class="workflow-helper workflow-helper--prompt-action">{{ __('ui.admin_pages.listing_import.prompt.action_help', ['count' => $researchPromptProductLimit]) }}</p>
+                <p class="workflow-helper">{{ __('ui.admin_pages.listing_import.products.view_help') }}</p>
                 <p class="workflow-helper">{{ __('ui.admin_pages.listing_import.products.target_help') }}</p>
 
                 <details class="workflow-details prompt-panel">
@@ -68,6 +69,10 @@
                     </div>
                     <div class="prompt-panel__section">
                         <p class="workflow-step__label">{{ __('ui.admin_pages.listing_import.prompt.generated_heading') }}</p>
+                        <div class="prompt-batch-summary">
+                            <span>{{ __('ui.admin_pages.listing_import.prompt.batch_label') }}</span>
+                            <strong>{{ __('ui.admin_pages.listing_import.prompt.batch_summary', ['current' => number_format($researchPromptProductCount, 0, ',', '.'), 'total' => number_format($targetProductCount, 0, ',', '.')]) }}</strong>
+                        </div>
                     </div>
                     <textarea id="listing-research-prompt" class="prompt-panel__content" rows="12" readonly>{{ $researchPrompt }}</textarea>
                     <div class="prompt-panel__section prompt-panel__section--actions">

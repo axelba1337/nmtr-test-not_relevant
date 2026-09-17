@@ -12,7 +12,22 @@
                 <a class="button button--primary" href="{{ route('admin.listings.coverage.export') }}">{{ __('ui.admin_pages.listing_coverage.export') }}</a>
             </div>
         </div>
-        <div class="alert alert--info"><p>{{ __('ui.admin_pages.listing_import.workflow_help') }}</p></div>
+        <div class="coverage-guidance">
+            <p>{{ __('ui.admin_pages.listing_coverage.explanation') }}</p>
+            <p>{{ __('ui.admin_pages.listing_coverage.minimum_target_help') }}</p>
+        </div>
+        <div class="coverage-context-grid">
+            <article class="coverage-context">
+                <p class="coverage-context__label">{{ __('ui.admin_pages.listing_coverage.current_target_label') }}</p>
+                <p class="coverage-context__value">{{ number_format($target, 0, ',', '.') }}</p>
+                <p class="coverage-context__note">{{ __('ui.admin_pages.listing_coverage.current_target', ['target' => $target]) }}</p>
+            </article>
+            <article class="coverage-context">
+                <p class="coverage-context__label">{{ __('ui.admin_pages.listing_coverage.ai_batch_label') }}</p>
+                <p class="coverage-context__value">{{ __('ui.admin_pages.listing_coverage.ai_batch_summary', ['current' => number_format($promptBatchCount, 0, ',', '.'), 'total' => number_format($products->total(), 0, ',', '.')]) }}</p>
+                <p class="coverage-context__note">{{ __('ui.admin_pages.listing_coverage.ai_batch_help', ['maximum' => $promptMaximum]) }}</p>
+            </article>
+        </div>
         <div class="summary-grid summary-grid--compact">
             @foreach(['active', 'matched', 'unmatched', 'without_active', 'needing'] as $metric)
                 <article class="summary-card"><p class="summary-card__label">{{ __('ui.admin_pages.listing_coverage.metrics.'.$metric) }}</p><p class="summary-card__value">{{ number_format($metrics[$metric], 0, ',', '.') }}</p></article>
@@ -22,9 +37,9 @@
         @if($products->isEmpty())
             <div class="empty-state"><p>{{ __('ui.admin_pages.listing_coverage.empty') }}</p></div>
         @else
-            <div class="table-scroll"><table class="admin-table"><thead><tr><th>{{ __('ui.admin_pages.listing_coverage.product') }}</th><th>{{ __('ui.admin_pages.listing_coverage.category') }}</th><th>{{ __('ui.admin_pages.listing_coverage.identity') }}</th><th>{{ __('ui.admin_pages.listing_coverage.current') }}</th><th>{{ __('ui.common.actions') }}</th></tr></thead><tbody>
+            <div class="table-scroll"><table class="admin-table"><thead><tr><th>{{ __('ui.admin_pages.listing_coverage.product') }}</th><th>{{ __('ui.admin_pages.listing_coverage.category') }}</th><th>{{ __('ui.admin_pages.listing_coverage.current') }}</th><th>{{ __('ui.admin_pages.listing_coverage.target') }}</th><th>{{ __('ui.admin_pages.listing_coverage.still_needed') }}</th><th>{{ __('ui.common.actions') }}</th></tr></thead><tbody>
                 @foreach($products as $product)
-                    <tr><td class="admin-table__question"><strong>{{ $product->name }}</strong><span>#{{ $product->id }}</span></td><td>{{ $product->category?->name ?? '—' }}</td><td>{{ collect([$product->brand, $product->model, $product->variant])->filter()->implode(' · ') ?: '—' }}</td><td>{{ number_format($product->active_listings_count, 0, ',', '.') }}</td><td><a class="button button--small button--secondary" href="{{ route('admin.products.edit', $product) }}">{{ __('ui.common.view') }}</a></td></tr>
+                    <tr><td class="admin-table__question"><strong>{{ $product->name }}</strong><span>#{{ $product->id }}</span></td><td>{{ $product->category?->name ?? '—' }}</td><td>{{ number_format($product->active_listings_count, 0, ',', '.') }}</td><td>{{ number_format($target, 0, ',', '.') }}</td><td>{{ number_format($stillNeededByProduct[$product->id], 0, ',', '.') }}</td><td><a class="button button--small button--secondary" href="{{ route('admin.products.edit', $product) }}">{{ __('ui.common.view') }}</a></td></tr>
                 @endforeach
             </tbody></table></div>
             <nav class="pagination" aria-label="{{ __('ui.admin_pages.listing_coverage.pagination') }}">

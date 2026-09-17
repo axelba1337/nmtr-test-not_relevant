@@ -24,12 +24,21 @@ final class ListingCoverageController extends Controller
         $products = $this->research->targetsQuery()
             ->paginate(self::PER_PAGE)
             ->withQueryString();
+        $promptMaximum = $this->research->promptMaximumProducts();
 
         return view('admin.listings.coverage', [
             'products' => $products,
             'metrics' => $this->coverage->metrics(),
             'minimum' => $this->research->minimumListings(),
             'target' => $this->research->targetListings(),
+            'promptMaximum' => $promptMaximum,
+            'promptBatchCount' => min($products->total(), $promptMaximum),
+            'stillNeededByProduct' => $products->getCollection()
+                ->mapWithKeys(fn ($product): array => [
+                    $product->id => $this->coverage->stillNeeded(
+                        (int) $product->active_listings_count,
+                    ),
+                ]),
         ]);
     }
 

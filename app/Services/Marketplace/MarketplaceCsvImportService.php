@@ -375,17 +375,42 @@ final class MarketplaceCsvImportService
         }
 
         $url = (string) ($values['product_url'] ?? '');
-        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        if ($this->platformSlugForListingUrl($url) !== $slug) {
+            return 'invalid URL';
+        }
+
+        return null;
+    }
+
+    public function platformSlugForListingUrl(string $url): ?string
+    {
+        $slug = $this->platformSlugForUrlHost($url);
+
+        if ($slug === null) {
+            return null;
+        }
+
         $path = (string) parse_url($url, PHP_URL_PATH);
 
+        return $this->validListingPath($slug, $path) ? $slug : null;
+    }
+
+    public function platformSlugForUrlHost(string $url): ?string
+    {
         if (filter_var($url, FILTER_VALIDATE_URL) === false
             || ! in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true)
             || parse_url($url, PHP_URL_USER) !== null
             || parse_url($url, PHP_URL_PASS) !== null
-            || parse_url($url, PHP_URL_PORT) !== null
-            || ! in_array($host, self::PLATFORM_HOSTS[$slug], true)
-            || ! $this->validListingPath($slug, $path)) {
-            return 'invalid URL';
+            || parse_url($url, PHP_URL_PORT) !== null) {
+            return null;
+        }
+
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        foreach (self::PLATFORM_HOSTS as $slug => $hosts) {
+            if (in_array($host, $hosts, true)) {
+                return $slug;
+            }
         }
 
         return null;

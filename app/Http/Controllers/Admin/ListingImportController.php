@@ -123,11 +123,18 @@ final class ListingImportController extends Controller
     /** @return array<string, mixed> */
     private function workflowData(): array
     {
+        $targetProductCount = $this->research->targetCount();
+        $researchPromptProductLimit = $this->research->promptMaximumProducts();
+
         return [
             'targetProducts' => $this->research->targetPreview(),
-            'targetProductCount' => $this->research->targetCount(),
+            'targetProductCount' => $targetProductCount,
             'targetListingCount' => $this->research->targetListings(),
-            'researchPromptProductLimit' => $this->research->promptMaximumProducts(),
+            'researchPromptProductLimit' => $researchPromptProductLimit,
+            'researchPromptProductCount' => min(
+                $targetProductCount,
+                $researchPromptProductLimit,
+            ),
             'researchPrompt' => $this->research->prompt(),
         ];
     }

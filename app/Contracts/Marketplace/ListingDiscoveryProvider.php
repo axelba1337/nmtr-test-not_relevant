@@ -7,5 +7,8 @@ use App\Models\Product;
 
 interface ListingDiscoveryProvider
 {
-    public function discover(Product $product): ListingDiscoveryResult;
+    public function discover(
+        Product $product,
+        ?int $maximumCandidates = null,
+    ): ListingDiscoveryResult;
 }

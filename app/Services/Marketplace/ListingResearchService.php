@@ -46,7 +46,7 @@ final class ListingResearchService
     {
         return max(
             1,
-            (int) config('listing-discovery.research_prompt_max_products', 10),
+            (int) config('listing-discovery.research_prompt_max_products', 25),
         );
     }
 
@@ -70,7 +70,7 @@ final class ListingResearchService
     {
         return max(
             $this->minimumListings(),
-            (int) config('listing-discovery.target_active_listings', 5),
+            (int) config('listing-discovery.target_active_listings', 3),
         );
     }
 

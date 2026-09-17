@@ -9,7 +9,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:js": "node --test tests/js/chatbot-client.test.mjs"
+        "test:js": "node --test tests/js/*.test.mjs"
     },
     "devDependencies": {
         "concurrently": "^9.0.1",

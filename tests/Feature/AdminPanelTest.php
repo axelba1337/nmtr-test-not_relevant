@@ -118,6 +118,77 @@ final class AdminPanelTest extends TestCase
             ->assertSee(route('admin.listings.index'));
     }
 
+    public function test_listing_navigation_is_a_context_aware_dropdown(): void
+    {
+        $admin = $this->createUser();
+        $destinations = [
+            'listing-data' => route('admin.listings.index'),
+            'automatic-listing' => route('admin.listings.discovery'),
+            'import-csv' => route('admin.listings.import'),
+        ];
+
+        foreach ($destinations as $activeChild => $url) {
+            $response = $this->actingAs($admin)->get($url)->assertOk();
+
+            $response
+                ->assertSee('data-admin-listing-group', false)
+                ->assertSee('data-admin-listing-expanded="true"', false)
+                ->assertSee('data-admin-nav-child="listing-data"', false)
+                ->assertSee('data-admin-nav-child="automatic-listing"', false)
+                ->assertSee('data-admin-nav-child="import-csv"', false)
+                ->assertSee('data-admin-nav-child="'.$activeChild.'"', false)
+                ->assertSee('data-admin-nav-active="true"', false)
+                ->assertSee(route('admin.listings.index'))
+                ->assertSee(route('admin.listings.discovery'))
+                ->assertSee(route('admin.listings.import'));
+            $this->assertMatchesRegularExpression(
+                '/data-admin-nav-child="'.preg_quote($activeChild, '/').'"[^>]*data-admin-nav-active="true"/s',
+                $response->getContent(),
+            );
+        }
+
+        $this->actingAs($admin)
+            ->withSession(['locale' => 'en'])
+            ->get(route('admin.listings.index'))
+            ->assertOk()
+            ->assertSeeText('Listing Data')
+            ->assertSeeText('Automatic Listing')
+            ->assertSeeText('Manual Listing (CSV Import)');
+
+        $platform = Platform::query()->create([
+            'name' => 'OLX',
+            'slug' => 'olx',
+            'source_type' => Platform::SOURCE_MANUAL,
+            'access_type' => Platform::ACCESS_CSV_IMPORT,
+            'connector' => 'manual-import',
+            'status' => Platform::STATUS_READY,
+            'is_active' => true,
+            'sync_enabled' => false,
+        ]);
+        $unmatched = Listing::query()->create([
+            'platform_id' => $platform->id,
+            'product_id' => null,
+            'external_listing_id' => 'NAV-UNMATCHED-1',
+            'source_fingerprint' => hash('sha256', 'nav-unmatched-1'),
+            'title' => 'Unmatched navigation candidate',
+            'price' => 1_000_000,
+            'condition' => Listing::CONDITION_USED,
+            'product_url' => 'https://www.olx.co.id/item/nav-unmatched-iid-990001',
+            'stock_status' => Listing::STOCK_IN_STOCK,
+            'price_type' => Listing::PRICE_FULL,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->withSession(['locale' => 'id'])
+            ->get(route('admin.listings.unmatched'))
+            ->assertOk()
+            ->assertSeeText('Tinjau Kandidat')
+            ->assertSee(route('admin.listings.candidate.review', $unmatched))
+            ->assertSee('data-admin-nav-child="listing-data"', false);
+        Http::assertNothingSent();
+    }
+
     public function test_only_admin_credentials_create_an_admin_session(): void
     {
         $admin = $this->createUser(
@@ -290,7 +361,7 @@ final class AdminPanelTest extends TestCase
             ->assertViewHas('todayQuestions', 3)
             ->assertViewHas('activeListingsCount', 2)
             ->assertViewHas('activeProductsCount', 2)
-            ->assertViewHas('pendingUnansweredCount', 1)
+            ->assertViewMissing('pendingUnansweredCount')
             ->assertViewHas('unmatchedListingsCount', 1)
             ->assertViewHas('productsWithoutListingsCount', 1)
             ->assertViewHas(
@@ -299,12 +370,7 @@ final class AdminPanelTest extends TestCase
                     ->all() === [$productWithoutListings->id],
             )
             ->assertViewHas('activeKnowledgeCount', 3)
-            ->assertViewHas(
-                'averageTop1Similarity',
-                static fn (mixed $value): bool => abs(
-                    (float) $value - 0.5,
-                ) < 0.000001,
-            )
+            ->assertViewMissing('averageTop1Similarity')
             ->assertViewHas('knowledgeStats', [
                 'active' => 3,
                 'ready' => 1,
@@ -327,9 +393,21 @@ final class AdminPanelTest extends TestCase
                 'embedding_status' => 'failed',
             ])), false)
             ->assertSee(e(route('admin.listings.unmatched')), false)
-            ->assertSee(e(route('admin.unanswered.index', [
-                'review' => 'pending',
-            ])), false);
+            ->assertDontSeeText('Rata-rata Similarity Top-1')
+            ->assertDontSeeText('query belum ditinjau')
+            ->assertSee('summary-grid--dashboard', false);
+
+        $this->assertSame(
+            3,
+            substr_count($response->getContent(), '<article class="summary-card">'),
+        );
+
+        $this->actingAs($admin)
+            ->withSession(['locale' => 'en'])
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertDontSeeText('Average Top-1 Similarity')
+            ->assertDontSeeText('queries awaiting review');
 
         $this->actingAs($admin)
             ->get(route('admin.products.index', [

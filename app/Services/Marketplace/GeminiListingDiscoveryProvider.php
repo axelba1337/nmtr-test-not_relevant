@@ -15,18 +15,26 @@ final class GeminiListingDiscoveryProvider implements ListingDiscoveryProvider
         private readonly GeminiHttpClient $http,
     ) {}
 
-    public function discover(Product $product): ListingDiscoveryResult
-    {
-        if (! (bool) config('listing-discovery.web_grounding_enabled', true)) {
+    public function discover(
+        Product $product,
+        ?int $maximumCandidates = null,
+    ): ListingDiscoveryResult {
+        if (! (bool) config(
+            'listing-discovery.gemini.grounding_enabled',
+            true,
+        )) {
             return ListingDiscoveryResult::failed(
                 'configuration',
                 'Google Search grounding is disabled.',
             );
         }
 
-        $model = trim((string) config('listing-discovery.model', ''));
+        $model = trim((string) config(
+            'listing-discovery.gemini.model',
+            '',
+        ));
         $response = $this->http->postFromConfiguration(
-            'listing-discovery',
+            'listing-discovery.gemini',
             'listing_discovery',
             $model,
             'models/'.rawurlencode($this->normalizedModel($model)).':generateContent',
@@ -36,7 +44,12 @@ final class GeminiListingDiscoveryProvider implements ListingDiscoveryProvider
                 ],
                 'contents' => [[
                     'role' => 'user',
-                    'parts' => [['text' => $this->prompt($product)]],
+                    'parts' => [[
+                        'text' => $this->prompt(
+                            $product,
+                            $maximumCandidates,
+                        ),
+                    ]],
                 ]],
                 'tools' => [[
                     'googleSearch' => new \stdClass,
@@ -45,7 +58,7 @@ final class GeminiListingDiscoveryProvider implements ListingDiscoveryProvider
                     'maxOutputTokens' => min(8192, max(
                         256,
                         (int) config(
-                            'listing-discovery.max_output_tokens',
+                            'listing-discovery.gemini.max_output_tokens',
                             4096,
                         ),
                     )),
@@ -109,11 +122,16 @@ final class GeminiListingDiscoveryProvider implements ListingDiscoveryProvider
             .'standalone component. Never create or propose a new Product, Alias, or Category.';
     }
 
-    private function prompt(Product $product): string
-    {
+    private function prompt(
+        Product $product,
+        ?int $maximumCandidates,
+    ): string {
         $maximum = max(
             1,
-            (int) config('listing-discovery.max_new_listings_per_product', 3),
+            $maximumCandidates ?? (int) config(
+                'listing-discovery.max_new_listings_per_product',
+                3,
+            ),
         );
         $region = trim((string) config(
             'listing-discovery.region',
