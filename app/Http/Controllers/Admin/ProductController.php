@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\Normalizer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProductRequest;
 use App\Http\Requests\Admin\UpdateProductRequest;
 use App\Models\Product;
 use App\Services\Catalog\CatalogScope;
+use App\Services\Catalog\ProductMutationService;
 use App\Services\Embedding\EntityEmbeddingService;
 use App\Services\Embedding\ProductEmbeddingStatus;
 use App\Services\Export\AdminXlsxExporter;
@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -26,6 +25,7 @@ final class ProductController extends Controller
         private readonly EntityEmbeddingService $embeddingService,
         private readonly ProductEmbeddingStatus $embeddingStatus,
         private readonly CatalogScope $catalogScope,
+        private readonly ProductMutationService $products,
         private readonly AdminXlsxExporter $xlsx,
     ) {}
 
@@ -106,17 +106,10 @@ final class ProductController extends Controller
     public function store(StoreProductRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $aliases = $this->parseAliases($data['aliases'] ?? null);
+        $aliases = $this->products->normalizeAliases($data['aliases'] ?? null);
         unset($data['aliases']);
         $data['attributes'] = $this->decodeJson($data['attributes'] ?? null);
-        $this->assertNormalizedKeyIsUnique($data);
-
-        $product = DB::transaction(function () use ($data, $aliases): Product {
-            $product = Product::query()->create($data);
-            $this->syncAliases($product, $aliases);
-
-            return $product;
-        });
+        $product = $this->products->create($data, $aliases);
         $failed = $this->rebuildEmbeddings($product, true);
 
         return redirect()->route('admin.products.index')
@@ -144,10 +137,10 @@ final class ProductController extends Controller
         Product $product,
     ): RedirectResponse {
         $data = $request->validated();
-        $aliases = $this->parseAliases($data['aliases'] ?? null);
+        $aliases = $this->products->normalizeAliases($data['aliases'] ?? null);
         unset($data['aliases']);
         $data['attributes'] = $this->decodeJson($data['attributes'] ?? null);
-        $this->assertNormalizedKeyIsUnique($data, $product);
+        $this->products->assertNormalizedKeyIsUnique($data, $product);
         $semanticChanged = $product->fill($data)->isDirty([
             'category_id',
             'name',
@@ -171,7 +164,7 @@ final class ProductController extends Controller
             }
 
             $product->save();
-            $this->syncAliases($product, $aliases);
+            $this->products->syncAliases($product, $aliases);
         });
         $failed = $this->rebuildEmbeddings($product, $semanticChanged);
 
@@ -191,81 +184,6 @@ final class ProductController extends Controller
 
         return redirect()->route('admin.products.index')
             ->with('success', __('ui.messages.admin.product.deleted'));
-    }
-
-    /** @param array<string, mixed> $data */
-    private function assertNormalizedKeyIsUnique(
-        array $data,
-        ?Product $except = null,
-    ): void {
-        $key = Product::makeNormalizedKey(
-            (string) $data['name'],
-            $data['brand'] ?? null,
-            $data['model'] ?? null,
-            $data['variant'] ?? null,
-            $data['sku_or_part_number'] ?? null,
-        );
-        $exists = Product::query()
-            ->where('normalized_key', $key)
-            ->when($except !== null, fn (Builder $query): Builder => $query
-                ->where('id', '!=', $except->getKey()))
-            ->exists();
-
-        if ($exists) {
-            throw ValidationException::withMessages([
-                'name' => __('ui.messages.admin.product.duplicate_identity'),
-            ]);
-        }
-    }
-
-    /** @return list<string> */
-    private function parseAliases(mixed $value): array
-    {
-        if (! is_string($value) || trim($value) === '') {
-            return [];
-        }
-
-        $aliases = preg_split('/[\r\n,]+/u', $value) ?: [];
-        $normalized = [];
-
-        foreach ($aliases as $alias) {
-            $alias = trim($alias);
-            $key = Normalizer::text($alias);
-
-            if ($key !== '') {
-                $normalized[$key] = $alias;
-            }
-        }
-
-        return array_values($normalized);
-    }
-
-    /** @param list<string> $aliases */
-    private function syncAliases(Product $product, array $aliases): void
-    {
-        $wanted = [];
-
-        foreach ($aliases as $alias) {
-            $wanted[Normalizer::text($alias)] = $alias;
-        }
-
-        $existing = $product->aliases()->get()->keyBy('normalized_alias');
-        $product->aliases()
-            ->whereNotIn('normalized_alias', array_keys($wanted))
-            ->delete();
-
-        foreach ($wanted as $normalizedAlias => $alias) {
-            $record = $existing->get($normalizedAlias);
-
-            if ($record === null) {
-                $product->aliases()->create([
-                    'alias' => $alias,
-                    'normalized_alias' => $normalizedAlias,
-                ]);
-            } elseif ($record->alias !== $alias) {
-                $record->update(['alias' => $alias]);
-            }
-        }
     }
 
     private function rebuildEmbeddings(Product $product, bool $force): bool

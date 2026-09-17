@@ -31,8 +31,8 @@
                 <p class="admin-card__eyebrow">{{ __('ui.admin_pages.listing_discovery.catalog_coverage') }}</p>
                 <h3 id="catalog-coverage-title">{{ __('ui.admin_pages.listing_discovery.catalog_status') }}</h3>
                 <dl class="data-list">
-                    <div><dt>{{ __('ui.admin_pages.listing_discovery.products_below_target') }}</dt><dd>{{ $catalogMetrics['needing'] }}</dd></div>
-                    <div><dt>{{ __('ui.admin_pages.listing_discovery.products_without_available') }}</dt><dd>{{ $catalogMetrics['without_active'] }}</dd></div>
+                    <div><dt>{{ __('ui.admin_pages.listing_discovery.products_below_target') }}</dt><dd>{{ $catalogMetrics['below_target'] }}</dd></div>
+                    <div><dt>{{ __('ui.admin_pages.listing_discovery.products_without_ready_to_use') }}</dt><dd>{{ $catalogMetrics['without_ready_to_use_listings'] }}</dd></div>
                     <div><dt>{{ __('ui.admin_pages.listing_discovery.settings.target') }}</dt><dd>{{ __('ui.admin_pages.listing_discovery.target_value', ['count' => $coverageTarget]) }}</dd></div>
                     <div><dt>{{ __('ui.admin_pages.listing_discovery.settings.max_products') }}</dt><dd>{{ __('ui.admin_pages.listing_discovery.products_per_run_value', ['count' => $settings['max_products']]) }}</dd></div>
                 </dl>

@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\ListingImportController;
 use App\Http\Controllers\Admin\PlatformController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductEmbeddingController;
+use App\Http\Controllers\Admin\ProductImportController;
 use App\Http\Controllers\Admin\UnansweredQueryController;
 use App\Http\Controllers\Admin\UnmatchedListingController;
 use App\Http\Controllers\ListingRedirectController;
@@ -20,6 +21,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('chatbot.widget'))
     ->name('chatbot');
+
+Route::view('/about', 'public.about')->name('about');
+Route::view('/contact', 'public.contact')->name('contact');
 
 Route::post('/locale/{locale}', LocaleController::class)
     ->where('locale', '[A-Za-z_-]+')
@@ -60,6 +64,22 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
                 ProductController::class,
                 'export',
             ])->name('products.export');
+            Route::get('/products/import', [
+                ProductImportController::class,
+                'create',
+            ])->name('products.import');
+            Route::get('/products/import/template', [
+                ProductImportController::class,
+                'template',
+            ])->name('products.import.template');
+            Route::post('/products/import/preview', [
+                ProductImportController::class,
+                'preview',
+            ])->name('products.import.preview');
+            Route::post('/products/import/confirm', [
+                ProductImportController::class,
+                'import',
+            ])->name('products.import.confirm');
             Route::post(
                 '/products/{product}/embedding/rebuild',
                 [ProductEmbeddingController::class, 'rebuildOne'],

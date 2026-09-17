@@ -388,11 +388,20 @@ final class AdminPanelTest extends TestCase
                         && $byDate['2026-07-28']['total'] === 3;
                 },
             )
-            ->assertSee(e(route('admin.knowledge.index', [
+            ->assertSeeText('Product & Alias tersedia untuk pencarian semantik.')
+            ->assertSee(
+                '<li><a href="'.route('admin.knowledge.index').'">3 Item Knowledge Aktif</a></li>',
+                false,
+            )
+            ->assertSeeText('Knowledge aktif digunakan chatbot sebagai sumber informasi pendukung saat menjawab pertanyaan pengguna.')
+            ->assertDontSeeText('Embedding Knowledge Gagal')
+            ->assertDontSeeText('Listing Aktif Belum Dipetakan')
+            ->assertDontSee('<li>u</li>', false)
+            ->assertDontSee(e(route('admin.knowledge.index', [
                 'status' => 'active',
                 'embedding_status' => 'failed',
             ])), false)
-            ->assertSee(e(route('admin.listings.unmatched')), false)
+            ->assertDontSee(e(route('admin.listings.unmatched')), false)
             ->assertDontSeeText('Rata-rata Similarity Top-1')
             ->assertDontSeeText('query belum ditinjau')
             ->assertSee('summary-grid--dashboard', false);
@@ -406,6 +415,11 @@ final class AdminPanelTest extends TestCase
             ->withSession(['locale' => 'en'])
             ->get(route('admin.dashboard'))
             ->assertOk()
+            ->assertSeeText('Products & Aliases available for semantic search.')
+            ->assertSeeText('3 Active Knowledge Items')
+            ->assertSeeText('Active Knowledge is used by the chatbot as a supporting information source when answering user questions.')
+            ->assertDontSeeText('Knowledge Embeddings Failed')
+            ->assertDontSeeText('Active Listings Unmatched')
             ->assertDontSeeText('Average Top-1 Similarity')
             ->assertDontSeeText('queries awaiting review');
 

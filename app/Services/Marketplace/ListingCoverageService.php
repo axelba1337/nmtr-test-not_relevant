@@ -14,23 +14,17 @@ final class ListingCoverageService
     public function metrics(): array
     {
         return [
-            'active' => Listing::query()->available()->count(),
-            'matched' => Listing::query()
-                ->available()
-                ->whereNotNull('product_id')
-                ->count(),
-            'unmatched' => Listing::query()
-                ->available()
-                ->whereNull('product_id')
-                ->count(),
-            'without_active' => Product::query()
+            'total_active_listings' => Listing::query()->active()->count(),
+            'ready_to_use_listings' => Listing::query()->readyToUse()->count(),
+            'total_active_products' => Product::query()->active()->count(),
+            'without_ready_to_use_listings' => Product::query()
                 ->active()
                 ->whereDoesntHave(
                     'listings',
-                    static fn (Builder $query): Builder => $query->available(),
+                    static fn (Builder $query): Builder => $query->readyToUse(),
                 )
                 ->count(),
-            'needing' => $this->countNeeding($this->target()),
+            'below_target' => $this->countNeeding($this->target()),
         ];
     }
 
@@ -42,7 +36,7 @@ final class ListingCoverageService
             ->with('category:id,name,slug')
             ->withCount([
                 'listings as active_listings_count' => static fn (Builder $query): Builder => $query
-                    ->available(),
+                    ->readyToUse(),
             ])
             ->orderBy('active_listings_count')
             ->orderBy('name')
@@ -129,7 +123,7 @@ final class ListingCoverageService
             '<',
             max(1, $minimum),
             'and',
-            static fn (Builder $listingQuery): Builder => $listingQuery->available(),
+            static fn (Builder $listingQuery): Builder => $listingQuery->readyToUse(),
         );
     }
 }

@@ -13,7 +13,9 @@ import {
     textareaEnterAction,
 } from './chatbot-client';
 import { initializeBrandEntry } from './brand-entry';
+import { initializeStartupSplash } from './startup-splash';
 
+initializeStartupSplash();
 initializeBrandEntry({ area: 'user' });
 
 const chatbot = document.querySelector('[data-chatbot]');

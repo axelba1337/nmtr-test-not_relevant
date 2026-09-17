@@ -68,10 +68,7 @@ final class ListingResearchService
 
     public function targetListings(): int
     {
-        return max(
-            $this->minimumListings(),
-            (int) config('listing-discovery.target_active_listings', 3),
-        );
+        return $this->coverage->target();
     }
 
     public function prompt(): string

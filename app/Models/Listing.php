@@ -137,6 +137,13 @@ final class Listing extends Model
             ->where('price', '>', 0);
     }
 
+    public function scopeReadyToUse(Builder $query): Builder
+    {
+        return $query
+            ->available()
+            ->whereNotNull('product_id');
+    }
+
     /** @return list<string> */
     public static function conditions(): array
     {

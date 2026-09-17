@@ -113,23 +113,37 @@ final class LocalizationTest extends TestCase
 
     public function test_bilingual_suggested_question_follows_selected_locale(): void
     {
-        KnowledgeItem::query()->create([
-            'title' => 'Apa itu Neomatra? / What is Neomatra?',
-            'content' => 'ID: Penjelasan. EN: Explanation.',
-            'is_active' => true,
-            'is_featured' => true,
-            'sort_order' => 1,
-        ]);
+        foreach ([
+            'Apa yang dapat dilakukan Neomatra?',
+            'Tentang Neomatra / About Neomatra',
+            'Kategori yang didukung / Supported categories',
+            'Apakah kondisi dan keamanan barang dijamin?',
+        ] as $sortOrder => $title) {
+            KnowledgeItem::query()->create([
+                'title' => $title,
+                'content' => 'ID: Penjelasan. EN: Explanation.',
+                'is_active' => true,
+                'is_featured' => true,
+                'sort_order' => $sortOrder,
+            ]);
+        }
 
         $this->withHeader('X-Neomatra-Locale', 'en')
             ->getJson(route('chatbot.suggestions'))
             ->assertOk()
-            ->assertJsonPath('suggestions.0.question', 'What is Neomatra?');
+            ->assertJsonPath('suggestions.0.question', 'What can Neomatra do?')
+            ->assertJsonPath('suggestions.1.question', 'About Neomatra')
+            ->assertJsonPath('suggestions.2.question', 'Supported categories')
+            ->assertJsonPath('suggestions.3.question', 'Are product condition and safety guaranteed?')
+            ->assertJsonMissing(['question' => 'Apa yang bisa dilakukan Neomatra?']);
 
         $this->withHeader('X-Neomatra-Locale', 'id')
             ->getJson(route('chatbot.suggestions'))
             ->assertOk()
-            ->assertJsonPath('suggestions.0.question', 'Apa itu Neomatra?');
+            ->assertJsonPath('suggestions.0.question', 'Apa yang bisa dilakukan Neomatra?')
+            ->assertJsonPath('suggestions.1.question', 'Tentang Neomatra')
+            ->assertJsonPath('suggestions.2.question', 'Kategori yang didukung')
+            ->assertJsonPath('suggestions.3.question', 'Apakah kondisi dan keamanan produk dijamin?');
     }
 
     public function test_invalid_ajax_locale_overrides_an_old_preference_with_safe_default(): void
@@ -201,7 +215,7 @@ final class LocalizationTest extends TestCase
         }
     }
 
-    public function test_admin_listing_availability_kpi_is_clear_in_both_locales(): void
+    public function test_admin_ready_to_use_listing_kpi_is_clear_in_both_locales(): void
     {
         $admin = User::query()->create([
             'name' => 'Listing KPI Admin',
@@ -214,17 +228,21 @@ final class LocalizationTest extends TestCase
             ->withSession(['locale' => 'id'])
             ->get(route('admin.listings.index'))
             ->assertOk()
-            ->assertSeeText('Listing Tersedia')
+            ->assertSeeText('Listing Siap Digunakan')
+            ->assertDontSeeText('Listing Tersedia')
+            ->assertDontSeeText('Listing Terhubung ke Product')
             ->assertDontSeeText('Listing Tersedia Belum Terpetakan')
-            ->assertSeeText('Listing aktif yang dapat digunakan dalam pencarian.');
+            ->assertSeeText('Listing aktif yang masih tersedia dan sudah terhubung ke Product, sehingga dapat digunakan dalam pencarian chatbot.');
 
         $this->actingAs($admin)
             ->withSession(['locale' => 'en'])
             ->get(route('admin.listings.index'))
             ->assertOk()
-            ->assertSeeText('Available Listings')
+            ->assertSeeText('Ready-to-Use Listings')
+            ->assertDontSeeText('Available Listings')
+            ->assertDontSeeText('Listings Linked to Products')
             ->assertDontSeeText('Available Unmapped Listings')
-            ->assertSeeText('Active Listings currently available for search.');
+            ->assertSeeText('Active Listings that are currently available and linked to a Product, so they can be used in chatbot search.');
     }
 
     public function test_indonesian_and_english_translation_catalogs_have_matching_keys(): void

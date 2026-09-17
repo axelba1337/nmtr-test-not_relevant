@@ -19,20 +19,12 @@
 
         <article class="summary-card">
             <p class="summary-card__label">{{ __('ui.admin.dashboard_page.knowledge_status') }}</p>
-            <p class="summary-card__value">
-                {{ number_format($activeProductsCount, 0, ',', '.') }}
-                <span class="summary-card__unit">{{ mb_strtolower(__('ui.admin.products_aliases')) }}</span>
-            </p>
+            <p class="summary-card__value">{{ number_format($activeProductsCount, 0, ',', '.') }}</p>
+            <p class="summary-card__note">{{ __('ui.admin.dashboard_page.products_aliases_semantic') }}</p>
             <ul class="summary-card__details">
-                <li>{{ __('ui.admin.dashboard_page.active_knowledge_count', ['count' => number_format($activeKnowledgeCount, 0, ',', '.')]) }}</li>
-                <li>{{ __('u', ['count' => number_format($knowledgeStats['ready'], 0, ',', '.')]) }}</li>
-                <li><a href="{{ route('admin.knowledge.index', ['status' => 'active', 'embedding_status' => 'failed']) }}">{{ __('ui.admin.dashboard_page.failed_embedding_count', ['count' => number_format($knowledgeStats['failed'], 0, ',', '.')]) }}</a></li>
-                {{-- <li>{{ __('ui.admin.dashboard_page.pending_embedding_count', ['count' => number_format($knowledgeStats['pending'], 0, ',', '.')]) }}</li> --}}
-                <li><a href="{{ route('admin.listings.unmatched') }}">{{ __('ui.admin.dashboard_page.unmatched_listing_count', ['count' => number_format($unmatchedListingsCount, 0, ',', '.')]) }}</a></li>
-                @if ($knowledgeStats['warnings'] > 0)
-                    <li>{{ __('ui.admin.dashboard_page.warning_count', ['count' => number_format($knowledgeStats['warnings'], 0, ',', '.')]) }}</li>
-                @endif
+                <li><a href="{{ route('admin.knowledge.index') }}">{{ __('ui.admin.dashboard_page.active_knowledge_count', ['count' => number_format($activeKnowledgeCount, 0, ',', '.')]) }}</a></li>
             </ul>
+            <p class="summary-card__note">{{ __('ui.admin.dashboard_page.active_knowledge_explanation') }}</p>
         </article>
     </div>
 

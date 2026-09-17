@@ -12,6 +12,7 @@
             </div>
             <div class="button-group products-index__header-actions">
                 <a class="button button--secondary" href="{{ route('admin.products.export', $exportQuery) }}">{{ __('ui.admin_pages.common.download_xlsx') }}</a>
+                <a class="button button--secondary" href="{{ route('admin.products.import') }}">{{ __('ui.admin_pages.products.import_csv') }}</a>
                 <a class="button button--primary" href="{{ route('admin.products.create') }}">{{ __('ui.admin_pages.products.add') }}</a>
             </div>
         </div>
@@ -28,7 +29,11 @@
                 <x-admin-sort-select id="product-sort" :sort="$sort" :options="$sortOptions" />
                 <div class="filter-bar__actions products-filter__actions"><button class="button button--secondary" type="submit">{{ __('ui.common.apply') }}</button><a class="button button--text" href="{{ route('admin.products.index') }}">{{ __('ui.common.reset') }}</a></div>
             </div>
-            <p class="form-help products-filter__help"><em>{{ __('ui.admin_pages.products.embedding_failure_help') }}</em></p>
+            <div class="form-help products-filter__help">
+                <p>{{ __('ui.admin_pages.products.embedding_help_semantic') }}</p>
+                <p>{{ __('ui.admin_pages.products.embedding_help_rebuild') }}</p>
+                <p class="products-filter__hint"><strong>{{ __('ui.admin_pages.products.embedding_help_hint_label') }}</strong> {{ __('ui.admin_pages.products.embedding_help_hint') }}</p>
+            </div>
         </form>
 
         @if($products->isEmpty())

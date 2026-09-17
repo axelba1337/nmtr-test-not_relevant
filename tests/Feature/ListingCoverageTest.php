@@ -81,11 +81,11 @@ final class ListingCoverageTest extends TestCase
         $this->assertSame([$zero->id, $below->id], $targets->pluck('id')->all());
         $this->assertSame([0, 1], $targets->pluck('active_listings_count')->all());
         $this->assertSame([
-            'active' => 3,
-            'matched' => 3,
-            'unmatched' => 0,
-            'without_active' => 1,
-            'needing' => 2,
+            'total_active_listings' => 3,
+            'ready_to_use_listings' => 3,
+            'total_active_products' => 3,
+            'without_ready_to_use_listings' => 1,
+            'below_target' => 2,
         ], $coverage->metrics());
         $this->assertFalse($targets->contains('id', $sufficient->id));
         $this->assertFalse($targets->contains('id', $inactive->id));
@@ -253,6 +253,10 @@ final class ListingCoverageTest extends TestCase
         $partial = $this->product($category, 'Partial Coverage', true);
         $reached = $this->product($category, 'Reached Target', true);
         $this->listing($platform, $partial, 'partial-1');
+        $this->listing($platform, $partial, 'partial-out-of-stock')
+            ->update(['stock_status' => Listing::STOCK_OUT_OF_STOCK]);
+        $this->listing($platform, $partial, 'partial-inactive')
+            ->update(['is_active' => false]);
         foreach (range(1, 3) as $index) {
             $this->listing($platform, $reached, 'reached-'.$index);
         }
@@ -276,13 +280,30 @@ final class ListingCoverageTest extends TestCase
         $coveragePage = $this->actingAs($admin)
             ->get(route('admin.listings.coverage'))
             ->assertOk()
-            ->assertSeeText('Target coverage adalah jumlah ideal Listing tersedia untuk setiap Product')
-            ->assertSeeText('Target saat ini: 3 Listing tersedia per Product.')
-            ->assertSeeText('25 dari 28 Product')
-            ->assertSeeText('Listing Tersedia')
+            ->assertSeeText('Target coverage adalah jumlah ideal Listing Siap Digunakan untuk setiap Product')
+            ->assertSeeText('Target saat ini: 3 Listing Siap Digunakan per Product.')
+            ->assertSeeText('Total Product Aktif')
+            ->assertSeeText('Product Tanpa Listing Siap Digunakan')
+            ->assertSeeText('Product di Bawah Target Listing')
+            ->assertSeeText('Target Coverage')
+            ->assertSeeText('Coverage dihitung per Product menggunakan Listing Siap Digunakan.')
+            ->assertSeeText('25 Product prioritas dari 28 Product yang masih berada di bawah target.')
+            ->assertSeeText('Prompt riset hanya mengambil maksimal 25 Product dalam satu batch.')
+            ->assertSeeText('Listing Siap Digunakan')
             ->assertSeeText('Target')
             ->assertSeeText('Masih Dibutuhkan')
+            ->assertDontSeeText('Listing Tersedia')
+            ->assertDontSeeText('Listing Tersedia Belum Terpetakan')
             ->assertDontSeeText('Reached Target');
+        $this->assertSame(3, $coveragePage->viewData('target'));
+        $this->assertSame(25, $coveragePage->viewData('promptBatchCount'));
+        $this->assertSame([
+            'total_active_listings' => 5,
+            'ready_to_use_listings' => 4,
+            'total_active_products' => 29,
+            'without_ready_to_use_listings' => 27,
+            'below_target' => 28,
+        ], $coveragePage->viewData('metrics'));
         $this->assertMatchesRegularExpression(
             '/<strong>Zero Product 001<\/strong>.*?<td>GPU<\/td><td>0<\/td><td>3<\/td><td>3<\/td>/s',
             $coveragePage->getContent(),
@@ -302,9 +323,21 @@ final class ListingCoverageTest extends TestCase
         $listingPage = $this->actingAs($admin)
             ->get(route('admin.listings.index'))
             ->assertOk()
-            ->assertSeeText('Product unik yang jumlah Listing tersedianya masih di bawah target 3.');
+            ->assertSeeText('Product aktif yang jumlah Listing Siap Digunakannya masih di bawah target 3.');
         $this->assertSame(3, $listingPage->viewData('listingTarget'));
-        $this->assertSame(28, $listingPage->viewData('coverage')['needing']);
+        $this->assertSame(28, $listingPage->viewData('coverage')['below_target']);
+
+        $this->actingAs($admin)
+            ->withSession(['locale' => 'en'])
+            ->get(route('admin.listings.coverage'))
+            ->assertOk()
+            ->assertSeeText('Total Active Products')
+            ->assertSeeText('Products Without Ready-to-Use Listings')
+            ->assertSeeText('Products Below Listing Target')
+            ->assertSeeText('25 priority Products out of 28 Products that remain below target.')
+            ->assertSeeText('Ready-to-Use Listings')
+            ->assertDontSeeText('Available Listings')
+            ->assertDontSeeText('Available Unmapped Listings');
 
         $export = $this->actingAs($admin)
             ->get(route('admin.listings.coverage.export'))
@@ -404,9 +437,9 @@ final class ListingCoverageTest extends TestCase
         ]);
     }
 
-    private function listing(Platform $platform, Product $product, string $key): void
+    private function listing(Platform $platform, Product $product, string $key): Listing
     {
-        Listing::query()->create([
+        return Listing::query()->create([
             'platform_id' => $platform->id,
             'product_id' => $product->id,
             'external_listing_id' => $key,

@@ -81,9 +81,25 @@ final class AdminProductEmbeddingTest extends TestCase
             ->get(route('admin.products.index').'?embedding_status[]=ready')
             ->assertOk()
             ->assertSee('id="product-embedding-status"', false)
-            ->assertSeeText('Rebuild dilakukan per produk agar proses lebih ringan')
+            ->assertSeeText('Embedding membantu pencarian semantik untuk query yang tidak sama persis dengan nama atau alias Product.')
+            ->assertSeeText('Pencarian exact dan filter tetap dapat bekerja tanpa embedding.')
+            ->assertSeeText('Rebuild diperlukan setelah data Product berubah agar representasi semantik tetap terbaru.')
+            ->assertSeeText('Proses rebuild per Product membantu penggunaan Embedding API tetap lebih ringan dan terkontrol.')
+            ->assertSee('<strong>Hint:</strong>', false)
+            ->assertSeeText('Jika status Gagal tetap muncul setelah rebuild, periksa konfigurasi Embedding API, kuota, dan koneksi jaringan.')
             ->assertDontSeeText('Rebuild Semua Embedding yang Diperlukan')
             ->assertSee(route('admin.products.embedding.rebuild', $ready));
+
+        $this->actingAs($admin)
+            ->withSession(['locale' => 'en'])
+            ->get(route('admin.products.index'))
+            ->assertOk()
+            ->assertSeeText('Embeddings help semantic search handle queries that do not exactly match a Product name or alias.')
+            ->assertSeeText('Exact search and filters can still work without embeddings.')
+            ->assertSeeText('A rebuild is required after Product data changes so its semantic representation stays current.')
+            ->assertSeeText('Rebuilding per Product helps keep Embedding API usage lighter and controlled.')
+            ->assertSee('<strong>Hint:</strong>', false)
+            ->assertSeeText('If the Failed status still appears after rebuilding, check the Embedding API configuration, quota, and network connectivity.');
 
         $this->assertFalse(Route::has('admin.products.embedding.rebuild-required'));
     }

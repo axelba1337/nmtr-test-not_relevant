@@ -1132,11 +1132,35 @@ final class ChatbotController extends Controller
             explode(' / ', $title, 2),
         )));
 
-        if (count($parts) !== 2) {
-            return $title;
+        $localizedTitle = count($parts) === 2
+            ? (app()->isLocale('en') ? $parts[1] : $parts[0])
+            : $title;
+
+        $normalizedTitle = preg_replace(
+            '/[^\p{L}\p{N}]+/u',
+            ' ',
+            Normalizer::text($localizedTitle),
+        ) ?? Normalizer::text($localizedTitle);
+
+        $canonicalKey = match (trim($normalizedTitle)) {
+            'apa yang dapat dilakukan neomatra',
+            'apa yang bisa dilakukan neomatra',
+            'what can neomatra do' => 'what_can_neomatra_do',
+            'tentang neomatra',
+            'about neomatra' => 'about_neomatra',
+            'kategori yang didukung',
+            'supported categories' => 'supported_categories',
+            'apakah kondisi dan keamanan barang dijamin',
+            'apakah kondisi dan keamanan produk dijamin',
+            'are product condition and safety guaranteed' => 'condition_and_safety',
+            default => null,
+        };
+
+        if ($canonicalKey !== null) {
+            return __('ui.chat.quick_queries.'.$canonicalKey);
         }
 
-        return app()->isLocale('en') ? $parts[1] : $parts[0];
+        return $localizedTitle;
     }
 
     private function localizedKnowledgeContent(string $content): string

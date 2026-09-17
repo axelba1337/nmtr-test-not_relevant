@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 final class ChatbotPageTest extends TestCase
@@ -45,8 +46,12 @@ final class ChatbotPageTest extends TestCase
             ->assertDontSee('<input id="chatbot-message"', false)
             ->assertSee('required', false)
             ->assertSee('maxlength="2000"', false)
-            ->assertSee('Pertanyaan yang disarankan')
-            ->assertSee('Tanyakan apa saja')
+            ->assertSee('PERTANYAAN CEPAT')
+            ->assertSee('Tulis kebutuhan Anda secara natural untuk mencari knowledge dan listing marketplace yang relevan.')
+            ->assertSee('<strong>Cakupan:</strong>', false)
+            ->assertSee('PC Components, Handphone, Laptop, PC Accessories, dan Networking.')
+            ->assertSee('<strong>Sumber Listing:</strong>', false)
+            ->assertSee('Tokopedia, Shopee, OLX, Facebook Marketplace, dan Carousell.')
             ->assertSee('<option value="">Semua kondisi</option>', false)
             ->assertSee('<option value="new">Baru</option>', false)
             ->assertSee('<option value="used">Bekas</option>', false)
@@ -56,7 +61,12 @@ final class ChatbotPageTest extends TestCase
             ->assertDontSee('<option value="ex_display">', false)
             ->assertDontSee('<option value="">Otomatis</option>', false)
             ->assertSee('Harga dan kondisi berasal dari listing sumber')
-            ->assertSee('Kirim');
+            ->assertSee('Kirim')
+            ->assertSeeText('Tentang Neomatra')
+            ->assertSeeText('Kontak Dukungan')
+            ->assertSee('href="'.route('about').'"', false)
+            ->assertSee('href="'.route('contact').'"', false)
+            ->assertDontSee('href="'.route('admin.login').'"', false);
     }
 
     public function test_english_condition_filter_uses_only_the_simple_groups(): void
@@ -66,6 +76,16 @@ final class ChatbotPageTest extends TestCase
         $this->withSession(['locale' => 'en'])
             ->get('/')
             ->assertOk()
+            ->assertSeeText('QUICK QUERY')
+            ->assertSee('Describe what you need and Neomatra will search relevant knowledge and marketplace listings.')
+            ->assertSee('<strong>Scope:</strong>', false)
+            ->assertSee('PC Components, Mobile Phones, Laptops, PC Accessories, and Networking.')
+            ->assertSee('<strong>Listing Sources:</strong>', false)
+            ->assertSee('Tokopedia, Shopee, OLX, Facebook Marketplace, and Carousell.')
+            ->assertSeeText('About Neomatra')
+            ->assertSeeText('Contact Support')
+            ->assertDontSee('PERTANYAAN CEPAT')
+            ->assertDontSee('Tulis kebutuhan Anda secara natural')
             ->assertSee('<option value="">All conditions</option>', false)
             ->assertSee('<option value="new">New</option>', false)
             ->assertSee('<option value="used">Used</option>', false)
@@ -73,6 +93,56 @@ final class ChatbotPageTest extends TestCase
             ->assertDontSee('<option value="open_box">', false)
             ->assertDontSee('<option value="refurbished">', false)
             ->assertDontSee('<option value="ex_display">', false);
+    }
+
+    public function test_public_startup_splash_is_localized_safe_and_excluded_from_admin(): void
+    {
+        $this->withoutVite();
+        Http::fake();
+
+        $this->withSession(['locale' => 'id'])
+            ->get(route('chatbot'))
+            ->assertOk()
+            ->assertSee('data-startup-splash', false)
+            ->assertSee('aria-hidden="true"', false)
+            ->assertSee(asset('images/branding/neomatra-logo.png'))
+            ->assertSeeText('PENCARIAN MARKETPLACE SEMANTIK')
+            ->assertSeeText('MENYIAPKAN PENCARIAN SEMANTIK')
+            ->assertSeeText('MEMUAT INTELIJENSI PRODUK')
+            ->assertSeeText('MENYIAPKAN SUMBER LISTING')
+            ->assertSeeText('SISTEM SIAP')
+            ->assertSee('<textarea id="chatbot-message"', false);
+
+        $this->withSession(['locale' => 'en'])
+            ->get(route('chatbot'))
+            ->assertOk()
+            ->assertSeeText('SEMANTIC MARKET SEARCH')
+            ->assertSeeText('INITIALIZING SEMANTIC SEARCH')
+            ->assertSeeText('LOADING PRODUCT INTELLIGENCE')
+            ->assertSeeText('SYNCING MARKETPLACE SOURCES')
+            ->assertSeeText('SYSTEM READY')
+            ->assertDontSeeText('MENYIAPKAN PENCARIAN SEMANTIK');
+
+        $this->get(route('admin.login'))
+            ->assertOk()
+            ->assertDontSee('data-startup-splash', false);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_startup_splash_css_has_a_failure_safe_timeout_and_reduced_motion(): void
+    {
+        $stylesheet = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertIsString($stylesheet);
+        $this->assertMatchesRegularExpression(
+            '/\.startup-splash\s*\{[^}]*pointer-events:\s*none;[^}]*startup-splash-fallback\s+1\.35s/s',
+            $stylesheet,
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.startup-splash\s*\{[^}]*animation-duration:\s*300ms;/s',
+            $stylesheet,
+        );
     }
 
     public function test_page_source_declares_both_vite_entries(): void

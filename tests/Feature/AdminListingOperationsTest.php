@@ -301,32 +301,42 @@ final class AdminListingOperationsTest extends TestCase
             ->assertDontSee('ui.filters.all_conditions', false);
     }
 
-    public function test_listing_kpis_distinguish_listing_records_from_unique_products(): void
+    public function test_listing_kpis_use_ready_to_use_semantics_without_deleting_unmatched_data(): void
     {
         config(['listing-discovery.target_active_listings' => 3]);
         $platform = Platform::query()->where('slug', 'olx')->firstOrFail();
         $mappedProduct = $this->product('NVIDIA GeForce RTX 3070', 'RTX 3070');
         $this->product('NVIDIA GeForce RTX 3080', 'RTX 3080');
 
-        $this->listing($platform, $mappedProduct, Listing::CONDITION_USED);
-        $this->listing($platform, $mappedProduct, Listing::CONDITION_NEW)
+        $ready = $this->listing($platform, $mappedProduct, Listing::CONDITION_USED);
+        $unmapped = $this->listing($platform, $mappedProduct, Listing::CONDITION_NEW);
+        $unmapped
             ->update(['product_id' => null]);
-        $this->listing($platform, $mappedProduct, Listing::CONDITION_OPEN_BOX)
+        $outOfStock = $this->listing($platform, $mappedProduct, Listing::CONDITION_OPEN_BOX);
+        $outOfStock
             ->update(['stock_status' => Listing::STOCK_OUT_OF_STOCK]);
+        $inactive = $this->listing($platform, $mappedProduct, Listing::CONDITION_REFURBISHED);
+        $inactive->update(['is_active' => false]);
 
         $response = $this->actingAs($this->user())
             ->get(route('admin.listings.index'))
             ->assertOk()
-            ->assertSeeText('Angka Listing menghitung jumlah data Listing marketplace.')
-            ->assertSeeText('Listing Tersedia')
-            ->assertSeeText('Listing Terpetakan')
+            ->assertSeeText('Ringkasan Listing')
+            ->assertSeeText('Coverage Product')
+            ->assertSeeText('Total Listing Aktif')
+            ->assertSeeText('Listing Siap Digunakan')
+            ->assertSeeText('Total Product Aktif')
+            ->assertDontSeeText('Listing Tersedia')
+            ->assertDontSeeText('Listing Terhubung ke Product')
             ->assertDontSeeText('Listing Tersedia Belum Terpetakan')
-            ->assertSeeText('Product Tanpa Listing Tersedia')
+            ->assertSeeText('Product Tanpa Listing Siap Digunakan')
             ->assertSeeText('Product di Bawah Target Listing')
-            ->assertSeeText('Listing aktif yang dapat digunakan dalam pencarian.')
-            ->assertSeeText('Listing tersedia yang sudah terhubung ke Product.')
-            ->assertSeeText('Product unik yang belum memiliki satu pun Listing tersedia.')
-            ->assertSeeText('Product unik yang jumlah Listing tersedianya masih di bawah target 3.')
+            ->assertSeeText('Semua data Listing aktif yang tersimpan di sistem, termasuk Listing yang belum siap digunakan.')
+            ->assertSeeText('Listing aktif yang masih tersedia dan sudah terhubung ke Product, sehingga dapat digunakan dalam pencarian chatbot.')
+            ->assertSee('<strong>Hint:</strong>', false)
+            ->assertSeeText('Total Listing Aktif menghitung semua Listing aktif yang tersimpan. Listing Siap Digunakan hanya menghitung Listing yang aktif, masih tersedia, dan sudah terhubung ke Product.')
+            ->assertSeeText('Product aktif yang belum memiliki satu pun Listing aktif, tersedia, dan terhubung yang dapat digunakan chatbot.')
+            ->assertSeeText('Product aktif yang jumlah Listing Siap Digunakannya masih di bawah target 3.')
             ->assertDontSee('href="'.route('admin.listings.unmatched').'"', false)
             ->assertSee(route('admin.products.index', [
                 'status' => 'active',
@@ -334,13 +344,34 @@ final class AdminListingOperationsTest extends TestCase
             ]));
 
         $this->assertSame([
-            'active' => 2,
-            'matched' => 1,
-            'unmatched' => 1,
-            'without_active' => 1,
-            'needing' => 2,
+            'total_active_listings' => 3,
+            'ready_to_use_listings' => 1,
+            'total_active_products' => 2,
+            'without_ready_to_use_listings' => 1,
+            'below_target' => 2,
         ], $response->viewData('coverage'));
+        $this->assertSame([$ready->id], Listing::query()->readyToUse()->pluck('id')->all());
+        $this->assertFalse(Listing::query()->readyToUse()->whereKey($unmapped->id)->exists());
+        $this->assertFalse(Listing::query()->readyToUse()->whereKey($outOfStock->id)->exists());
+        $this->assertFalse(Listing::query()->readyToUse()->whereKey($inactive->id)->exists());
+        $this->assertSame(1, Listing::query()->whereNull('product_id')->count());
         $this->assertSame(3, $response->viewData('listingTarget'));
+
+        $this->actingAs($this->user())
+            ->withSession(['locale' => 'en'])
+            ->get(route('admin.listings.index'))
+            ->assertOk()
+            ->assertSeeText('Listing Overview')
+            ->assertSeeText('Total Active Listings')
+            ->assertSeeText('Ready-to-Use Listings')
+            ->assertDontSeeText('Available Listings')
+            ->assertDontSeeText('Listings Linked to Products')
+            ->assertSeeText('Product Coverage')
+            ->assertSeeText('Total Active Products')
+            ->assertDontSeeText('Available Unmapped Listings')
+            ->assertSeeText('Products Without Ready-to-Use Listings')
+            ->assertSeeText('Active Products with no active, available, and linked Listing that the chatbot can use.')
+            ->assertSeeText('Active Products whose Ready-to-Use Listing count is still below the target of 3.');
         $this->assertSame(
             1,
             substr_count(

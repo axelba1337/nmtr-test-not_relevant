@@ -16,22 +16,23 @@
             <p>{{ __('ui.admin_pages.listing_coverage.explanation') }}</p>
             <p>{{ __('ui.admin_pages.listing_coverage.minimum_target_help') }}</p>
         </div>
-        <div class="coverage-context-grid">
-            <article class="coverage-context">
-                <p class="coverage-context__label">{{ __('ui.admin_pages.listing_coverage.current_target_label') }}</p>
-                <p class="coverage-context__value">{{ number_format($target, 0, ',', '.') }}</p>
-                <p class="coverage-context__note">{{ __('ui.admin_pages.listing_coverage.current_target', ['target' => $target]) }}</p>
+        <p class="summary-counting-hint"><strong>{{ __('ui.admin_pages.listing_coverage.hint_label') }}</strong> {{ __('ui.admin_pages.listing_coverage.coverage_hint', ['target' => $target]) }}</p>
+        <div class="summary-grid summary-grid--compact">
+            @foreach(['total_active_products', 'without_ready_to_use_listings', 'below_target'] as $metric)
+                <article class="summary-card"><p class="summary-card__label">{{ __('ui.admin_pages.listing_coverage.metrics.'.$metric) }}</p><p class="summary-card__value">{{ number_format($metrics[$metric], 0, ',', '.') }}</p>@if($metric === 'without_ready_to_use_listings')<p class="summary-card__note">{{ __('ui.admin_pages.listings.products_without_help') }}</p>@elseif($metric === 'below_target')<p class="summary-card__note">{{ __('ui.admin_pages.listings.products_needing_help', ['target' => $target]) }}</p>@endif</article>
+            @endforeach
+            <article class="summary-card">
+                <p class="summary-card__label">{{ __('ui.admin_pages.listing_coverage.metrics.target') }}</p>
+                <p class="summary-card__value">{{ number_format($target, 0, ',', '.') }}</p>
+                <p class="summary-card__note">{{ __('ui.admin_pages.listing_coverage.current_target', ['target' => $target]) }}</p>
             </article>
+        </div>
+        <div class="coverage-context-grid coverage-context-grid--single">
             <article class="coverage-context">
                 <p class="coverage-context__label">{{ __('ui.admin_pages.listing_coverage.ai_batch_label') }}</p>
                 <p class="coverage-context__value">{{ __('ui.admin_pages.listing_coverage.ai_batch_summary', ['current' => number_format($promptBatchCount, 0, ',', '.'), 'total' => number_format($products->total(), 0, ',', '.')]) }}</p>
-                <p class="coverage-context__note">{{ __('ui.admin_pages.listing_coverage.ai_batch_help', ['maximum' => $promptMaximum]) }}</p>
+                <p class="coverage-context__note">{{ __('ui.admin_pages.listing_coverage.ai_batch_help', ['batch' => number_format($promptMaximum, 0, ',', '.')]) }}</p>
             </article>
-        </div>
-        <div class="summary-grid summary-grid--compact">
-            @foreach(['active', 'matched', 'unmatched', 'without_active', 'needing'] as $metric)
-                <article class="summary-card"><p class="summary-card__label">{{ __('ui.admin_pages.listing_coverage.metrics.'.$metric) }}</p><p class="summary-card__value">{{ number_format($metrics[$metric], 0, ',', '.') }}</p></article>
-            @endforeach
         </div>
 
         @if($products->isEmpty())

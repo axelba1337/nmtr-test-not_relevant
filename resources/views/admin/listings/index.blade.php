@@ -11,31 +11,49 @@
                 <a class="button button--primary" href="{{ route('admin.listings.create') }}">{{ __('ui.admin_pages.listings.add') }}</a>
             </div>
         </div>
-        <p class="summary-counting-hint">{{ __('ui.admin_pages.listings.counting_hint') }}</p>
-        <div class="summary-grid summary-grid--compact">
-            <article class="summary-card">
-                <p class="summary-card__label">{{ __('ui.admin_pages.listings.active_count') }}</p>
-                <p class="summary-card__value">{{ number_format($coverage['active'], 0, ',', '.') }}</p>
-                <p class="summary-card__note">{{ __('ui.admin_pages.listings.active_count_help') }}</p>
-            </article>
-            <article class="summary-card">
-                <p class="summary-card__label">{{ __('ui.admin_pages.listings.matched_count') }}</p>
-                <p class="summary-card__value">{{ number_format($coverage['matched'], 0, ',', '.') }}</p>
-                <p class="summary-card__note">{{ __('ui.admin_pages.listings.matched_count_help') }}</p>
-            </article>
-            <article class="summary-card">
-                <p class="summary-card__label">{{ __('ui.admin_pages.listings.products_without') }}</p>
-                <p class="summary-card__value">{{ number_format($coverage['without_active'], 0, ',', '.') }}</p>
-                <p class="summary-card__note">{{ __('ui.admin_pages.listings.products_without_help') }}</p>
-                <a class="table-source-link summary-card__action" href="{{ route('admin.products.index', ['status' => 'active', 'listing_status' => 'without_active']) }}">{{ __('ui.admin_pages.listings.view_products') }}</a>
-            </article>
-            <article class="summary-card">
-                <p class="summary-card__label">{{ __('ui.admin_pages.listings.products_needing') }}</p>
-                <p class="summary-card__value">{{ number_format($coverage['needing'], 0, ',', '.') }}</p>
-                <p class="summary-card__note">{{ __('ui.admin_pages.listings.products_needing_help', ['target' => $listingTarget]) }}</p>
-                <a class="table-source-link summary-card__action" href="{{ route('admin.listings.coverage') }}">{{ __('ui.common.view') }}</a>
-            </article>
-        </div>
+        <section class="metrics-section" aria-labelledby="listing-overview-title">
+            <div class="metrics-section__heading">
+                <h3 id="listing-overview-title">{{ __('ui.admin_pages.listings.overview_heading') }}</h3>
+                <p>{{ __('ui.admin_pages.listings.relationship_help') }}</p>
+            </div>
+            <div class="summary-grid summary-grid--two">
+                <article class="summary-card">
+                    <p class="summary-card__label">{{ __('ui.admin_pages.listings.total_active_listings') }}</p>
+                    <p class="summary-card__value">{{ number_format($coverage['total_active_listings'], 0, ',', '.') }}</p>
+                    <p class="summary-card__note">{{ __('ui.admin_pages.listings.total_active_listings_help') }}</p>
+                </article>
+                <article class="summary-card">
+                    <p class="summary-card__label">{{ __('ui.admin_pages.listings.ready_to_use_listings') }}</p>
+                    <p class="summary-card__value">{{ number_format($coverage['ready_to_use_listings'], 0, ',', '.') }}</p>
+                    <p class="summary-card__note">{{ __('ui.admin_pages.listings.ready_to_use_listings_help') }}</p>
+                </article>
+            </div>
+        </section>
+
+        <p class="summary-counting-hint"><strong>{{ __('ui.admin_pages.listings.hint_label') }}</strong> {{ __('ui.admin_pages.listings.counting_hint') }}</p>
+
+        <section class="metrics-section" aria-labelledby="product-coverage-title">
+            <div class="metrics-section__heading"><h3 id="product-coverage-title">{{ __('ui.admin_pages.listings.coverage_heading') }}</h3></div>
+            <div class="summary-grid summary-grid--three">
+                <article class="summary-card">
+                    <p class="summary-card__label">{{ __('ui.admin_pages.listings.total_active_products') }}</p>
+                    <p class="summary-card__value">{{ number_format($coverage['total_active_products'], 0, ',', '.') }}</p>
+                    <p class="summary-card__note">{{ __('ui.admin_pages.listings.total_active_products_help') }}</p>
+                </article>
+                <article class="summary-card">
+                    <p class="summary-card__label">{{ __('ui.admin_pages.listings.products_without') }}</p>
+                    <p class="summary-card__value">{{ number_format($coverage['without_ready_to_use_listings'], 0, ',', '.') }}</p>
+                    <p class="summary-card__note">{{ __('ui.admin_pages.listings.products_without_help') }}</p>
+                    <a class="table-source-link summary-card__action" href="{{ route('admin.products.index', ['status' => 'active', 'listing_status' => 'without_active']) }}">{{ __('ui.admin_pages.listings.view_products') }}</a>
+                </article>
+                <article class="summary-card">
+                    <p class="summary-card__label">{{ __('ui.admin_pages.listings.products_needing') }}</p>
+                    <p class="summary-card__value">{{ number_format($coverage['below_target'], 0, ',', '.') }}</p>
+                    <p class="summary-card__note">{{ __('ui.admin_pages.listings.products_needing_help', ['target' => $listingTarget]) }}</p>
+                    <a class="table-source-link summary-card__action" href="{{ route('admin.listings.coverage') }}">{{ __('ui.common.view') }}</a>
+                </article>
+            </div>
+        </section>
         <form class="filter-bar" method="GET" action="{{ route('admin.listings.index') }}">
             <div class="form-field filter-bar__search"><label for="listing-search">{{ __('ui.common.search') }}</label><input id="listing-search" name="search" type="search" value="{{ $search }}" placeholder="{{ __('ui.admin_pages.listings.search_placeholder') }}"></div>
             <div class="form-field"><label for="listing-platform-filter">Platform</label><select id="listing-platform-filter" name="platform_id"><option value="">{{ __('ui.common.all') }}</option>@foreach($platforms as $platform)<option value="{{ $platform->id }}" @selected((string) $platformId === (string) $platform->id)>{{ $platform->name }}</option>@endforeach</select></div>
