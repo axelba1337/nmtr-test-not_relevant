@@ -1,4 +1,6 @@
 *.log
+*.sql
+!database/data/v3/*.sql
 .DS_Store
 .env
 .env.*
@@ -17,6 +19,8 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/logs/*
+!/storage/logs/.gitignore
 /storage/pail
 /vendor
 Homestead.json
