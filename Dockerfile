@@ -57,7 +57,8 @@ RUN apt-get update \
         mbstring \
         opcache \
         pdo_mysql \
-    && a2enmod rewrite \
+    && a2dismod -f mpm_event mpm_worker || true \
+    && a2enmod mpm_prefork rewrite \
     && rm -rf /var/lib/apt/lists/*
 
 RUN sed -ri 's!Listen 80!Listen 10000!g' /etc/apache2/ports.conf \
