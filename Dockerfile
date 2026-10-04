@@ -86,4 +86,4 @@ RUN mkdir -p \
 
 EXPOSE 10000
 
-CMD ["apache2-foreground"]
+CMD ["bash", "-lc", "set -eux; a2dismod -f mpm_event mpm_worker 2>/dev/null || true; rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* || true; a2enmod mpm_prefork >/dev/null; apache2ctl configtest; exec apache2-foreground"]
