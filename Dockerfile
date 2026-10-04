@@ -60,8 +60,8 @@ RUN apt-get update \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
-RUN sed -ri 's!Listen 80!Listen 8000!g' /etc/apache2/ports.conf \
-    && sed -ri 's!<VirtualHost \*:80>!<VirtualHost *:8000>!g' \
+RUN sed -ri 's!Listen 80!Listen 10000!g' /etc/apache2/ports.conf \
+    && sed -ri 's!<VirtualHost \*:80>!<VirtualHost *:10000>!g' \
         /etc/apache2/sites-available/000-default.conf \
     && sed -ri 's!DocumentRoot /var/www/html!DocumentRoot /var/www/html/public!g' \
         /etc/apache2/sites-available/000-default.conf
@@ -83,6 +83,6 @@ RUN mkdir -p \
     && find storage bootstrap/cache -type d -exec chmod 775 {} \; \
     && find storage bootstrap/cache -type f -exec chmod 664 {} \;
 
-EXPOSE 8000
+EXPOSE 10000
 
 CMD ["apache2-foreground"]
