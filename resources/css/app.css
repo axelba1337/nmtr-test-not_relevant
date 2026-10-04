@@ -1169,6 +1169,195 @@ a { color: inherit; }
     .public-page-header { align-items: flex-start; }
 }
 
+/* Public mobile density */
+@media (max-width: 767px) {
+    body {
+        overflow-x: hidden;
+        font-size: 0.78rem;
+    }
+
+    .page-shell,
+    .chat-card,
+    .workspace-grid,
+    .console-panel {
+        max-width: 100%;
+    }
+
+    .startup-splash__panel {
+        width: min(calc(100% - 1rem), 22rem);
+        padding: 1.1rem;
+    }
+
+    .startup-splash__logo { width: 3.5rem; height: 3.5rem; }
+    .startup-splash__name { margin-top: 0.5rem; font-size: 1.3rem; }
+    .startup-splash__status { margin-top: 0.9rem; }
+
+    .page-shell { padding: 0; }
+    .chat-card { border-right: 0; border-left: 0; }
+
+    .chat-header {
+        min-height: 3.25rem;
+        padding: 0.4rem 0.55rem;
+    }
+
+    .chat-header__main { flex-wrap: nowrap; gap: 0.45rem; }
+    .chat-header__actions { flex: 0 0 auto; flex-wrap: nowrap; gap: 0.28rem; margin-left: auto; }
+    .chat-brand { gap: 0.45rem; }
+    .chat-brand__logo { width: 1.9rem; height: 1.9rem; }
+    .chat-brand .eyebrow { margin-bottom: 0.1rem; font-size: 0.48rem; letter-spacing: 0.04em; }
+    .chat-header h1 { font-size: 0.94rem; }
+
+    .locale-switch { padding: 0.1rem; }
+    .locale-switch__option {
+        min-width: 1.8rem;
+        min-height: 1.9rem;
+        padding: 0.2rem 0.28rem;
+        font-size: 0.55rem;
+    }
+
+    .chat-status {
+        min-height: 1.9rem;
+        display: inline-flex;
+        gap: 0.3rem;
+        padding: 0.3rem 0.4rem;
+        font-size: 0.52rem;
+        letter-spacing: 0.02em;
+    }
+
+    .chat-status__dot { width: 0.34rem; height: 0.34rem; }
+
+    .workspace-overview__lead { padding: 0.48rem 0.6rem 0.45rem; }
+    .workspace-overview__lead .eyebrow { margin-bottom: 0.1rem; font-size: 0.49rem; }
+    .workspace-overview__lead h2 { font-size: 1.02rem; line-height: 1.08; letter-spacing: -0.02em; }
+    .workspace-overview__lead > p:not(.eyebrow) { margin-top: 0.28rem; font-size: 0.63rem; line-height: 1.35; }
+    .workspace-overview__helpers { gap: 0.1rem; margin-top: 0.25rem; }
+    .workspace-overview__helpers p { font-size: 0.57rem; line-height: 1.35; }
+
+    .system-matrix { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .system-matrix div {
+        min-height: 2.35rem;
+        gap: 0.08rem;
+        padding: 0.32rem 0.42rem;
+        border-right: 1px solid var(--border);
+        border-bottom: 0;
+    }
+    .system-matrix div:last-child { border-right: 0; }
+    .system-matrix dt { font-size: 0.45rem; }
+    .system-matrix dd { font-size: 0.49rem; line-height: 1.25; }
+
+    .workspace-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    .workspace-rail {
+        max-height: min(8.5rem, 18dvh);
+        padding: 0.35rem 0.55rem;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .quick-filters summary { padding: 0.35rem 0; font-size: 0.57rem; }
+    .quick-filters__help { margin-top: 0.35rem; font-size: 0.59rem; line-height: 1.35; }
+    .quick-filters__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+        padding: 0.55rem 0;
+    }
+    .quick-filters__location { grid-column: 1 / -1; }
+    .quick-filters__grid label { gap: 0.22rem; font-size: 0.54rem; }
+    .quick-filters__grid input,
+    .quick-filters__grid select {
+        min-height: 2.15rem;
+        padding: 0.4rem 0.5rem;
+        font-size: 0.68rem;
+    }
+    .rail-status { gap: 0.2rem 0.45rem; margin-top: 0.4rem; padding-top: 0.5rem; font-size: 0.5rem; }
+    .rail-status span { margin-top: 0; }
+
+    .transcript { gap: 0.45rem; padding: 0.45rem; scrollbar-gutter: auto; }
+    .message__label { padding: 0.32rem 0.5rem; font-size: 0.51rem; }
+    .message__body { padding: 0.5rem 0.58rem; font-size: 0.72rem; line-height: 1.45; }
+    .message__body > p + p { margin-top: 0.45rem; }
+
+    .suggestions__label { margin-bottom: 0.35rem; font-size: 0.52rem; }
+    .suggestions__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .suggestion-chip {
+        min-height: 2.35rem;
+        padding: 0.42rem 1.5rem 0.42rem 0.55rem;
+        font-size: 0.65rem;
+        line-height: 1.3;
+    }
+    .suggestion-chip::after { right: 0.5rem; }
+
+    .search-pipeline__header { gap: 0.3rem; padding: 0.42rem 0.55rem; font-size: 0.54rem; }
+    .search-pipeline__stage { grid-template-columns: 1.55rem minmax(0, 1fr) auto; gap: 0.3rem; padding: 0.32rem 0.55rem; font-size: 0.52rem; }
+    .search-pipeline__sources { padding: 0.45rem 0.55rem 0.55rem; }
+    .search-pipeline__sources-label { margin-bottom: 0.35rem; font-size: 0.49rem; }
+    .search-pipeline__source-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .search-pipeline__source-grid span { padding: 0.32rem 0.2rem; font-size: 0.47rem; }
+
+    .search-entry-point,
+    .matches,
+    .answer-sources { margin: 0 0.58rem 0.58rem; padding-top: 0.45rem; font-size: 0.66rem; }
+    .matches summary,
+    .answer-sources summary { font-size: 0.56rem; }
+    .matches ul,
+    .answer-sources ol { gap: 0.3rem; margin-top: 0.4rem; padding-left: 1rem; }
+    .source-badge,
+    .listing-card__platform { padding: 0.17rem 0.3rem; font-size: 0.49rem; }
+
+    .composer-dock { padding: 0.35rem 0.48rem 0.42rem; }
+    .composer__label { margin-bottom: 0.28rem; font-size: 0.52rem; }
+    .composer__controls { grid-template-columns: minmax(0, 1fr) auto; gap: 0; }
+    .composer textarea[data-input] {
+        min-height: 2.75rem;
+        padding: 0.58rem 0.65rem;
+        border-right: 0;
+        font-size: 0.74rem;
+        line-height: 1.35;
+    }
+    .composer__controls button {
+        width: auto;
+        min-width: 5.35rem;
+        min-height: 2.75rem;
+        padding: 0.58rem 0.65rem;
+        font-size: 0.6rem;
+    }
+
+    .chat-disclaimer { padding: 0.28rem 0.55rem; font-size: 0.49rem; line-height: 1.35; }
+    .public-footer {
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.25rem 0.7rem;
+        padding: 0.28rem 0.55rem;
+        font-size: 0.52rem;
+    }
+
+    .listing-results__heading { gap: 0.35rem; padding: 0.55rem; }
+    .listing-results__heading h2 { font-size: 0.72rem; }
+    .listing-results__heading p { font-size: 0.52rem; }
+    .listing-card { padding: 0.6rem; }
+    .listing-card h3 { margin: 0.55rem 0; font-size: 0.76rem; }
+    .listing-card dl div { padding: 0.42rem; }
+    .listing-card dt { font-size: 0.49rem; }
+    .listing-card dd { font-size: 0.63rem; }
+    .listing-card__seller { margin-top: 0.45rem; font-size: 0.53rem; }
+    .listing-card__actions { gap: 0.3rem; margin-top: 0.5rem; }
+    .listing-card__actions a { padding: 0.38rem 0.5rem; font-size: 0.53rem; }
+
+    .public-page-shell { padding: 0; }
+    .public-page-card { min-height: 100dvh; border-right: 0; border-left: 0; }
+    .public-page-header { align-items: center; gap: 0.5rem; padding: 0.55rem 0.65rem; }
+    .public-page-brand strong { font-size: 0.9rem; }
+    .public-page-content { padding: 0.7rem; }
+    .public-page-content h1 { font-size: 1.25rem; }
+    .public-page-content h2 { font-size: 0.9rem; }
+    .public-page-lead { margin-top: 0.5rem; font-size: 0.72rem; }
+    .public-info-grid { gap: 0.55rem; margin-top: 0.7rem; }
+    .public-info-grid section { padding: 0.7rem; }
+    .public-info-grid p { font-size: 0.7rem; }
+    .public-page-note,
+    .contact-list div { padding: 0.65rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .startup-splash {
         animation-duration: 300ms;

@@ -1016,6 +1016,206 @@ code,
     .auth-brand__logo { width: 3.5rem; height: 3.5rem; }
 }
 
+/* Admin mobile density */
+@media (max-width: 767px) {
+    .admin-body {
+        overflow-x: hidden;
+        font-size: 0.78rem;
+    }
+
+    .admin-shell,
+    .admin-main,
+    .admin-content {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .admin-sidebar { width: min(15.5rem, calc(100vw - 2.25rem)); }
+    .admin-sidebar__brand {
+        grid-template-columns: 2.35rem minmax(0, 1fr);
+        gap: 0.55rem;
+        padding: 0.72rem 0.75rem;
+    }
+    .admin-sidebar__logo { width: 2.35rem; height: 2.35rem; }
+    .admin-sidebar__eyebrow { margin-bottom: 0.18rem; font-size: 0.5rem; }
+    .admin-sidebar__name { font-size: 0.9rem; }
+    .admin-nav { padding: 0.45rem 0; }
+    .admin-nav__label { padding: 0.45rem 0.75rem 0.28rem; font-size: 0.49rem; }
+    .admin-nav__label--spaced { margin-top: 0.25rem; }
+    .admin-nav__link,
+    .admin-nav__button {
+        min-height: 2.25rem;
+        gap: 0.45rem;
+        padding: 0.45rem 0.75rem;
+        font-size: 0.69rem;
+    }
+    .admin-nav__link::before,
+    .admin-nav__button::before { font-size: 0.52rem; }
+    .admin-nav__submenu { padding: 0.1rem 0 0.28rem 0.45rem; }
+    .admin-nav__sublink { min-height: 2.15rem; padding-top: 0.38rem; padding-bottom: 0.38rem; font-size: 0.64rem; }
+    .admin-sidebar__logout { padding: 0.45rem 0 0.55rem; }
+
+    .admin-topbar {
+        min-height: 3.5rem;
+        gap: 0.45rem;
+        padding: 0.42rem 0.6rem;
+    }
+    .admin-topbar__heading { gap: 0.5rem; }
+    .admin-topbar__eyebrow { margin-bottom: 0.08rem; font-size: 0.46rem; letter-spacing: 0.05em; }
+    .admin-topbar h1 { font-size: 0.95rem; line-height: 1.1; }
+    .admin-topbar__actions { gap: 0.35rem; margin-left: auto; }
+    .admin-menu-button { min-width: 2.5rem; min-height: 2.2rem; padding: 0.38rem 0.48rem; font-size: 0.56rem; }
+    .admin-topbar .locale-switch { padding: 0.08rem; }
+    .admin-topbar .locale-switch__option { min-width: 1.75rem; min-height: 1.9rem; padding: 0.18rem 0.25rem; font-size: 0.54rem; }
+    .admin-identity { padding-left: 0.5rem; }
+    .admin-identity__label { display: none; }
+    .admin-identity strong { max-width: 5.5rem; overflow: hidden; font-size: 0.64rem; text-overflow: ellipsis; white-space: nowrap; }
+
+    .admin-content { padding: 0.62rem; }
+    .admin-card { padding: 0.72rem; }
+    .admin-card + .admin-card { margin-top: 0.65rem; }
+    .admin-card__heading { gap: 0.55rem; margin-bottom: 0.65rem; padding-bottom: 0.55rem; }
+    .admin-card__heading h2,
+    .admin-card__heading h3 { font-size: 0.9rem; line-height: 1.2; }
+    .admin-card__heading p { margin-top: 0.22rem; font-size: 0.66rem; line-height: 1.4; }
+    .admin-card__eyebrow { font-size: 0.5rem !important; }
+
+    .summary-grid,
+    .summary-grid--dashboard,
+    .summary-grid--two,
+    .summary-grid--three {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-bottom: 0.65rem;
+    }
+    .summary-card,
+    .summary-grid--compact .summary-card {
+        min-height: 6.2rem;
+        padding: 0.65rem;
+    }
+    .summary-card__label { font-size: 0.5rem; line-height: 1.3; }
+    .summary-card__value { margin-top: 0.48rem; font-size: 1.35rem; }
+    .summary-card__note { margin-top: 0.42rem; font-size: 0.6rem; line-height: 1.35; }
+    .summary-card__details { gap: 0.12rem; margin-top: 0.42rem; padding-left: 0.75rem; font-size: 0.5rem; }
+    .summary-card__action { margin-top: 0.45rem; }
+    .summary-counting-hint,
+    .coverage-guidance { margin-bottom: 0.6rem; padding-left: 0.5rem; font-size: 0.6rem; line-height: 1.4; }
+    .metrics-section + .metrics-section { margin-top: 0.65rem; }
+    .metrics-section__heading { margin-bottom: 0.45rem; }
+    .metrics-section__heading h3 { font-size: 0.78rem; }
+    .metrics-section__heading p { margin-top: 0.2rem; font-size: 0.6rem; }
+
+    .scope-summary,
+    .candidate-layout { gap: 0.55rem; }
+    .scope-summary .scope-summary__description { margin-top: 0.22rem; font-size: 0.6rem; line-height: 1.4; }
+    .coverage-context-grid { margin-bottom: 0.6rem; }
+    .coverage-context { padding: 0.55rem 0.6rem; }
+    .coverage-context__label { font-size: 0.5rem; }
+    .coverage-context__value { margin-top: 0.25rem; font-size: 0.88rem; }
+    .coverage-context__note { margin-top: 0.2rem; font-size: 0.58rem; }
+
+    .filter-bar { gap: 0.45rem; margin-bottom: 0.65rem; padding: 0.58rem; }
+    .products-filter { gap: 0.55rem; }
+    .products-filter__row { gap: 0.5rem; }
+    .products-filter__help { gap: 0.2rem; font-size: 0.6rem; line-height: 1.4; }
+    .products-filter__actions,
+    .products-filter__actions .button { min-height: 2.3rem; }
+
+    .admin-form__grid { grid-template-columns: minmax(0, 1fr); gap: 0.65rem; }
+    .form-field--full,
+    .admin-form__full { grid-column: auto; }
+    .form-field label { margin-bottom: 0.25rem; font-size: 0.54rem; }
+    .form-field input:not([type="checkbox"]):not([type="radio"]),
+    .form-field select,
+    .form-field textarea {
+        min-height: 2.35rem;
+        padding: 0.48rem 0.55rem;
+        font-size: 0.72rem;
+    }
+    .form-field textarea { min-height: 6.5rem; line-height: 1.45; }
+    .form-help,
+    .form-error,
+    .form-field__hint,
+    .form-field__error { margin-top: 0.25rem; font-size: 0.59rem; line-height: 1.4; }
+    .form-options { padding: 0.55rem; }
+    .form-options legend { font-size: 0.54rem; }
+    .check-field { gap: 0.45rem; padding: 0.42rem; }
+    .check-field strong { font-size: 0.68rem; }
+    .check-field small { font-size: 0.59rem; }
+    .form-actions { gap: 0.4rem; margin-top: 0.75rem; padding-top: 0.65rem; }
+
+    .button { min-height: 2.3rem; padding: 0.46rem 0.62rem; font-size: 0.57rem; }
+    .button--small { min-height: 2.05rem; padding: 0.34rem 0.45rem; font-size: 0.52rem; }
+    .table-actions { gap: 0.35rem; }
+    .table-action-form { margin-top: 0.28rem; }
+
+    .table-scroll {
+        max-width: 100%;
+        overscroll-behavior-inline: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+    .admin-table { min-width: 46rem; }
+    .admin-table--wide { min-width: 66rem; }
+    .admin-table th,
+    .admin-table td { padding: 0.46rem 0.5rem; }
+    .admin-table th { font-size: 0.5rem; }
+    .admin-table td:not(.admin-table__question) { font-size: 0.65rem; }
+    .admin-table__question { min-width: 12rem; max-width: 22rem; }
+    .admin-table__question strong { font-size: 0.68rem; line-height: 1.35; }
+    .admin-table__question > span { margin-top: 0.22rem; font-size: 0.61rem; line-height: 1.35; }
+    .admin-table__question small,
+    .table-meta { margin-top: 0.22rem; font-size: 0.5rem; }
+    .table-source-link { margin-top: 0.28rem; font-size: 0.52rem; }
+
+    .badge { padding: 0.18rem 0.3rem; font-size: 0.49rem; }
+    .alert { margin-bottom: 0.65rem; padding: 0.55rem 0.65rem; font-size: 0.67rem; }
+    .empty-state { padding: 1.2rem 0.65rem; }
+    .empty-state h3 { font-size: 0.82rem; }
+    .empty-state p { margin-top: 0.3rem; font-size: 0.65rem; }
+
+    .workflow-step { padding: 0.65rem; }
+    .workflow-step__heading { grid-template-columns: 1.65rem minmax(0, 1fr); gap: 0.5rem; }
+    .workflow-step__index { width: 1.65rem; height: 1.65rem; font-size: 0.52rem; }
+    .workflow-step__heading h3 { font-size: 0.8rem; }
+    .workflow-step__heading p { margin-top: 0.2rem; font-size: 0.62rem; }
+    .workflow-step__label { font-size: 0.49rem !important; }
+    .workflow-actions { gap: 0.4rem; margin-top: 0.55rem; }
+    .workflow-helper { margin-top: 0.4rem; font-size: 0.59rem; }
+    .field-guide div { padding: 0.5rem; }
+    .field-guide dt { font-size: 0.54rem; }
+    .field-guide dd { margin-top: 0.18rem; font-size: 0.58rem; }
+
+    .activity-chart { min-height: 12rem; }
+    .activity-chart__body { grid-template-columns: auto minmax(28rem, 1fr); gap: 0.4rem; }
+    .activity-chart__y-axis,
+    .activity-chart__plot { height: 10.5rem; }
+    .activity-chart__y-axis,
+    .activity-chart__total,
+    .activity-chart__column time { font-size: 0.5rem; }
+
+    .pagination { gap: 0.45rem; margin-top: 0.65rem; font-size: 0.54rem; }
+    .pagination__links { gap: 0.25rem; }
+
+    .admin-dialog { width: min(30rem, calc(100vw - 1rem)); }
+    .admin-dialog__panel { gap: 0.6rem; padding: 0.75rem; }
+    .admin-dialog__panel h2 { font-size: 0.9rem; }
+    .admin-dialog__panel > p:not(.admin-card__eyebrow) { font-size: 0.66rem; line-height: 1.45; }
+    .admin-dialog__actions { gap: 0.4rem; margin-top: 0.2rem; padding-top: 0.6rem; }
+
+    .auth-shell { place-items: start center; overflow-x: hidden; overflow-y: auto; padding: 0.5rem; }
+    .auth-card__locale { min-height: 2.5rem; padding: 0.35rem 0.55rem; }
+    .auth-card__grid { min-height: 0; grid-template-columns: minmax(0, 1fr); }
+    .auth-card__identity { padding: 0.85rem; border-right: 0; border-bottom: 1px solid var(--border); }
+    .auth-card__access { padding: 0.85rem; }
+    .auth-brand { flex-direction: row; align-items: center; gap: 0.55rem; }
+    .auth-brand__logo { width: 2.75rem; height: 2.75rem; }
+    .auth-brand__copy h1 { font-size: 1.35rem; }
+    .auth-card__description { max-width: 30rem; margin-top: 0.55rem; font-size: 0.66rem; }
+    .auth-card__access-heading { margin-bottom: 0.7rem; font-size: 0.58rem; }
+    .auth-card .form-field + .form-field { margin-top: 0.6rem; }
+    .auth-card .button { min-height: 2.4rem; margin-top: 0.7rem; }
+    .auth-card__back { margin-top: 0.65rem; font-size: 0.54rem; }
+}
+
 @media (max-width: 23.5rem) {
     .admin-identity { display: none; }
     .admin-topbar__eyebrow { max-width: 12rem; overflow: hidden; white-space: nowrap; }
