@@ -47,7 +47,6 @@ final class LocalizationTest extends TestCase
         $this->get(route('chatbot'))
             ->assertOk()
             ->assertSee('<html lang="en">', false)
-            ->assertSee('Ready to help');
 
         $this->from(route('chatbot'))
             ->post(route('locale.update', 'id'))
@@ -81,7 +80,6 @@ final class LocalizationTest extends TestCase
             ->get(route('chatbot'))
             ->assertOk()
             ->assertSee('<html lang="en">', false)
-            ->assertSee('Ready to help');
     }
 
     public function test_locale_switch_preserves_the_current_page(): void

@@ -110,7 +110,6 @@ final class ChatbotPageTest extends TestCase
             ->assertSeeText('MENYIAPKAN PENCARIAN SEMANTIK')
             ->assertSeeText('MEMUAT INTELIJENSI PRODUK')
             ->assertSeeText('MENYIAPKAN SUMBER LISTING')
-            ->assertSeeText('SISTEM SIAP')
             ->assertSee('<textarea id="chatbot-message"', false);
 
         $this->withSession(['locale' => 'en'])

@@ -60,10 +60,6 @@
                     </div>
                     <div class="chat-header__actions">
                         <x-locale-switch />
-                        <p class="chat-status" data-mono>
-                            <span class="chat-status__dot" aria-hidden="true"></span>
-                            {{ __('ui.chat.status') }}
-                        </p>
                     </div>
                 </div>
             </header>
@@ -72,7 +68,6 @@
                 <div class="workspace-overview__lead">
                     <p class="eyebrow">{{ __('ui.chat.lead_eyebrow') }}</p>
                     <h2>{{ __('ui.chat.lead_title') }}</h2>
-                    <p class="workspace-overview__description">{{ __('ui.chat.lead_body') }}</p>
                     <div class="workspace-overview__helpers">
                         <p><span aria-hidden="true">✓</span> <strong>{{ __('ui.chat.scope_label') }}</strong> {{ __('ui.chat.scope_text') }}</p>
                         <p><span aria-hidden="true">✓</span> <strong>{{ __('ui.chat.listing_sources_label') }}</strong> {{ __('ui.chat.listing_sources_text') }}</p>
@@ -81,7 +76,6 @@
                 <dl class="system-matrix" data-mono>
                     <div><dt>{{ __('ui.chat.engine') }}</dt><dd>{{ __('ui.chat.semantic_search') }}</dd></div>
                     <div><dt>{{ __('ui.chat.data') }}</dt><dd>{{ __('ui.chat.marketplace_web') }}</dd></div>
-                    <div><dt>{{ __('ui.chat.output') }}</dt><dd>{{ __('ui.chat.ranked_intelligence') }}</dd></div>
                 </dl>
             </section>
 
@@ -90,7 +84,6 @@
                     <aside class="workspace-rail" aria-label="{{ __('ui.chat.filters_aria') }}">
                         <details class="quick-filters" data-filters open>
                             <summary>{{ __('ui.chat.filters') }}</summary>
-                            <p class="quick-filters__help">{{ __('ui.chat.filters_help') }}</p>
                             <div class="quick-filters__grid">
                         <label>
                             <span>{{ __('ui.chat.max_budget') }}</span>
@@ -111,10 +104,6 @@
                         </label>
                             </div>
                         </details>
-                        <div class="rail-status" data-mono>
-                            <span>{{ __('ui.chat.source_mode') }}</span><strong>{{ __('ui.chat.hybrid_retrieval') }}</strong>
-                            <span>{{ __('ui.chat.ranking') }}</span><strong>{{ __('ui.chat.deterministic') }}</strong>
-                        </div>
                     </aside>
 
                     <div
